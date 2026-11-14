@@ -34,8 +34,12 @@ export class ImprovementEngine {
   private metadata(id: string) { return join(this.supervisor.root, 'supervisor', 'improvements', `${id}.json`); }
   private candidate(id: string): Candidate { const value = JSON.parse(readFileSync(this.metadata(id), 'utf8')) as Candidate; assertTestRoot(dirname(value.root), value.runId); if (join(dirname(value.root), 'source') !== value.root) throw new DomainError('candidate_path_denied'); return value; }
   private prepare(id: string) {
-    const row = this.service.row(id); const pointer = this.supervisor.pointer(); if (row.base_release !== pointer.current || pointer.phase !== 'stable') throw new DomainError('stale_update_base');
+    const row = this.service.row(id); const pointer = this.supervisor.pointer(); if (pointer.phase !== 'stable') throw new DomainError('stale_update_base');
     const base = verifyRelease(join(this.supervisor.root, 'releases', pointer.current)); const source = join(this.supervisor.root, 'releases', pointer.current, 'source'); if (sourceSnapshot(source) !== base.manifest.sourceSnapshotHash) throw new DomainError('base_source_integrity_failed');
+    if (row.base_release !== pointer.current) {
+      if (row.state !== 'requested' || existsSync(this.metadata(id))) throw new DomainError('stale_update_base');
+      this.service.store.db.transaction(() => { this.service.store.db.prepare("UPDATE updates SET base_release=?,revision=revision+1 WHERE id=? AND state='requested'").run(pointer.current, id); this.service.store.event(row.task_id, this.service.store.taskRow(row.task_id).revision, 'update.base_refreshed', { updateId: id, previousBase: row.base_release, baseRelease: pointer.current, reason: 'An earlier verified update changed the installed source before this request started. Reproduction and all checks run again.' }); })();
+    }
     const t = createTestRoot(); const root = join(t.root, 'source'); mkdirSync(root); for (const file of publicSourceFiles(source)) { const destination = join(root, file); mkdirSync(dirname(destination), { recursive: true }); copyPrimaryFile(join(source, file), destination); }
     const candidate: Candidate = { root, runId: t.runId, baseHash: base.hash, regression: `tests/e2e/update-${id}.spec.ts` }; atomicJson(this.metadata(id), candidate); return candidate;
   }
@@ -52,7 +56,7 @@ export class ImprovementEngine {
       if (['reproducing', 'implementing', 'verifying'].includes(row.state)) throw new DomainError('interrupted_improvement_requires_reconciliation');
       if (row.state === 'requested') {
         if (row.base_release === 'development') throw new DomainError('verified_installation_required');
-        const candidate = this.prepare(id); const base = verifyRelease(join(this.supervisor.root, 'releases', row.base_release), candidate.baseHash);
+        const candidate = this.prepare(id); row = service.row(id); const base = verifyRelease(join(this.supervisor.root, 'releases', row.base_release), candidate.baseHash);
         service.transition(id, 'reproducing', { baseSourceHash: base.manifest.sourceSnapshotHash, regression: candidate.regression });
         await this.worker.edit(candidate.root, request, 'regression', candidate.regression);
         const first = this.changed(candidate, base.manifest); if (first.changed.length !== 1 || first.changed[0] !== candidate.regression || !existsSync(join(candidate.root, candidate.regression))) throw new DomainError('regression_scope_denied');

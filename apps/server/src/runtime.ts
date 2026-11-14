@@ -3,7 +3,7 @@ import { join } from 'node:path';
 import { createApp } from './create-app.js';
 import { Store } from './db/store.js';
 import { CommandService } from './commands/service.js';
-import { ActionService } from './authority/actions.js';
+import { ActionService, FixtureActionAdapter } from './authority/actions.js';
 import { Assistant } from './intents/assistant.js';
 import { FixtureModel, ProviderModel, PlanningService } from './intents/model.js';
 import { Scheduler } from './scheduler/index.js';
@@ -25,7 +25,7 @@ export async function coordinator(root: string, options: { testMode?: boolean; o
   const config = parseConfig(JSON.parse(readFileSync(join(root, 'state', 'config.json'), 'utf8')), options);
   const store = new Store(root, options); for (const project of config.projects) store.registerProject(project);
   const broker = await ensureBroker(root, store.installation().id, options.testMode);
-  const commands = new CommandService(store, config); const actions = new ActionService(store, commands, new Map());
+  const commands = new CommandService(store, config); const actions = new ActionService(store, commands, options.testMode ? new Map([['fixture', new FixtureActionAdapter({ value: 'old' })]]) : new Map());
   const improvements = new ImprovementService(store, commands);
   const worker = new BrokerWorker(store, broker.client, config); const scheduler = new Scheduler(store, config, worker, new ArtifactVerifier(store, recipeExecutor(store, broker.client)));
   scheduler.freeze(options.dispatchFrozen === true); worker.freeze(options.dispatchFrozen === true);

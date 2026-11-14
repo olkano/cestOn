@@ -1,5 +1,9 @@
 import { test, expect } from '@playwright/test';
 import { pair, createTask, localStore } from './helpers.js';
+test('U09 read aloud uses the displayed briefing only and its stop control cancels playback', async ({ page }) => {
+  await page.addInitScript(() => { Object.defineProperty(window, 'speechSynthesis', { value: { cancel() { (window as unknown as { cancelled: number }).cancelled = ((window as unknown as { cancelled: number }).cancelled ?? 0) + 1; }, speak(utterance: SpeechSynthesisUtterance) { (window as unknown as { spoken: string }).spoken = utterance.text; } } }); });
+  await pair(page); await page.getByRole('link', { name: 'Assistant', exact: true }).click(); await page.getByLabel('Message to assistant', { exact: true }).fill('Give me the current overview.'); await page.getByRole('button', { name: 'Send', exact: true }).click(); const briefing = page.locator('.conversation p').last(); await expect(briefing).toContainText('synthetic fixture providers'); const displayed = await briefing.innerText(); await page.getByRole('button', { name: 'Read briefing aloud', exact: true }).click(); expect(await page.evaluate(() => (window as unknown as { spoken: string }).spoken)).toBe(displayed); await page.getByRole('button', { name: 'Stop playback', exact: true }).click(); await expect(page.getByRole('button', { name: 'Stop playback', exact: true })).not.toBeVisible(); expect(await page.evaluate(() => (window as unknown as { cancelled: number }).cancelled)).toBeGreaterThanOrEqual(2);
+});
 
 test('T21 T24 the production worker caches static assets only and restores an unsent draft after offline reload', async ({ page, context }) => {
   await pair(page); await createTask(page, 'Offline reload fixture');

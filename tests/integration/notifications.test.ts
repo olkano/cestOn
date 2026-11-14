@@ -27,5 +27,6 @@ it('T23 decisions persist independently of push; deliveries are encrypted, dedup
     await service.unsubscribe(deviceId, subscription.id); mode = 'gone';
     await service.subscribe(deviceId, { endpoint: 'https://fcm.googleapis.com/fcm/send/second', keys: { p256dh: 'a'.repeat(87), auth: 'b'.repeat(22) } }); await service.tick();
     expect((store.db.prepare('SELECT COUNT(*) AS n FROM push_subscriptions WHERE disabled_at IS NULL').get() as { n: number }).n).toBe(0);
+    const updateId = randomUUID(); store.event(task, 1, 'update.changed', { updateId, state: 'applied' }); store.event(task, 1, 'update.changed', { updateId, state: 'applied' }); await service.tick(); await service.tick(); expect(service.list()).toHaveLength(2); expect((store.db.prepare("SELECT COUNT(*) AS n FROM notifications WHERE dedup_key LIKE 'update:%'").get() as { n: number }).n).toBe(1);
   } finally { store.close(); cleanupTestRoot(t.root, t.runId); }
 });

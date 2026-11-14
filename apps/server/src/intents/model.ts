@@ -21,7 +21,8 @@ export class FixtureModel implements PlanningModel {
     const task = context.task as { goal: string; scope: { completionBoundary: string; operations: string[] } };
     const recipes = context.recipes as { id: string; operation: string }[];
     if (!task.scope.operations.includes('edit')) throw new DomainError('fixture_requires_edit_scope');
-    return { goal: task.goal, completionBoundary: task.scope.completionBoundary, phases: [{ id: 'first', ordinal: 1, goal: 'Create a clearly labelled synthetic fixture artifact for this request.', dependsOn: [], allowedRecipeIds: [], expectedArtifacts: [{ path: 'result.txt' }], verificationRecipeIds: recipes.filter(r => r.operation === 'test' && task.scope.operations.includes('test')).map(r => r.id), decisionBoundary: false }] };
+    const count = task.goal.startsWith('Synthetic three-phase') ? 3 : 1;
+    return { goal: task.goal, completionBoundary: task.scope.completionBoundary, phases: Array.from({ length: count }, (_, index) => ({ id: `step${index + 1}`, ordinal: index + 1, goal: 'Create and independently check a clearly labelled synthetic fixture artifact.', dependsOn: index ? [`step${index}`] : [], allowedRecipeIds: [], expectedArtifacts: [{ path: 'result.txt' }], verificationRecipeIds: recipes.filter(r => r.operation === 'test' && task.scope.operations.includes('test')).map(r => r.id), decisionBoundary: false })) };
   }
 }
 export class PlanningService {

@@ -2,8 +2,8 @@
   "formatVersion": 1,
   "objective": "Implement phases 0-9, independently verify relevant steps, commit and push verified milestones",
   "status": "in_progress",
-  "currentPhase": 7,
-  "nextAction": "Finish running rollback rehearsal (self-update-fixture-1794684977404), then phase 8 full journey/performance matrix and phase 9 clean export/package. Good, failing and protected full UI scenarios passed and cleaned up. Current full verification record 2026-11-14T19-36-28-076Z-df3d6d84: 21 unit,46 integration,11 Chromium,4 security,6 update pass, including actual process kills at six activation boundaries. Native update execution now owned by broker with signed candidate-only grants and shared capacity. Native certificate issuer/probe tooling added but actual sandbox/auth gates remain blocked. Old quarantined ceston-test-ZykHxS retained after approval rejection; owned processes stopped.",
+  "currentPhase": 9,
+  "nextAction": "Phase 9: portable setup/provider/contributing/support docs, CI, explicit allowlist export and history scan, clean independent npm ci and full verification, fresh package/install/uninstall rehearsal and final waiting-worker rollback. Good/failing/protected/health-rollback full fixture scenarios pass with cleanup; 30-sample latency targets pass. Current full record 2026-11-14T19-44-39-353Z-386fc326 passes 21 unit,46 integration,12 Chromium,4 security,6 updates; later focused journey/mobile adds actual three-phase UI, continuation and read-aloud controls; 7 update tests pass including broker safe point and schema rejection. Native probe execution-host-1794685366004 reports setup required, zero model turns; adb has no attached devices and its temporary server was stopped. Preserve old policy-quarantined test root.",
   "tracking": "zz_Specifications/implementation-run.md",
   "ledger": "zz_Specifications/implementation-status.md",
   "authorized": [
@@ -50,15 +50,15 @@
     },
     {
       "id": 7,
-      "status": "in_progress"
+      "status": "local_fixture_verified_native_blocked"
     },
     {
       "id": 8,
-      "status": "pending"
+      "status": "local_fixture_verified_external_gates_blocked"
     },
     {
       "id": 9,
-      "status": "pending"
+      "status": "in_progress"
     }
   ],
   "externalGates": [

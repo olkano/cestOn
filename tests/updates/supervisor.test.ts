@@ -1,5 +1,5 @@
 import { it, expect } from 'vitest';
-import { mkdirSync, writeFileSync, symlinkSync } from 'node:fs';
+import { mkdirSync, writeFileSync, symlinkSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { randomUUID, createHash } from 'node:crypto';
 import { Supervisor, InjectedSupervisorCrash, type SupervisorHost, type Validation } from '../../apps/supervisor/src/activation.js';
@@ -16,6 +16,12 @@ class Host implements SupervisorHost {
   async validate(): Promise<Validation> { return { certifiedHost: false, checks: (['verify', 'security', 'updates', 'canary'] as const).map(name => ({ name, result: this.validationFails ? 'fail' : 'pass', evidenceHash: 'a'.repeat(64) })) }; }
   async freeze(value: boolean) { this.frozen = value; } async activeRuns() { return this.runs; } async backup() {} async capture() { return 'unchanged-durable-commands'; } async preserved(value: string) { return value === 'unchanged-durable-commands'; } async stopCoordinator() {} async startCoordinator() {} async healthy(id: string) { return !this.fail.has(id); } async canary(id: string) { return !this.fail.has(id); } async observe(id: string, duration: number) { expect(duration).toBe(120000); return !this.fail.has(id); }
 }
+it('T30 T34 broker-declared candidates wait for idle and incompatible schemas cannot switch', async () => {
+  const t = createTestRoot(); const host = new Host(); const supervisor = new Supervisor(t.root, 'synthetic key', host, { testMode: true }); const id = randomUUID();
+  try { await supervisor.initialize(bundle(t.root, 'base', null, randomUUID())); const candidate = bundle(t.root, 'candidate', 'base', id); const path = join(candidate, 'release-manifest.json'); const manifest = JSON.parse(readFileSync(path, 'utf8')); manifest.activationClass = 'broker'; atomicJson(path, manifest); await supervisor.stage(id, candidate, 'request'); host.runs = 2; expect((await supervisor.activate(id, 'request')).state).toBe('waiting_for_safe_point'); expect(host.frozen).toBe(false); expect(supervisor.pointer().current).toBe('base'); host.runs = 0; expect((await supervisor.activate(id, 'request')).state).toBe('applied');
+    const nextId = randomUUID(); const incompatible = bundle(t.root, 'incompatible', 'candidate', nextId); const incompatiblePath = join(incompatible, 'release-manifest.json'); const next = JSON.parse(readFileSync(incompatiblePath, 'utf8')); next.schemaWriteVersion = 4; next.schemaReadRange = [4, 4]; atomicJson(incompatiblePath, next); await supervisor.stage(nextId, incompatible, 'next-request'); await expect(supervisor.activate(nextId, 'next-request')).rejects.toThrow('migration_compatibility_proof_required'); expect(supervisor.pointer().current).toBe('candidate');
+  } finally { cleanupTestRoot(t.root, t.runId); }
+});
 it('T32 fake reports, tampered bytes, unsafe paths and protected edits cannot activate', async () => {
   const t = createTestRoot(); const host = new Host(); const supervisor = new Supervisor(t.root, 'synthetic key', host, { testMode: true }); const requestId = randomUUID();
   try { await supervisor.initialize(bundle(t.root, 'base', null, randomUUID())); const candidate = bundle(t.root, 'candidate', 'base', requestId);
