@@ -5,7 +5,7 @@ if ($workspace -ne [IO.Path]::GetFullPath((Get-Location).Path)) { throw 'Wrong c
 $identity = [Security.Principal.WindowsIdentity]::GetCurrent()
 [Console]::WriteLine('{"stage":"runner-owner","defaultOwnerMatchesUser":' + ($identity.Owner.Value -eq $identity.User.Value).ToString().ToLowerInvariant() + '}')
 # The existing runner user retains its identity/profile. Only this child loses administrator authority.
-& "$env:SystemRoot\System32\icacls.exe" $workspace /grant ('*' + $identity.User.Value + ':(OI)(CI)F') /quiet
+& "$env:SystemRoot\System32\icacls.exe" $workspace /grant ('*' + $identity.User.Value + ':(OI)(CI)F') /Q
 if ($LASTEXITCODE -ne 0) { throw 'Could not grant the checkout to its runner user' }
 Add-Type -TypeDefinition @'
 using System;
