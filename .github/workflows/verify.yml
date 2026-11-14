@@ -27,6 +27,5 @@ jobs:
       - run: node scripts/check-native.mjs
       - run: npm exec -- playwright install chromium
       - run: npm run check:export
-      - run: npm exec -- tsx scripts/check-windows-host.ts
-      - run: npm run package:local
+      - run: ./scripts/ci-owner.ps1
       # Bundles stay on the disposable runner. No upload, deployment or native credentials.
