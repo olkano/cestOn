@@ -20,7 +20,7 @@ export function assertTestRoot(root: string, runId?: string) {
 }
 export function cleanupTestRoot(root: string, runId: string): void {
   assertTestRoot(root, runId);
-  rmSync(realpathSync.native(root), { recursive: true, force: false });
+  rmSync(realpathSync.native(root), { recursive: true, force: false, maxRetries: 20, retryDelay: 100 });
   if (existsSync(root)) throw new Error('Test cleanup failed');
 }
 export class FakeClock {

@@ -3,7 +3,7 @@ import { dirname } from 'node:path';
 import { createHash } from 'node:crypto';
 import { canonicalJson, DomainError } from '../../../packages/contracts/src/commands.js';
 
-type RecordEntry = { sequence: number; commandId: string; payloadHash: string; state: 'prepared' | 'accepted' | 'resolved'; result: Record<string, unknown> | null };
+type RecordEntry = { sequence: number; commandId: string; payloadHash: string; state: 'prepared' | 'accepted' | 'resolved'; result: Record<string, unknown> | null; context?: Record<string, string> };
 export class ReceiptJournal {
   private records: RecordEntry[] = [];
   private pending = new Map<string, Promise<{ sequence: number; result: Record<string, unknown> }>>();
@@ -29,15 +29,15 @@ export class ReceiptJournal {
   }
   receipt(commandId: string) { return this.records.findLast(r => r.commandId === commandId); }
   list() { return [...this.records]; }
-  async dispatch(commandId: string, payload: unknown, start: () => Promise<Record<string, unknown>>) {
+  async dispatch(commandId: string, payload: unknown, start: () => Promise<Record<string, unknown>>, context: Record<string, string> = {}) {
     const payloadHash = this.hash(payload); const prior = this.receipt(commandId);
     if (prior && prior.payloadHash !== payloadHash) throw new DomainError('idempotency_conflict');
     const pending = this.pending.get(commandId); if (pending) return pending;
     if (prior) { if (prior.state === 'prepared') throw new DomainError('reconciliation_required'); return { sequence: prior.sequence, result: prior.result! }; }
-    this.append({ commandId, payloadHash, state: 'prepared', result: null });
+    this.append({ commandId, payloadHash, state: 'prepared', result: null, context });
     const promise = (async () => {
       const result = await start();
-      const accepted = this.append({ commandId, payloadHash, state: 'accepted', result });
+      const accepted = this.append({ commandId, payloadHash, state: 'accepted', result, context });
       return { sequence: accepted.sequence, result };
     })();
     this.pending.set(commandId, promise);
@@ -45,7 +45,7 @@ export class ReceiptJournal {
   }
   resolve(commandId: string, result: Record<string, unknown>) {
     const prior = this.receipt(commandId); if (!prior) throw new DomainError('unknown_receipt');
-    return this.append({ commandId, payloadHash: prior.payloadHash, state: 'resolved', result });
+    return this.append({ commandId, payloadHash: prior.payloadHash, state: 'resolved', result, ...(prior.context ? { context: prior.context } : {}) });
   }
   compact() {
     if (this.pending.size) throw new DomainError('journal_busy');
