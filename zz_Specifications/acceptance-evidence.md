@@ -4,7 +4,7 @@ Statuses describe observed scope. Fixture passes never establish native/provider
 
 | ID | Local evidence | Result / remaining gate |
 |---|---|---|
-| T01 | Pinned runtime, lockfile, build and package scripts | Independent allowlist export, script-free npm ci, distributed binary load and all local gates pass; final package source will be checked again |
+| T01 | Pinned runtime, lockfile, build and package scripts | Independent allowlist export, script-free npm ci, distributed binary load, all local gates and current package/archive read-back pass |
 | T02 | Config/path validation, strict ports, owner ACL, occupied-owner rejection | Local pass, including occupied-port refusal without killing the listener and exact broker/owner diagnostics |
 | T03 | Commands, database concurrency and schema migration integration tests | Local pass |
 | T04 | Command idempotency, broker receipts and lost browser acknowledgement E2E | Local pass |
@@ -27,19 +27,19 @@ Statuses describe observed scope. Fixture passes never establish native/provider
 | T21 | Manifest/icons/standalone configuration and production service-worker checks | Android/iOS physical install blocked; no device attached |
 | T22 | Fake microphone/transcription, denial/cancel, editable transcript and read/stop controls | Fixture pass; actual microphone/speech/playback blocked |
 | T23 | Durable inbox, encrypted subscriptions, dedup/retry/removal, UI notification open/read | Fixture pass; actual locked-device push blocked |
-| T24 | Waiting worker version/readiness checks, saved draft after real fixture activation, retained draft after health rollback | Fixture pass; final prior-worker refresh after manual rollback pending; physical voice/update blocked |
+| T24 | Waiting worker version/readiness checks, saved draft after real fixture activation, retained draft after health rollback, exact prior worker after manual rollback | Fixture pass; physical voice/update blocked |
 | T25 | Live-WAL snapshot, authenticated encrypted restore, delta rejection and stopped-source retirement | Local pass |
 | T26 | Disabled optional cestDone adapter, hostile-config refusal | Optional execution unavailable; existing daemon untouched |
 | T27 | Auth/Host/Origin/CSRF/rate/path/upload/XSS checks, owner-only child ACL and DPAPI | Local pass |
 | T28 | Browser close/reopen, offline stale state, broker independent of client | Fixture pass; physical sleep/locked/sign-in/reboot blocked |
 | T29 | Coordinator replacement preserves broker run/session/command and writer lease | Fixture pass; both native long-run replacements blocked |
 | T30 | Separate processes/canary, OS ownership mutex, explicit broker candidate waits for idle | Local pass; actual persistent operational acceptance blocked |
-| T31 | Real phone UI request, failing-before/passing-after browser regression, independent rebuild, 120-second observation and read-back | Full fixture pass; capped real-provider self-update blocked |
+| T31 | Actual installed UI at phone viewport, failing-before/passing-after browser regression, independent rebuild, 120-second observation and read-back | Fresh full fixture pass, including manual rollback, exact prior worker, draft and acknowledgement retention; capped real-provider self-update blocked |
 | T32 | Failing candidate, protected authentication edit, forged evidence/hash, traversal/link and grant tampering tests | Local pass |
 | T33 | Actual separate-process candidate health failure, automatic prior-release recovery and retained acknowledged request/draft | Fixture pass |
 | T34 | Six actual supervisor process kills, signed pointer recovery, incompatible schema rejection and failed-rollback frozen recovery | Local pass |
 | T35 | Serialized engine, two queued requests, fresh-base reproduction, immutable source and no reactivation of already-fixed behavior | Local pass |
-| T36 | Explicit allowlist and secret/private-path scanner regression | Source/history scan and independent clean install pass; final package/removal rehearsal pending |
+| T36 | Explicit allowlist, exact runtime helper guard and secret/private-path scanner regression | Source/history scan, independent clean install, ZIP read-back, authenticated temporary installation/restore/removal and hosted Windows CI pass |
 
 ## Journeys and measurements
 

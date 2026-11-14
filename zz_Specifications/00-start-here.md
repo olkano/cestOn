@@ -1,6 +1,6 @@
 # cestOn implementation contract
 
-Status: ready for implementation planning; no application implementation has started. Specification baseline: 2026-11-14. Owner decisions incorporated: separate cestOn product, assistant terminology, installable phone experience, VS Code-inspired light/dark themes, and requested self-improvement with local application of verified changes.
+Specification baseline: 2026-11-14. These contracts define required behavior. The [implementation ledger](implementation-status.md) records current capabilities, verified scope and remaining gates. Owner decisions include a separate cestOn product, assistant terminology, an installable phone experience, light/dark themes and requested self-improvement with verified local application.
 
 ## Read and execute
 
@@ -8,9 +8,9 @@ Read the root README and AGENTS, then this file, `01-product.md`, `02-architectu
 
 The numbered specifications are normative. The prototype illustrates interaction, not implementation. Historical material in `reference-private/` is optional background and must not override these decisions. Resolve conflicting wording in favor of explicit user requirements and the most specific contract; record a proposed clarification only when behavior cannot be determined safely. Do not reopen the architecture selection as a phase-0 deliverable.
 
-## Scope of this delivery and a future implementation run
+## Implementation authority and limits
 
-This delivery creates documentation, design, and a local repository only. It does not implement or activate cestOn. A later instruction to “implement these specifications” authorizes the local steps below without repeated phase-by-phase confirmation.
+The original specification delivery established documentation, design and a local repository. An instruction to “implement these specifications” authorizes the local steps below without repeated phase-by-phase confirmation. The implementation ledger records the resulting capabilities; implementation does not itself authorize persistent activation or application publication.
 
 | Operation during implementation | Boundary |
 |---|---|

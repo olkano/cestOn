@@ -1,9 +1,9 @@
 {
   "formatVersion": 1,
   "objective": "Implement phases 0-9, independently verify relevant steps, commit and push verified milestones",
-  "status": "final_concurrency_verification",
+  "status": "local_verified_external_gates_blocked",
   "currentPhase": 9,
-  "nextAction": "Finish final coordination corrections and rerun full gates/package. Hosted 43645683066 now passes owner/browser preflight and 25 unit/54 integration checks, but actual UI evidence proves worker_envelope_invalid: a successful provider status can arrive after the event read, before the coordinator consumes the terminal JSON. New failed-before/passed-after unit test with early provider success and integration test with completion committed between reads. Broker now withholds success until the collector commits, and BrokerWorker drains again after observing terminal success. Another failed-before/passed-after scheduler regression proves a delayed workspace response could redispatch an already completed non-final phase; transaction now rechecks phase state/revision before lease and dispatch. Focused unit/integration tests/types/lint/build pass. Stage only these code/tests plus this checkpoint; keep draft handoff docs uncommitted until final gates pass. After push, inspect actual new CI, run fresh package:local, clean export and authenticated install/DPAPI restore/bootstrap/stopped cleanup for the corrected application. Earlier package c2e64a3f ZIP d7b5e927fd9ff2897ff0255ed1281e5cfb66b01fa6d1c19045009e326ab8b71f and full update/manual rollback 1794691762213 passed but predate these fixes. Zero native model turns/certificates, external native/auth/device/OS/license gates unchanged. Current clean CI worktree artifacts/ci-owner-fix is committed through 336a02e; remove it only after absolute-path and clean-status validation. Preserve old quarantined test root; no persistent activation or package publication.",
+  "nextAction": "Resume from implementation-run.md and the acceptance matrix when an external prerequisite becomes available. Local phases 0-9, all 106 tests, independent clean export, package verification and authenticated install/DPAPI restore/bootstrap have passed. Native Windows confinement setup and dedicated authenticated Codex/Claude homes are required before bounded live certification; no real model turns or native certificates exist. Physical Android/iOS and real audio/push, persistent sign-in/lock/reboot acceptance and owner-selected license remain open. Persistent pilot, infrastructure/account changes, paid provisioning and artifact publication require their separate authorization. Preserve the old policy-quarantined test folder; no owned processes remain there. Inspect Git status and remote read-back before further edits.",
   "tracking": "zz_Specifications/implementation-run.md",
   "ledger": "zz_Specifications/implementation-status.md",
   "authorized": [
@@ -58,9 +58,25 @@
     },
     {
       "id": 9,
-      "status": "final_concurrency_verification"
+      "status": "local_verified_external_gates_blocked"
     }
   ],
+  "verification": {
+    "applicationRevision": "f39a2290b3d2ed50f1e97338e212ebd82beb8634",
+    "automatedTests": 106,
+    "localRecord": "2026-11-14T22-12-44-996Z-70055f20",
+    "hostedRun": "https://github.com/olkano/cestOn/actions/runs/43646788951",
+    "hostedResult": "pass",
+    "cleanExport": "clean-export-1794694364808",
+    "installationAndRestore": "package-rehearsal-1794694849344.json",
+    "fullFixtureUpdateAndManualRollback": "self-update-fixture-1794694552157",
+    "artifact": "artifacts/ceston-56003c47-d350-49ff-985f-9d550b97b157.zip",
+    "artifactSha256": "c28fc338760e75041c1ad75a68ca636847a0f079a9dba8ec52f20644259f865b",
+    "implementationCompleteAgainstAllRequiredAcceptance": false,
+    "localPilotVerified": false,
+    "publicReleaseReady": false,
+    "publiclyReleased": false
+  },
   "externalGates": [
     {
       "id": "native_sandbox",
@@ -80,7 +96,17 @@
     {
       "id": "physical_devices",
       "status": "blocked",
-      "input": "Android/iOS installation, microphone and push checks after phase 5"
+      "input": "Physical Android/iOS installation, microphone/audio, lock-screen push and assistive-device checks"
+    },
+    {
+      "id": "persistent_operations",
+      "status": "blocked",
+      "input": "Separate pilot activation authority, then actual startup registration, sign-in, locked-session and reboot evidence"
+    },
+    {
+      "id": "release",
+      "status": "blocked",
+      "input": "Owner-selected application license, remaining acceptance and separate signing/artifact publication authority"
     }
   ]
 }

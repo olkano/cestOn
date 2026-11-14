@@ -1,6 +1,6 @@
 # Set up your own installation
 
-Use the pinned Node version in `.node-version`, npm 11 and Windows x64. Clone the source, run `npm ci --ignore-scripts`, then `node scripts/check-native.mjs` to verify the distributed SQLite binary and `npm exec -- playwright install chromium` for browser checks. Run `npm run verify`, `npm run test:security` and `npm run test:updates`. No sibling repository is required. The [support matrix](support-matrix.md) distinguishes tested fixtures from blocked native and physical-device gates.
+Use the pinned Node version in `.node-version`, npm 11 and Windows x64 from the owner's normal unelevated terminal. An elevated token can assign new files to Administrators instead of the owner's SID, which the private-state check rejects. Clone the source, run `npm ci --ignore-scripts`, then `node scripts/check-native.mjs` to verify the distributed SQLite binary and `npm exec -- playwright install chromium` for browser checks. Run `npm run verify`, `npm run test:security` and `npm run test:updates`. No sibling repository is required. The [support matrix](support-matrix.md) distinguishes tested fixtures from blocked native and physical-device gates.
 
 For a disposable demonstration, run `npm run dev` and use its one-use pairing invitation. This installation contains clearly labelled synthetic providers and disappears when stopped. Its HTTP loopback origin is for the host browser; it does not establish phone installation or remote access.
 
