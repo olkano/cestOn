@@ -13,3 +13,8 @@ test-results/
 *.log
 zz_Specifications/reference-private/
 zz_Specifications/evidence-private/
+apps/web/public/cestOn-icon.svg
+apps/web/public/icon-*.png
+apps/web/public/maskable-*.png
+artifacts/
+*.tsbuildinfo

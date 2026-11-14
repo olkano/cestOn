@@ -1,8 +1,8 @@
 # cestOn
 
-cestOn is a planned, self-hosted assistant for coordinating coding and operational agents from a desktop or phone. It brings tasks, decisions, progress, voice interaction, and requested improvements to cestOn itself into one workspace.
+cestOn is a self-hosted assistant in development for coordinating coding and operational agents from a desktop or phone. It brings tasks, decisions, progress, voice interaction, and requested improvements to cestOn itself into one workspace.
 
-**Current state:** specifications and interactive design only. There is no running application, installer, provider connection, or application release. This repository publishes the specification and design baseline.
+**Current state:** the TypeScript workspace, loopback development shell, fixture provider, build, and isolated verification infrastructure are implemented. Managed task execution and authenticated device access are under construction. No persistent pilot or application package release is active.
 
 ## Start here
 
@@ -10,7 +10,7 @@ cestOn is a planned, self-hosted assistant for coordinating coding and operation
 - [Product contract](zz_Specifications/01-product.md): what cestOn must do.
 - [Interactive experience](design/cestOn-experience.html): desktop and mobile examples, dark and light themes, and self-improvement.
 - [Implementation phases](zz_Specifications/08-implementation-phases.md) and [acceptance tests](zz_Specifications/09-acceptance-tests.md).
-- [Implementation ledger](zz_Specifications/implementation-status.md): starts with every phase pending.
+- [Implementation ledger](zz_Specifications/implementation-status.md) and [resume checkpoint](zz_Specifications/implementation-run.md): verified work, remaining gates, and next steps.
 
 ## Product and repository boundaries
 
@@ -30,6 +30,10 @@ The original requirements, exploration, and first mockup have been moved unchang
 
 ## Development
 
-Read `AGENTS.md`, then the implementation entry point. Build and setup commands in the specs are contracts to implement, not commands that exist today. Phase 0 creates the runnable scaffold and lockfile. Keep this README accurate as commands become available.
+Use Node 24 LTS and npm 11. Run `npm ci`, then `npx playwright install chromium` once for browser verification. `npm run dev` starts the loopback web shell at `http://127.0.0.1:4317` and API at port 4318. It does not install persistence or connect a provider.
+
+Run `npm run verify` for typecheck, lint, unit, integration, Chromium E2E, build, and documentation checks. Security and update checks are separate: `npm run test:security` and `npm run test:updates`. All tests use synthetic data. `npm run doctor` reports local runtime readiness without executing provider work.
+
+Use `npm run checkpoint` to inspect resumable implementation state. Read `AGENTS.md` and the [implementation entry point](zz_Specifications/00-start-here.md) before making changes. Commands for later phases remain contracts until their ledger evidence exists. The current package and live-provider commands fail closed while those capabilities are unimplemented.
 
 Public release, package publication, tunnel provisioning, and app-store submission remain distinct operations. The release checklist describes their prerequisites; writing these specifications performs none of them.

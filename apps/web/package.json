@@ -1,0 +1,1 @@
+{"name":"@ceston/web","version":"0.1.0-dev.0","private":true,"type":"module","dependencies":{"@ceston/contracts":"0.1.0-dev.0","react":"19.3.1","react-dom":"19.3.1","lucide-react":"1.73.0"}}

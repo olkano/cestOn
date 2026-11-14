@@ -1,11 +1,11 @@
 # Implementation status
 
-Specification baseline: 2026-11-14. Current status: documentation and design prepared; application implementation not started. No package scripts or running services exist yet.
+Specification baseline: 2026-11-14. Current status: Phase 0 scaffold locally verified. Managed task execution and the remaining feature phases are in progress. No persistent pilot is activated.
 
 | Phase | Status | Verification | Blocker / next action |
 |---|---|---|---|
-| 0 Scaffold and capability baseline | pending | Not run | Start after implementation instruction. |
-| 1 Durable domain and commands | pending | Not run | Phase 0. |
+| 0 Scaffold and capability baseline | local verified; live gates pending | `npm ci`; `npm run verify`; `test:security`; `test:updates`; `doctor`; audit; visual desktop/phone inspection. [Checkpoint](implementation-run.md). | Codex/Claude executable baselines detected; real managed-policy certification remains phase 2. |
+| 1 Durable domain and commands | in progress | Regression tests next | Durable schema, state transitions, commands, leases, and crash recovery. |
 | 2 Providers and ownership | pending | Not run | Phases 0-1. |
 | 3 Scheduler and assistant | pending | Not run | Phases 1-2. |
 | 4 Authenticated UI | pending | Not run | Phases 1-3. |

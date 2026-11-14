@@ -1,0 +1,1 @@
+{"name":"@ceston/broker","version":"0.1.0-dev.0","private":true,"type":"module","dependencies":{"@ceston/contracts":"0.1.0-dev.0","@ceston/adapters":"0.1.0-dev.0"}}

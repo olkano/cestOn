@@ -8,11 +8,13 @@ On resume, read AGENTS, README, this file, `implementation-status.md`, and `impl
 
 ## Current checkpoint
 
-- Phase: 0, scaffold and capability baseline.
-- Completed: startup instructions and contracts inspected; source baseline clean on main and tracked to origin/main.
-- Next: create pinned npm workspaces, test isolation helpers, config validation, redaction, fixture provider, runnable shell, verification scripts, and dependency lock. Prove failures before core implementations, then verify and commit this phase.
-- Evidence: detailed local results go under ignored `zz_Specifications/evidence-private/<run-id>/`; sanitized phase results belong in the ledger and this checkpoint.
-- Known gates: physical Android/iOS, live speech/push, real-provider certification, and constrained real-provider self-update require separate evidence. No persistent pilot or remote origin activation was requested.
+- Phase: 1, durable domain and command service.
+- Completed: Phase 0 npm workspace, exact dependency lock, config/limits, path validation, fail-closed test roots, log filtering, synthetic adapter, loopback shell, icon generation, build, doctor, and verification tooling.
+- Verification: clean `npm ci`, zero audit findings; 7 unit, 1 loopback integration, 2 Chromium viewport/theme tests, 1 security baseline, and 1 update-default test pass. `npm run verify` includes types, lint, tests, build and local-document links. Independently inspected desktop dark and phone light screenshots. These are scaffold checks, not full feature acceptance.
+- Evidence: `evidence-private/2026-11-14T14-42-32-508Z-03b2323c/record.json`. Detailed results remain ignored. Browser Chromium 159.0.8154.6; Node 24.14.0; Windows.
+- Next: add failing phase-1 tests, then implement SQLite schema/migrations, strict commands, immutable authority, revision checks, outbox, decisions, canonical locks, broker receipts, and reconciliation.
+- Known gates: real providers, physical Android/iOS, speech/push, constrained real-provider self-update. No persistent pilot or remote origin activation was requested.
+- Documentation review: README now owns actual development commands; provider compatibility owns detected runtime limits; these change future setup and prevent false capability claims. The tracking files own phase history. No product scope was expanded.
 
 ## Clarifications to encode with their owning modules
 
@@ -24,4 +26,5 @@ On resume, read AGENTS, README, this file, `implementation-status.md`, and `impl
 
 | Phase | Commit | Verification / remaining work |
 |---|---|---|
-| Tracking initialized | See Git history | Resume procedure and machine-readable checkpoint created before implementation edits. |
+| Tracking initialized | `3d79515` | Resume procedure and machine-readable checkpoint created before implementation edits. |
+| 0 Scaffold | See phase commit in Git history | Local scaffold verification passes; live-provider certification remains pending. |
