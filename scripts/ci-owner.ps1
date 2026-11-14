@@ -23,6 +23,7 @@ public static class CestonCiOwner {
   [StructLayout(LayoutKind.Sequential)] struct ProcessInfo { public IntPtr process,thread; public uint pid,tid; }
   [StructLayout(LayoutKind.Sequential)] struct Security { public int length; public IntPtr descriptor; [MarshalAs(UnmanagedType.Bool)] public bool inherit; }
   [DllImport("advapi32.dll",CharSet=CharSet.Unicode,SetLastError=true)] static extern bool ConvertStringSecurityDescriptorToSecurityDescriptor(string text,uint revision,out IntPtr descriptor,out uint size);
+  [DllImport("advapi32.dll",SetLastError=true)] static extern bool GetSecurityDescriptorDacl(IntPtr descriptor,out bool present,out IntPtr acl,out bool defaulted);
   [DllImport("user32.dll",CharSet=CharSet.Unicode,SetLastError=true)] static extern IntPtr CreateWindowStation(string name,uint flags,uint access,ref Security security);
   [DllImport("user32.dll")] static extern IntPtr GetProcessWindowStation();
   [DllImport("user32.dll",SetLastError=true)] static extern bool SetProcessWindowStation(IntPtr station);
@@ -41,7 +42,7 @@ public static class CestonCiOwner {
   [DllImport("advapi32.dll",SetLastError=true)] static extern bool CreateRestrictedToken(IntPtr token,uint flags,uint disabledCount,ref SidAttributes disabled,uint privilegeCount,IntPtr privileges,uint restrictedCount,IntPtr restricted,out IntPtr result);
   [DllImport("advapi32.dll",SetLastError=true)] static extern bool SetTokenInformation(IntPtr token,int information,IntPtr value,int length);
   [DllImport("advapi32.dll")] static extern uint GetLengthSid(IntPtr sid);
-  [DllImport("advapi32.dll",CharSet=CharSet.Unicode,SetLastError=true)] static extern bool CreateProcessAsUser(IntPtr token,string application,StringBuilder command,IntPtr processAttributes,IntPtr threadAttributes,bool inherit,uint flags,IntPtr environment,string directory,ref Startup startup,out ProcessInfo process);
+  [DllImport("advapi32.dll",CharSet=CharSet.Unicode,SetLastError=true)] static extern bool CreateProcessAsUser(IntPtr token,string application,StringBuilder command,ref Security processAttributes,ref Security threadAttributes,bool inherit,uint flags,IntPtr environment,string directory,ref Startup startup,out ProcessInfo process);
   static void Check(bool result) { if (!result) throw new Win32Exception(Marshal.GetLastWin32Error()); }
   static IntPtr Sid(SecurityIdentifier sid) { byte[] bytes=new byte[sid.BinaryLength]; sid.GetBinaryForm(bytes,0); IntPtr memory=Marshal.AllocHGlobal(bytes.Length); Marshal.Copy(bytes,0,memory,bytes.Length); return memory; }
   static void TokenData(IntPtr token,int kind,IntPtr sid,uint attributes,bool ownerOnly) {
@@ -59,6 +60,7 @@ public static class CestonCiOwner {
       user=Sid(WindowsIdentity.GetCurrent().User); TokenData(restricted,4,user,0,true);
       // A private desktop avoids the administrator-only service desktop and GUI message crossing.
       uint descriptorSize; Check(ConvertStringSecurityDescriptorToSecurityDescriptor("O:"+WindowsIdentity.GetCurrent().User.Value+"D:P(A;;GA;;;"+WindowsIdentity.GetCurrent().User.Value+")",1,out descriptor,out descriptorSize));
+      bool present,defaulted; IntPtr acl; Check(GetSecurityDescriptorDacl(descriptor,out present,out acl,out defaulted)); Check(present && acl!=IntPtr.Zero); TokenData(restricted,6,acl,0,true);
       var security=new Security { length=Marshal.SizeOf(typeof(Security)),descriptor=descriptor,inherit=false }; string stationName="ceston-ci-"+Guid.NewGuid().ToString("N");
       station=CreateWindowStation(stationName,0,0xF037F,ref security); Check(station!=IntPtr.Zero); priorStation=GetProcessWindowStation(); Check(SetProcessWindowStation(station));
       desktop=CreateDesktop("default",null,IntPtr.Zero,0,0xF01FF,ref security); Check(desktop!=IntPtr.Zero); Check(SetProcessWindowStation(priorStation));
@@ -66,7 +68,7 @@ public static class CestonCiOwner {
       Check(DuplicateHandle(GetCurrentProcess(),GetStdHandle(-11),GetCurrentProcess(),out output,0,true,2));
       Check(DuplicateHandle(GetCurrentProcess(),GetStdHandle(-12),GetCurrentProcess(),out error,0,true,2));
       var start=new Startup { cb=Marshal.SizeOf(typeof(Startup)),desktop=stationName+"\\default",flags=0x100,input=input,output=output,error=error };
-      Check(CreateProcessAsUser(restricted,node,new StringBuilder("\""+node+"\" \""+script+"\""),IntPtr.Zero,IntPtr.Zero,true,0x08000000,IntPtr.Zero,directory,ref start,out process));
+      Check(CreateProcessAsUser(restricted,node,new StringBuilder("\""+node+"\" \""+script+"\""),ref security,ref security,true,0x08000000,IntPtr.Zero,directory,ref start,out process));
       if (WaitForSingleObject(process.process,25*60*1000)!=0) { TerminateProcess(process.process,1); throw new Exception("Owned CI process exceeded its budget"); }
       uint code; Check(GetExitCodeProcess(process.process,out code)); return (int)code;
     } finally {
