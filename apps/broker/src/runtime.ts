@@ -24,6 +24,8 @@ import { workerCompletionSchema, artifactSchema, planSchema, intentSchema } from
 import { randomUUID } from 'node:crypto';
 import { executeSandboxedRecipe } from './recipes.js';
 import Database from 'better-sqlite3';
+import { UpdateExecution } from './update-worker.js';
+import { readUpdateGrant } from './update-grants.js';
 
 export const executionSchema = z.strictObject({
   commandId: z.uuid(), taskId: z.uuid(), projectId: z.uuid(), scopeRevisionId: z.uuid(), providerId: z.string(), root: z.string(),
@@ -38,12 +40,15 @@ export class Broker {
   readonly journal: ReceiptJournal; private log: BrokerEvents; private runs = new Map<string, OwnedRun>(); private adapters = new Map<string, Adapter>(); private discoveries = new Map<string, SessionDiscovery>();
   private roots = new Map<string, string>();
   private modelActive = 0;
+  private updateWorker: UpdateExecution;
+  private updatePending = new Set<Promise<void>>();
   private workspaces?: WorkspaceManager;
   constructor(readonly root: string, readonly config: Config, private options: { testMode?: boolean; fixtureDelayMs?: number; liveCertification?: boolean } = {}) {
     if (existsSync(join(root, 'state/recovery-fence.json'))) throw new DomainError('installation_retired_for_restore');
     if (options.testMode) assertTestRoot(root); else validateDataRoot(root, config.projects.map(p => p.root));
     if (options.liveCertification && (!options.testMode || process.env.CESTON_LIVE_TESTS !== '1')) throw new DomainError('live_test_scope_required');
     this.journal = new ReceiptJournal(join(root, 'state', 'broker-receipts.jsonl')); this.log = new BrokerEvents(join(root, 'state', 'broker-events.jsonl'));
+    this.updateWorker = new UpdateExecution(root, config);
     const latest = new Map(this.journal.list().map(r => [r.commandId, r]));
     for (const receipt of latest.values()) if (receipt.state !== 'resolved' && receipt.context?.root) this.roots.set(receipt.commandId, receipt.context.root);
   }
@@ -106,7 +111,7 @@ export class Broker {
     const capabilities = probe.capabilities;
     if (!this.journal.receipt(execution.commandId)) {
       for (const [commandId, root] of this.roots) if (commandId !== execution.commandId && (within(root, execution.root) || within(execution.root, root))) throw new DomainError('resource_busy');
-      if (!this.roots.has(execution.commandId) && this.roots.size >= this.config.limits.concurrency) throw new DomainError('concurrency_limit');
+      if (!this.roots.has(execution.commandId) && this.roots.size + this.modelActive + this.updateWorker.activity().length >= this.config.limits.concurrency) throw new DomainError('concurrency_limit');
       this.roots.set(execution.commandId, canonicalPath(execution.root));
     }
     const receipt = await this.journal.dispatch(execution.commandId, execution, async () => {
@@ -169,7 +174,7 @@ export class Broker {
   async infer(providerId: string, kind: 'plan' | 'intent', prompt: string) {
     const profile = this.config.providers.find(p => p.id === providerId);
     if (!profile || !profile.home || !['codex', 'claude'].includes(profile.kind) || profile.profile !== 'constrained' || !certificationValid(this.root, profile)) throw new DomainError('model_profile_uncertified', 422);
-    if (this.roots.size + this.modelActive >= this.config.limits.concurrency) throw new DomainError('model_capacity_unavailable', 503);
+    if (this.roots.size + this.modelActive + this.updateWorker.activity().length >= this.config.limits.concurrency) throw new DomainError('model_capacity_unavailable', 503);
     if (profile.billingMode === 'unknown') throw new DomainError('billing_mode_required', 422);
     if (profile.kind === 'codex' && profile.billingMode === 'metered') throw new DomainError('codex_monetary_cap_unavailable', 422);
     if (profile.billingMode === 'metered' && !this.config.limits.spendUsd) throw new DomainError('spend_ceiling_required', 403);
@@ -193,7 +198,15 @@ export class Broker {
       const value = result ?? text; return typeof value === 'string' ? JSON.parse(value) as unknown : value;
     } finally { this.modelActive--; await adapter.close(); }
   }
-  sessions() { return [...this.runs.values()].map(r => ({ sessionId: r.ref.sessionId, runId: r.ref.runId, providerId: r.providerId, taskId: r.taskId, state: r.state, ownership: 'managed' })); }
+  async updateEdit(grantId: string) {
+    const grant = readUpdateGrant(this.root, grantId);
+    if (this.roots.size + this.modelActive + this.updateWorker.activity().length >= this.config.limits.concurrency) throw new DomainError('model_capacity_unavailable', 503);
+    // Reserve synchronously before provider probes can yield to an ordinary dispatch.
+    this.modelActive++;
+    const job = this.updateWorker.edit(grant.workspace, grant.request, grant.stage, grant.regression); this.updatePending.add(job);
+    try { await job; return { completed: true }; } finally { this.modelActive--; this.updatePending.delete(job); }
+  }
+  sessions() { return [...this.updateWorker.activity(), ...[...this.runs.values()].map(r => ({ sessionId: r.ref.sessionId, runId: r.ref.runId, providerId: r.providerId, taskId: r.taskId, state: r.state, ownership: 'managed' }))]; }
   private discovery(providerId: string) {
     const profile = this.config.providers.find(p => p.id === providerId); if (!profile?.home) throw new DomainError('provider_home_unconfigured', 422);
     let discovery = this.discoveries.get(providerId);
@@ -203,6 +216,7 @@ export class Broker {
   discover(providerId: string, cursor?: string) { return this.discovery(providerId).scan(cursor); }
   history(providerId: string, id: string, after = 0) { return this.discovery(providerId).history(id, after); }
   async close() {
+    await Promise.allSettled([...this.updatePending]);
     for (const run of this.runs.values()) if (['running', 'starting'].includes((await run.adapter.reconcile(run.ref.runId)).state)) await this.interrupt(run.ref.runId);
     await Promise.all([...this.runs.values()].map(r => r.collecting));
     for (const adapter of this.adapters.values()) if ('close' in adapter) await (adapter as Adapter & { close(): Promise<void> }).close();

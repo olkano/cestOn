@@ -1,6 +1,6 @@
 import { resolve, relative } from 'node:path';
 import { existsSync, readdirSync, lstatSync } from 'node:fs';
-import { canonicalPath, within } from '../../../../packages/contracts/src/paths.js';
+import { canonicalPath, within, safePath } from '../../../../packages/contracts/src/paths.js';
 import type { ProjectConfig } from '../../../../packages/contracts/src/config.js';
 
 export type Permission = { allowed: boolean; reason: string };
@@ -23,7 +23,7 @@ export class ToolPolicy {
     const path = input.file_path ?? input.path ?? this.root;
     if (typeof path !== 'string') return denied('A scoped path is required');
     try {
-      const target = canonicalPath(resolve(this.root, path));
+      const target = safePath(this.root, relative(this.root, resolve(this.root, path)));
       if (!within(this.root, target)) return denied('Path is outside task scope');
       const pieces = relative(this.root, target).split(/[\\/]/);
       if (pieces.some(p => p === '.git' || /^\.env(?:\.(?!example$).*)?$|^(?:auth|credentials)\.json$|^id_(?:rsa|ed25519)$|\.(?:pem|key)$/i.test(p))) return denied('Protected data path');

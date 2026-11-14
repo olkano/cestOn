@@ -15,12 +15,14 @@ import { ImprovementEngine } from './improvement.js';
 import { NativeUpdateWorker } from './update-worker.js';
 import { CandidateTools } from './candidate-tools.js';
 import { FixtureImprovementWorker } from '../../../packages/test-support/src/improvement-worker.js';
+import { FailingCandidateHost } from '../../../packages/test-support/src/update-host.js';
 const root = process.argv[2]!; const testMode = process.argv.includes('--test'); await dataAccess(root); const current = installation(root, testMode);
 const fixtureImprovement = process.argv.includes('--fixture-improvement'); if (fixtureImprovement && !testMode) throw new DomainError('fixture_improvement_denied');
 if (await readOwner(root, 'supervisor', current.id, current.key)) throw new DomainError('supervisor_already_running');
 const instance = await acquireInstance(root, 'supervisor', current.key);
-const host = new ProcessHost(root, current.id, current.config, testMode); const supervisor = new Supervisor(root, current.key, host, { testMode });
-const updateStore = new Store(root, { testMode }); const improvements = new ImprovementService(updateStore); const engine = new ImprovementEngine(improvements, supervisor, current.config, fixtureImprovement ? new FixtureImprovementWorker(root) : new NativeUpdateWorker(root, current.config), new CandidateTools(root, current.config, testMode)); const updateTimer = setInterval(() => { void engine.tick().catch(() => log.write({ operation: 'improvement.tick', result: 'blocked' })); }, 1000);
+const failHealth = process.argv.includes('--fixture-candidate-health-failure'); if (failHealth && (!testMode || !fixtureImprovement)) throw new DomainError('fixture_health_denied');
+const host = failHealth ? new FailingCandidateHost(root, current.id, current.config, (await localStatus(root, testMode)).releaseId) : new ProcessHost(root, current.id, current.config, testMode); const supervisor = new Supervisor(root, current.key, host, { testMode });
+const updateStore = new Store(root, { testMode }); const improvements = new ImprovementService(updateStore); const engine = new ImprovementEngine(improvements, supervisor, current.config, fixtureImprovement ? new FixtureImprovementWorker(root) : new NativeUpdateWorker(root, current.config, () => host.connectBroker()), new CandidateTools(root, current.config, testMode)); let ready = false; const updateTimer = setInterval(() => { if (ready) void engine.tick().catch(() => log.write({ operation: 'improvement.tick', result: 'blocked' })); }, 1000);
 let stopping = false;
 const log = new RotatingLog(root, 'supervisor'); let pruning = false; const prune = async () => { if (pruning) return; pruning = true; const store = new Store(root, { testMode }); try { retention(store, false); await (await host.connectBroker()).prune(); log.write({ operation: 'retention', result: 'pass' }); } catch { log.write({ operation: 'retention', result: 'blocked' }); } finally { store.close(); pruning = false; } }; const timer = setInterval(() => { void prune(); }, 86400000);
 const server = await startIpcServer({ root, name: 'supervisor', installationId: current.id, token: current.key }, async (method, payload) => {
@@ -32,7 +34,7 @@ const server = await startIpcServer({ root, name: 'supervisor', installationId: 
   throw new DomainError('unsupported_operation', 422);
 });
 await writeOwner(root, 'supervisor', current.id, server.endpoint, current.key);
-try { const pointer = supervisor.pointer(); await host.connectBroker(); if (!await host.healthy(pointer.current)) await host.startCoordinator(pointer.current); const recovered = await supervisor.recover(); if (['stable', 'applied', 'rolled_back'].includes(recovered.state)) await host.freeze(false); await prune(); log.write({ operation: 'supervisor.start', result: 'ready' }); process.send?.({ ready: true }); }
+try { const pointer = supervisor.pointer(); await host.connectBroker(); if (!await host.healthy(pointer.current)) await host.startCoordinator(pointer.current); const recovered = await supervisor.recover(); if (['stable', 'applied', 'rolled_back'].includes(recovered.state)) await host.freeze(false); await prune(); ready = true; log.write({ operation: 'supervisor.start', result: 'ready' }); process.send?.({ ready: true }); }
 catch { await host.freeze(true); process.send?.({ ready: true, recovery: true }); }
 async function close() { if (stopping) return; stopping = true; clearInterval(timer); clearInterval(updateTimer); await engine.idle(); await server.close(); updateStore.close(); await instance.release(); if (process.connected) process.disconnect(); }
 process.on('SIGTERM', () => { clearInterval(updateTimer); void engine.idle().then(() => host.freeze(true)).then(() => host.stopCoordinator()).then(close); });

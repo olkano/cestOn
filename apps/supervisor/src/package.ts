@@ -1,8 +1,8 @@
 import { execFileSync } from 'node:child_process';
-import { readdirSync, mkdirSync, copyFileSync, readFileSync, existsSync, lstatSync, writeFileSync } from 'node:fs';
+import { readdirSync, mkdirSync, readFileSync, existsSync, lstatSync, writeFileSync } from 'node:fs';
 import { join, resolve, dirname } from 'node:path';
 import { createHash, randomUUID } from 'node:crypto';
-import { fileHash, atomicJson } from '../../../packages/contracts/src/files.js';
+import { copyPrimaryFile, fileHash, atomicJson } from '../../../packages/contracts/src/files.js';
 import { canonicalPath, within, safePath } from '../../../packages/contracts/src/paths.js';
 import { DomainError } from '../../../packages/contracts/src/commands.js';
 import type { ReleaseManifest } from '../../../packages/contracts/src/release.js';
@@ -19,7 +19,7 @@ export function sourceSnapshot(root: string, files = publicSourceFiles(root)) { 
 export function packageRelease(options: { sourceRoot: string; runtimeRoot: string; output: string; requestId?: string; baseReleaseId?: string; testEvidenceHashes: string[]; npmCli: string; includeDependencies?: boolean }) {
   const source = canonicalPath(options.sourceRoot); const runtime = canonicalPath(options.runtimeRoot); const output = resolve(options.output); if (existsSync(output) || within(output, source) || within(output, runtime)) throw new DomainError('package_target_denied', 403);
   const sourceFiles = publicSourceFiles(source); const sourceHash = sourceSnapshot(source, sourceFiles); const requestId = options.requestId ?? randomUUID(); mkdirSync(output, { recursive: true });
-  const copy = (file: string, target: string) => { mkdirSync(dirname(target), { recursive: true }); copyFileSync(file, target); };
+  const copy = (file: string, target: string) => { mkdirSync(dirname(target), { recursive: true }); copyPrimaryFile(file, target); };
   for (const file of sourceFiles) copy(safePath(source, file), safePath(output, `source/${file}`));
   for (const file of ['package.json', 'package-lock.json', '.npmrc', '.node-version']) if (existsSync(join(source, file))) copy(join(source, file), join(output, file));
   const copyTree = (from: string, to: string) => { for (const entry of readdirSync(from, { withFileTypes: true })) { if (entry.name === '.bin') continue; const file = join(from, entry.name); if (entry.isSymbolicLink() || lstatSync(file).isSymbolicLink()) { if (canonicalPath(file).startsWith(canonicalPath(join(runtime, 'apps'))) || canonicalPath(file).startsWith(canonicalPath(join(runtime, 'packages')))) continue; throw new DomainError('runtime_link_denied', 403); } if (entry.isDirectory()) copyTree(file, join(to, entry.name)); else if (entry.isFile()) copy(file, join(to, entry.name)); } };

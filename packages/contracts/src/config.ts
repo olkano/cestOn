@@ -19,7 +19,7 @@ export const projectSchema = z.strictObject({
   operations: z.array(operationSchema).default(['read', 'edit', 'test', 'build']), recipes: z.array(recipeSchema).default([]),
 });
 export const providerSchema = z.strictObject({
-  id: z.string().min(1).max(80), kind: z.enum(['codex', 'claude', 'claude-cli', 'cestdone', 'fixture']),
+  id: z.string().regex(/^[a-zA-Z0-9][a-zA-Z0-9_.-]{0,79}$/), kind: z.enum(['codex', 'claude', 'claude-cli', 'cestdone', 'fixture']),
   executable: z.string(), version: z.string(), model: z.string().optional(), home: z.string().optional(),
   billingMode: z.enum(['subscription', 'metered', 'unknown']).default('unknown'),
   profile: z.enum(['constrained', 'observe_only', 'trusted_unrestricted']).default('observe_only'),

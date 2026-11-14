@@ -1,7 +1,7 @@
-import { mkdirSync, readFileSync, existsSync, copyFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, existsSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { createHmac, randomUUID, timingSafeEqual } from 'node:crypto';
-import { atomicJson } from '../../../packages/contracts/src/files.js';
+import { copyPrimaryFile, atomicJson } from '../../../packages/contracts/src/files.js';
 import { canonicalJson, DomainError } from '../../../packages/contracts/src/commands.js';
 import { verifyRelease } from './releases.js';
 import { classifyChanges, policyHash } from './policy.js';
@@ -30,7 +30,7 @@ export class Supervisor {
     if (existsSync(join(this.root, 'supervisor', 'active.json'))) throw new DomainError('installation_already_initialized');
     const verified = verifyRelease(bundle); const target = this.path(verified.manifest.releaseId); this.copy(bundle, target, verified.hash); this.setPointer({ current: verified.manifest.releaseId, previous: null, updateId: null, phase: 'stable' });
   }
-  private copy(source: string, target: string, hash: string) { if (existsSync(target)) { verifyRelease(target, hash); return; } const verified = verifyRelease(source, hash); mkdirSync(target, { recursive: true }); for (const file of [...verified.manifest.files, { path: 'release-manifest.json' }]) { const destination = join(target, file.path); mkdirSync(dirname(destination), { recursive: true }); copyFileSync(join(source, file.path), destination); } verifyRelease(target, hash); }
+  private copy(source: string, target: string, hash: string) { if (existsSync(target)) { verifyRelease(target, hash); return; } const verified = verifyRelease(source, hash); mkdirSync(target, { recursive: true }); for (const file of [...verified.manifest.files, { path: 'release-manifest.json' }]) { const destination = join(target, file.path); mkdirSync(dirname(destination), { recursive: true }); copyPrimaryFile(join(source, file.path), destination); } verifyRelease(target, hash); }
   async stage(updateId: string, bundle: string, requestHash: string) {
     if (this.busy) throw new DomainError('update_busy'); this.busy = true;
     try {
@@ -68,6 +68,20 @@ export class Supervisor {
         if (!await this.host.healthy(authority.candidateId) || !await this.host.preserved(checkpoint) || !await this.host.canary(authority.candidateId) || !await this.host.observe(authority.candidateId, 120000)) throw new DomainError('candidate_health_failed');
         record('verified'); this.setPointer({ current: authority.candidateId, previous: prior.current, updateId, phase: 'stable' }); record('applied'); await this.host.freeze(false); return { state: 'applied', releaseId: authority.candidateId };
       } catch (error) { if (error instanceof InjectedSupervisorCrash) throw error; record('rolling_back', error instanceof DomainError ? error.code : 'candidate_start_failed'); return this.rollback(prior, updateId, authority.candidateId, authority.candidateHash, requestHash, checkpoint); }
+    } finally { this.busy = false; }
+  }
+  async rollbackApplied(updateId: string, target: string, requestHash: string) {
+    if (this.busy) throw new DomainError('update_busy'); this.busy = true;
+    try {
+      const pointer = this.pointer(); const latest = this.journal.forUpdate(updateId).at(-1);
+      if (latest?.phase === 'rolled_back' && latest.requestHash === requestHash) return { state: 'rolled_back', releaseId: pointer.current };
+      if (pointer.phase !== 'stable' || pointer.updateId !== updateId || pointer.previous !== target || latest?.phase !== 'applied') throw new DomainError('stale_rollback_target');
+      const current = verifyRelease(this.path(pointer.current)); const prior = verifyRelease(this.path(target));
+      if (current.manifest.schemaWriteVersion !== prior.manifest.schemaWriteVersion) throw new DomainError('migration_compatibility_proof_required');
+      if (classifyChanges(prior.manifest, current.manifest, this.path(target), this.path(pointer.current)).activationClass === 'broker' && await this.host.activeRuns() > 0) throw new DomainError('rollback_waiting_for_safe_point');
+      await this.host.freeze(true); await this.host.backup(); await this.host.stopCoordinator(); const checkpoint = await this.host.capture();
+      this.journal.append({ updateId, phase: 'rolling_back', current: target, previous: null, candidate: pointer.current, candidateHash: current.hash, requestHash, checkpoint, occurredAt: Date.now() });
+      return this.rollback({ current: target, previous: null, updateId, phase: 'stable' }, updateId, pointer.current, current.hash, requestHash, checkpoint);
     } finally { this.busy = false; }
   }
   private async rollback(prior: Pointer, updateId: string, candidate: string, candidateHash: string, requestHash: string, checkpoint?: string) {

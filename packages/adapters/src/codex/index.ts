@@ -12,7 +12,11 @@ export class CodexAdapter implements Adapter {
   private async connection() { if (!this.connecting) this.connecting = this.openConnection(); return this.connecting; }
   private async openConnection() {
     const rpc = new RpcProcess(this.spec); this.rpc = rpc;
-    rpc.onRequest = async method => {
+    rpc.onRequest = async (method, params) => {
+      if (['item/commandExecution/requestApproval', 'item/fileChange/requestApproval', 'item/permissions/requestApproval'].includes(method)) {
+        const run = [...this.runs.values()].find(run => run.ref.sessionId === params.threadId && (!params.turnId || !run.ref.turnId || run.ref.turnId === params.turnId));
+        if (run) run.queue.push({ key: `${run.ref.runId}:${++run.sequence}`, sequence: run.sequence, type: 'tool.requested', data: { tool: method, allowed: false, reason: 'Approval is outside the immutable worker policy' } });
+      }
       if (method === 'item/commandExecution/requestApproval' || method === 'item/fileChange/requestApproval') return { decision: 'decline' };
       if (method === 'item/permissions/requestApproval') return { permissions: {}, scope: 'turn' };
       throw new CapabilityError('unsupported_provider_request');

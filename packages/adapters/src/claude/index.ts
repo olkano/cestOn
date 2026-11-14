@@ -14,14 +14,21 @@ export type ClaudeOptions = {
   queryFactory?: (params: { prompt: string; options: Options }) => Query;
   tools?: string[];
 };
+export function observedBilling(auth: { loggedIn?: boolean; authMethod?: string; subscriptionType?: string; apiKeySource?: string }): 'subscription' | 'metered' | 'unknown' {
+  if (!auth.loggedIn) return 'unknown';
+  if (['api_key', 'api_key_helper', 'third_party'].includes(auth.authMethod ?? '') || ['ANTHROPIC_API_KEY', 'apiKeyHelper'].includes(auth.apiKeySource ?? '')) return 'metered';
+  if (['claude.ai', 'oauth_token'].includes(auth.authMethod ?? '') && ['pro', 'max', 'team', 'enterprise'].includes(auth.subscriptionType?.toLowerCase() ?? '')) return 'subscription';
+  return 'unknown';
+}
 export class ClaudeAdapter implements Adapter {
   private runs = new Map<string, ManagedRun>(); private keys = new Map<string, Promise<RunRef>>();
   constructor(private options: ClaudeOptions) {}
+  private environment() { return { ...this.options.env, DISABLE_AUTOUPDATER: '1', DISABLE_TELEMETRY: '1', DISABLE_ERROR_REPORTING: '1', DISABLE_GROWTHBOOK: '1', ENABLE_CLAUDEAI_MCP_SERVERS: 'false' }; }
   async probe() {
-    let authenticated = false;
-    try { const result = await promisify(execFile)(this.options.executable, ['auth', 'status', '--json'], { cwd: this.options.workspace, env: this.options.env, timeout: 5000, windowsHide: true, maxBuffer: 65536 }); const auth = JSON.parse(result.stdout) as { loggedIn?: boolean }; authenticated = auth.loggedIn === true; } catch { /* Availability is an explicit gate, not a guessed login. */ }
+    let authenticated = false; let billingMode: 'subscription' | 'metered' | 'unknown' = 'unknown';
+    try { const result = await promisify(execFile)(this.options.executable, ['auth', 'status', '--json'], { cwd: this.options.workspace, env: this.environment(), timeout: 5000, windowsHide: true, maxBuffer: 65536 }); const auth = JSON.parse(result.stdout) as { loggedIn?: boolean; authMethod?: string; subscriptionType?: string; apiKeySource?: string }; authenticated = auth.loggedIn === true; billingMode = observedBilling(auth); } catch { /* Availability is an explicit gate, not a guessed login. */ }
     const certified = this.options.certified && this.options.version === '2.1.317';
-    return { version: this.options.version, transport: 'agent-sdk-0.3.325', authenticated, verifiedAt: new Date().toISOString(), capabilities: { discover: true, readHistory: true, start: certified, resumeExact: certified, steerActive: false, interruptOwned: true, toolApproval: true, usage: true, structuredResult: true, sandbox: certified, reattachOwned: false, billingMode: this.options.billingMode } satisfies Capabilities };
+    return { version: this.options.version, transport: 'agent-sdk-0.3.325', authenticated, verifiedAt: new Date().toISOString(), capabilities: { discover: true, readHistory: true, start: certified, resumeExact: certified, steerActive: false, interruptOwned: true, toolApproval: true, usage: true, structuredResult: true, sandbox: certified, reattachOwned: false, billingMode } satisfies Capabilities };
   }
   async listSessions() { return { sessions: [...this.runs.values()].map(r => ({ id: r.ref.sessionId, title: 'Managed Claude session', state: r.state })) }; }
   async readHistory(sessionId: string, cursor?: string) {
@@ -53,7 +60,7 @@ export class ClaudeAdapter implements Adapter {
     };
     const abort = new AbortController();
     const options: Options = {
-      cwd: request.workspace, pathToClaudeCodeExecutable: this.options.executable, env: this.options.env,
+      cwd: request.workspace, pathToClaudeCodeExecutable: this.options.executable, env: this.environment(),
       settingSources: [], skills: [], plugins: [], mcpServers: {}, tools: this.options.tools ?? ['Read', 'Edit', 'Write', 'Glob', 'Grep'],
       permissionMode: 'default', allowedTools: [], disallowedTools: ['Bash', 'Agent', 'Task', 'WebFetch', 'WebSearch', 'NotebookEdit'],
       canUseTool: async (name, input) => { const permission = this.options.check(name, input); return permission.allowed ? { behavior: 'allow', updatedInput: input } : { behavior: 'deny', message: permission.reason }; },
@@ -76,7 +83,7 @@ export class ClaudeAdapter implements Adapter {
             const m = message as unknown as Record<string, unknown>;
             if (m.type === 'system' && m.subtype === 'init' && typeof m.session_id === 'string') {
               if (sessionId && m.session_id !== sessionId) throw new CapabilityError('wrong_session');
-              ref.sessionId = m.session_id; run.state = 'running'; this.emit(run, 'session.created', { sessionId: ref.sessionId }); this.emit(run, 'turn.started', { turnId: ref.turnId }); clearTimeout(timeout); resolve(ref);
+              ref.sessionId = m.session_id; run.state = 'running'; this.emit(run, 'session.created', { sessionId: ref.sessionId, tools: Array.isArray(m.tools) ? m.tools.filter(tool => typeof tool === 'string').slice(0, 50) : null }); this.emit(run, 'turn.started', { turnId: ref.turnId }); clearTimeout(timeout); resolve(ref);
             } else if (m.type === 'assistant') this.emit(run, 'message.delta', { message: m.message });
             else if (m.type === 'tool_progress') this.emit(run, 'tool.started', { toolName: m.tool_name, toolUseId: m.tool_use_id });
             else if (m.type === 'result') {

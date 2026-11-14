@@ -1,4 +1,5 @@
-import { mkdirSync, copyFileSync, symlinkSync, existsSync, readFileSync } from 'node:fs';
+import { copyPrimaryFile } from '../../../packages/contracts/src/files.js';
+import { mkdirSync, symlinkSync, existsSync, readFileSync } from 'node:fs';
 import { join, dirname, resolve } from 'node:path';
 import { createRequire } from 'node:module';
 import { spawn } from 'node:child_process';
@@ -17,7 +18,7 @@ export async function validateCandidate(dataRoot: string, bundle: string, config
   const t = createTestRoot(); const require = createRequire(join(resolve(tools), 'package.json')); const browser = require('@playwright/test') as { chromium: { executablePath(): string } }; const browsers = dirname(dirname(dirname(browser.chromium.executablePath())));
   try {
     const source = join(bundle, 'source'); const files = publicSourceFiles(source);
-    for (const file of files) { const target = join(t.root, file); mkdirSync(dirname(target), { recursive: true }); copyFileSync(join(source, file), target); }
+    for (const file of files) { const target = join(t.root, file); mkdirSync(dirname(target), { recursive: true }); copyPrimaryFile(join(source, file), target); }
     symlinkSync(join(resolve(tools), 'node_modules'), join(t.root, 'node_modules'), process.platform === 'win32' ? 'junction' : 'dir');
     const temporary = join(t.root, '.temporary'); const home = join(t.root, '.credentialless-home'); mkdirSync(temporary); mkdirSync(home);
     const npm = process.env.npm_execpath ?? join(dirname(process.execPath), 'node_modules/npm/bin/npm-cli.js'); if (!existsSync(npm)) throw new DomainError('validation_npm_required', 422);

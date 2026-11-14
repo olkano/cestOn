@@ -1,6 +1,6 @@
 import { it, expect } from 'vitest';
 import type { Query, Options, SDKMessage } from '@anthropic-ai/claude-agent-sdk';
-import { ClaudeAdapter } from './index.js';
+import { ClaudeAdapter, observedBilling } from './index.js';
 
 it('T09/T27 Claude uses exact sessions and a fail-closed hook before effective tool permissions', async () => {
   let options: Options | undefined; let starts = 0;
@@ -18,6 +18,7 @@ it('T09/T27 Claude uses exact sessions and a fail-closed hook before effective t
     expect(a).toEqual(b); expect(starts).toBe(1); expect(a.sessionId).toBe('exact-session');
     for await (const event of adapter.events(a.runId)) void event;
     expect((await adapter.reconcile(a.runId)).state).toBe('succeeded');
+    expect(options?.env).toMatchObject({ DISABLE_AUTOUPDATER: '1', ENABLE_CLAUDEAI_MCP_SERVERS: 'false' });
     expect(options?.settingSources).toEqual([]); expect(options?.disallowedTools).toContain('Bash');
     const matcher = options!.hooks!.PreToolUse![0]!;
     expect(matcher.onFailure).toBe('block');
@@ -25,4 +26,11 @@ it('T09/T27 Claude uses exact sessions and a fail-closed hook before effective t
     expect(blocked).toMatchObject({ hookSpecificOutput: { permissionDecision: 'deny' } });
     await expect(adapter.resume('other-session', { ...request, commandId: 'two' })).rejects.toThrow('unmanaged_or_active_session');
   } finally { await adapter.close(); }
+});
+
+it('unknown Claude authentication never inherits the configured billing mode', () => {
+  expect(observedBilling({ loggedIn: true, authMethod: 'api_key', subscriptionType: 'max' })).toBe('metered');
+  expect(observedBilling({ loggedIn: true, authMethod: 'oauth_token', subscriptionType: 'max' })).toBe('subscription');
+  expect(observedBilling({ loggedIn: true, authMethod: 'oauth_token' })).toBe('unknown');
+  expect(observedBilling({ loggedIn: false, authMethod: 'claude.ai', subscriptionType: 'pro' })).toBe('unknown');
 });

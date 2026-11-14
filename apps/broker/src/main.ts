@@ -17,6 +17,7 @@ const broker = new Broker(root, config, { testMode, fixtureDelayMs: testMode ? f
 const instance = await acquireInstance(root, 'broker', installationSecrets(root).broker);
 const runSchema = z.strictObject({ runId: z.string().min(1).max(100) });
 const server = await startIpcServer({ root, name: 'broker', installationId, token: installationSecrets(root).broker }, async (method, payload) => {
+  if (method === 'update.edit') return broker.updateEdit(z.strictObject({ grantId: z.uuid() }).parse(payload).grantId);
   if (method === 'start') return broker.start(payload);
   if (method === 'workspace') { const p = z.strictObject({ projectId: z.uuid(), taskId: z.uuid(), scopeRevisionId: z.uuid() }).parse(payload); return broker.workspace(p.projectId, p.taskId, p.scopeRevisionId); }
   if (method === 'receipt') return broker.lookup(z.strictObject({ commandId: z.uuid() }).parse(payload).commandId);

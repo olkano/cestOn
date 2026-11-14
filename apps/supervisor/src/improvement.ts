@@ -1,8 +1,8 @@
-import { readFileSync, mkdirSync, copyFileSync, existsSync, statSync } from 'node:fs';
+import { readFileSync, mkdirSync, existsSync, statSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { createHash } from 'node:crypto';
 import { DomainError } from '../../../packages/contracts/src/commands.js';
-import { atomicJson, fileHash } from '../../../packages/contracts/src/files.js';
+import { copyPrimaryFile, atomicJson, fileHash } from '../../../packages/contracts/src/files.js';
 import { createTestRoot, assertTestRoot } from '../../../packages/test-support/src/index.js';
 import { publicSourceFiles, sourceSnapshot } from './package.js';
 import { verifyRelease } from './releases.js';
@@ -36,7 +36,7 @@ export class ImprovementEngine {
   private prepare(id: string) {
     const row = this.service.row(id); const pointer = this.supervisor.pointer(); if (row.base_release !== pointer.current || pointer.phase !== 'stable') throw new DomainError('stale_update_base');
     const base = verifyRelease(join(this.supervisor.root, 'releases', pointer.current)); const source = join(this.supervisor.root, 'releases', pointer.current, 'source'); if (sourceSnapshot(source) !== base.manifest.sourceSnapshotHash) throw new DomainError('base_source_integrity_failed');
-    const t = createTestRoot(); const root = join(t.root, 'source'); mkdirSync(root); for (const file of publicSourceFiles(source)) { const destination = join(root, file); mkdirSync(dirname(destination), { recursive: true }); copyFileSync(join(source, file), destination); }
+    const t = createTestRoot(); const root = join(t.root, 'source'); mkdirSync(root); for (const file of publicSourceFiles(source)) { const destination = join(root, file); mkdirSync(dirname(destination), { recursive: true }); copyPrimaryFile(join(source, file), destination); }
     const candidate: Candidate = { root, runId: t.runId, baseHash: base.hash, regression: `tests/e2e/update-${id}.spec.ts` }; atomicJson(this.metadata(id), candidate); return candidate;
   }
   private changed(candidate: Candidate, base: ReleaseManifest) {
@@ -46,6 +46,8 @@ export class ImprovementEngine {
   async run(id: string) {
     const service = this.service; let row = service.row(id); const request = service.request(id);
     try {
+      const rollback = (JSON.parse(row.verification_json) as { rollbackRequest?: { target: string; requestHash: string } }).rollbackRequest;
+      if (row.state === 'rolling_back' && rollback) { const result = await this.supervisor.rollbackApplied(id, rollback.target, rollback.requestHash); service.transition(id, result.state === 'rolled_back' ? 'rolled_back' : 'failed', { activeRelease: result.releaseId }, result.state === 'rolled_back' ? null : 'frozen_recovery_required'); return; }
       if (['activating', 'checking', 'rolling_back'].includes(row.state)) { const recovered = this.supervisor.journal.forUpdate(id).length ? await this.supervisor.recover() : await this.supervisor.activate(id, request.requestHash); if (recovered.state === 'applied' && this.supervisor.pointer().updateId === id && row.state !== 'rolling_back') service.transition(id, 'applied', { activeRelease: recovered.releaseId }); else { if (service.row(id).state !== 'rolling_back') service.transition(id, 'rolling_back'); service.transition(id, recovered.state === 'rolled_back' ? 'rolled_back' : 'failed', {}, recovered.state === 'recovery' ? 'frozen_recovery_required' : 'activation_reconciliation_required'); } return; }
       if (['reproducing', 'implementing', 'verifying'].includes(row.state)) throw new DomainError('interrupted_improvement_requires_reconciliation');
       if (row.state === 'requested') {

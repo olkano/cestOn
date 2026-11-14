@@ -1,4 +1,4 @@
-import { existsSync, readFileSync, readdirSync, mkdirSync, copyFileSync, statfsSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync, mkdirSync, statfsSync } from 'node:fs';
 import { join, dirname, resolve } from 'node:path';
 import { fork } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
@@ -6,7 +6,7 @@ import { z } from 'zod';
 import Database from 'better-sqlite3';
 import { parseConfig, type Config } from '../../../packages/contracts/src/config.js';
 import { validateDataRoot } from '../../../packages/contracts/src/paths.js';
-import { atomicJson } from '../../../packages/contracts/src/files.js';
+import { copyPrimaryFile, atomicJson } from '../../../packages/contracts/src/files.js';
 import { DomainError } from '../../../packages/contracts/src/commands.js';
 import { assertTestRoot } from '../../../packages/test-support/src/index.js';
 import { dataAccess } from '../../server/src/security/access.js';
@@ -29,7 +29,7 @@ export async function initializeInstallation(root: string, bundle: string, input
   const release = verifyRelease(bundle); await dataAccess(root, true); atomicJson(join(root, 'state/config.json'), config);
   const store = new Store(root, { testMode }); try { for (const project of config.projects) store.registerProject(project); const id = store.installation().id; const key = installationSecrets(root).supervisor;
     const supervisor = new Supervisor(root, key, new ProcessHost(root, id, config, testMode), { testMode }); await supervisor.initialize(bundle);
-    const stable = join(root, 'supervisor/runtime'); for (const file of [...release.manifest.files, { path: 'release-manifest.json' }]) { const target = join(stable, file.path); mkdirSync(dirname(target), { recursive: true }); copyFileSync(join(bundle, file.path), target); } verifyRelease(stable, release.hash);
+    const stable = join(root, 'supervisor/runtime'); for (const file of [...release.manifest.files, { path: 'release-manifest.json' }]) { const target = join(stable, file.path); mkdirSync(dirname(target), { recursive: true }); copyPrimaryFile(join(bundle, file.path), target); } verifyRelease(stable, release.hash);
     store.db.prepare('UPDATE installations SET active_release=?').run(release.manifest.releaseId); return { state: 'installed_stopped', installationId: id, releaseId: release.manifest.releaseId, startupInstalled: false };
   } finally { store.close(); }
 }
