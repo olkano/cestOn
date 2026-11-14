@@ -4,12 +4,15 @@ import type { Config, ProjectConfig, Limits } from '../../../../packages/contrac
 import { validatePlan, workerCompletionSchema, type PhasePlan } from '../../../../packages/contracts/src/model.js';
 import { DomainError, type Scope } from '../../../../packages/contracts/src/commands.js';
 import type { ArtifactVerifier } from '../verification/index.js';
+import { CoordinatorDetached } from './broker-worker.js';
 
 export type WorkRequest = { taskId: string; runId: string; phaseId: string; commandId: string; scopeRevisionId: string; projectId: string; providerId: string; root: string; goal: string; operations: string[]; limits: Limits; artifacts: PhasePlan['expectedArtifacts']; verificationRecipeIds: string[]; attempt: number; instructions: { id: string; text: string }[] };
-export interface Worker { execute(request: WorkRequest): Promise<unknown>; interrupt?(runId: string): Promise<{ acknowledged: boolean }>; }
+export interface Worker { execute(request: WorkRequest): Promise<unknown>; prepareWorkspace?(projectId: string, taskId: string, scopeRevisionId: string): Promise<string>; interrupt?(runId: string): Promise<{ acknowledged: boolean }>; }
 type PhaseRow = { id: string; task_id: string; ordinal: number; state: string; attempt_count: number; max_attempts: number; dependencies_json: string; plan_json: string; revision: number };
 export class Scheduler {
   private active = new Map<string, Promise<void>>(); private requests = new Map<string, WorkRequest>();
+  private frozen = false;
+  freeze(value: boolean) { this.frozen = value; }
   constructor(readonly store: Store, private config: Config, private worker: Worker, private verifier: ArtifactVerifier) {}
   savePlan(taskId: string, input: unknown) {
     const task = this.store.getTask(taskId); const project = JSON.parse(this.store.project(task.projectId).config_json) as ProjectConfig;
@@ -30,7 +33,7 @@ export class Scheduler {
   }
   async tick() {
     await this.processStops();
-    if (this.store.installation().dispatch_paused) return;
+    if (this.frozen || this.store.installation().dispatch_paused) return;
     const jobs: Promise<void>[] = [];
     const tasks = this.store.listTasks().filter(t => ['queued', 'running'].includes(t.state));
     for (const task of tasks) {
@@ -41,10 +44,14 @@ export class Scheduler {
       const phase = phases.find(p => ['pending', 'eligible'].includes(p.state) && p.attempt_count < p.max_attempts && (JSON.parse(p.dependencies_json) as string[]).every(id => phases.some(other => other.id === id && other.state === 'done')));
       if (!phase) continue;
       const project = this.store.project(task.projectId); const profile = JSON.parse(project.config_json) as ProjectConfig;
+      const authorized = this.store.db.prepare('SELECT profile_hash FROM scope_profiles WHERE scope_revision_id=?').get(task.scopeRevisionId) as { profile_hash: string } | undefined;
+      if (!authorized || authorized.profile_hash !== this.store.payloadHash({ project: profile, provider: this.config.providers.find(provider => provider.id === profile.providerId) ?? null })) { this.store.changeTask(task.id, 'blocked', 'Project or provider configuration changed. Create a task with fresh scope to continue.'); continue; }
       if (!profile.providerId) { if (task.state !== 'blocked') this.store.changeTask(task.id, 'blocked', 'Configure a certified provider for this project.'); continue; }
       const pending = this.store.db.prepare("SELECT c.id,c.payload_json FROM commands c JOIN outbox o ON o.command_id=c.id WHERE c.task_id=? AND c.type='task.instruct' AND c.state='queued' ORDER BY c.created_at LIMIT 1").all(task.id) as { id: string; payload_json: string }[];
       const instructions = pending.map(c => ({ id: c.id, text: (JSON.parse(c.payload_json) as { payload: { text: string } }).payload.text }));
       const request: WorkRequest = { taskId: task.id, runId: randomUUID(), commandId: randomUUID(), phaseId: phase.id, scopeRevisionId: task.scopeRevisionId, projectId: task.projectId, providerId: profile.providerId, root: project.canonical_root, goal: (JSON.parse(phase.plan_json) as PhasePlan).goal, operations: task.scope.operations, limits: task.scope.budgets, artifacts: (JSON.parse(phase.plan_json) as PhasePlan).expectedArtifacts, verificationRecipeIds: (JSON.parse(phase.plan_json) as PhasePlan).verificationRecipeIds, attempt: phase.attempt_count + 1, instructions };
+      if (this.worker.prepareWorkspace) { try { request.root = await this.worker.prepareWorkspace(task.projectId, task.id, task.scopeRevisionId); } catch { this.store.changeTask(task.id, 'blocked', 'An isolated workspace could not be prepared. Check the registered project and its local diagnostics.'); continue; } }
+      if (this.store.taskRow(task.id).revision !== task.revision || this.active.size >= Math.min(this.config.limits.concurrency, task.scope.budgets.concurrency)) continue;
       try {
         this.store.db.transaction(() => {
           this.store.acquireLease(request.root, task.id, request.runId, request.runId);
@@ -63,11 +70,11 @@ export class Scheduler {
     await Promise.all(jobs);
   }
   private async run(request: WorkRequest, phase: PhasePlan) {
-    let release = false;
+    let release = false; let dispatchAttempted = false; let executionCompleted = false;
     try {
       this.verifier.captureBaseline({ ...request, phase });
       this.store.db.prepare("UPDATE runs SET state='running' WHERE id=?").run(request.runId);
-      const completion = await this.worker.execute(request);
+      dispatchAttempted = true; const completion = await this.worker.execute(request); executionCompleted = true;
       if (['pausing', 'paused', 'cancelled'].includes(this.store.taskRow(request.taskId).state)) { this.finalizeStop(request); release = true; return; }
       const parsed = workerCompletionSchema.safeParse(completion);
       if (parsed.success && parsed.data.status === 'needs_input' && parsed.data.decisionProposal) {
@@ -95,8 +102,10 @@ export class Scheduler {
       })();
       release = true;
     } catch (error) {
+      if (error instanceof CoordinatorDetached) return;
       if (['paused', 'cancelled'].includes(this.store.taskRow(request.taskId).state) || (this.store.taskRow(request.taskId).state === 'pausing' && error instanceof DomainError && error.code === 'worker_interrupted')) { this.finalizeStop(request); release = true; return; }
-      const uncertain = !(error instanceof DomainError) || ['reconciliation_required', 'ipc_operation_failed', 'ipc_timeout'].includes(error.code);
+      const terminalFailure = error instanceof DomainError && ['worker_failed', 'worker_interrupted', 'run_timeout', 'worker_envelope_invalid'].includes(error.code);
+      const uncertain = dispatchAttempted && !executionCompleted && !terminalFailure;
       const code = error instanceof DomainError ? error.code : 'worker_result_uncertain';
       this.store.db.transaction(() => {
         this.store.db.prepare('UPDATE runs SET state=?,error_code=?,ended_at=? WHERE id=?').run(uncertain ? 'reconciling' : 'failed', code, this.store.now(), request.runId);

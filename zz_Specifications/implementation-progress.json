@@ -3,7 +3,7 @@
   "objective": "Implement phases 0-9, independently verify relevant steps, commit and push verified milestones",
   "status": "in_progress",
   "currentPhase": 6,
-  "nextAction": "Implement immutable packaging, supervisor, owner-only operations CLI, broker reconnect, encrypted recovery, retention and isolated workspace ownership; certify native policy fingerprints before native writes",
+  "nextAction": "Finish phase 6 packaged installation rehearsal and backup-delta reconciliation. Local supervisor, CLI, immutable packaging, isolation, reconnect and retention checks pass. Latest verify evidence 2026-11-14T18-10-05-509Z-4ccc79ae. Continue native certificate tooling, phase 7 improvement workflow, phase 8 resilience and phase 9 clean export. Native Windows sandbox requires setup; no provider turns started. Preserve quarantined failed rehearsal ceston-test-ZykHxS; its processes are stopped but removal was policy-rejected.",
   "tracking": "zz_Specifications/implementation-run.md",
   "ledger": "zz_Specifications/implementation-status.md",
   "authorized": [
@@ -62,6 +62,11 @@
     }
   ],
   "externalGates": [
+    {
+      "id": "native_sandbox",
+      "status": "blocked",
+      "input": "Fresh Windows native sandbox readiness reports setup required; no setup or elevation requested"
+    },
     {
       "id": "codex_live",
       "status": "blocked",

@@ -1,4 +1,4 @@
-import { mkdtempSync, writeFileSync, readFileSync, realpathSync, rmSync, existsSync } from 'node:fs';
+import { mkdtempSync, writeFileSync, readFileSync, realpathSync, rmSync, existsSync, readdirSync, unlinkSync, rmdirSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, basename, resolve } from 'node:path';
 import { randomUUID } from 'node:crypto';
@@ -20,7 +20,9 @@ export function assertTestRoot(root: string, runId?: string) {
 }
 export function cleanupTestRoot(root: string, runId: string): void {
   assertTestRoot(root, runId);
-  rmSync(realpathSync.native(root), { recursive: true, force: false, maxRetries: 20, retryDelay: 100 });
+  const owned = realpathSync.native(root);
+  for (const entry of readdirSync(owned)) if (entry !== '.ceston-test.json') rmSync(join(owned, entry), { recursive: true, force: false, maxRetries: 20, retryDelay: 100 });
+  assertTestRoot(root, runId); unlinkSync(join(owned, '.ceston-test.json')); rmdirSync(owned);
   if (existsSync(root)) throw new Error('Test cleanup failed');
 }
 export class FakeClock {

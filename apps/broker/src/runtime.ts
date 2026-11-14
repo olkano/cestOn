@@ -4,7 +4,8 @@ import { setTimeout as delay } from 'node:timers/promises';
 import { ReceiptJournal } from './journal.js';
 import { BrokerEvents } from './events.js';
 import { ToolPolicy, childEnvironment } from './policy/index.js';
-import { certificationValid } from './certification.js';
+import { certificationValid, installationSecrets } from './certification.js';
+import { WorkspaceManager } from './workspaces.js';
 import { FixtureAdapter } from '../../../packages/adapters/src/fixture/index.js';
 import { CodexAdapter } from '../../../packages/adapters/src/codex/index.js';
 import { ClaudeAdapter } from '../../../packages/adapters/src/claude/index.js';
@@ -22,6 +23,7 @@ import { safePath } from '../../../packages/contracts/src/paths.js';
 import { workerCompletionSchema, artifactSchema, planSchema, intentSchema } from '../../../packages/contracts/src/model.js';
 import { randomUUID } from 'node:crypto';
 import { executeSandboxedRecipe } from './recipes.js';
+import Database from 'better-sqlite3';
 
 export const executionSchema = z.strictObject({
   commandId: z.uuid(), taskId: z.uuid(), projectId: z.uuid(), scopeRevisionId: z.uuid(), providerId: z.string(), root: z.string(),
@@ -36,6 +38,7 @@ export class Broker {
   readonly journal: ReceiptJournal; private log: BrokerEvents; private runs = new Map<string, OwnedRun>(); private adapters = new Map<string, Adapter>(); private discoveries = new Map<string, SessionDiscovery>();
   private roots = new Map<string, string>();
   private modelActive = 0;
+  private workspaces?: WorkspaceManager;
   constructor(readonly root: string, readonly config: Config, private options: { testMode?: boolean; fixtureDelayMs?: number; liveCertification?: boolean } = {}) {
     if (options.testMode) assertTestRoot(root); else validateDataRoot(root, config.projects.map(p => p.root));
     if (options.liveCertification && (!options.testMode || process.env.CESTON_LIVE_TESTS !== '1')) throw new DomainError('live_test_scope_required');
@@ -43,10 +46,19 @@ export class Broker {
     const latest = new Map(this.journal.list().map(r => [r.commandId, r]));
     for (const receipt of latest.values()) if (receipt.state !== 'resolved' && receipt.context?.root) this.roots.set(receipt.commandId, receipt.context.root);
   }
+  workspace(projectId: string, taskId: string, scopeRevisionId: string) {
+    const project = this.config.projects.find(p => p.id === projectId); if (!project) throw new DomainError('project_not_found', 404);
+    if (this.options.testMode) return { root: canonicalPath(project.root), sourceHash: 'synthetic-owned-test-root' };
+    this.workspaces ??= new WorkspaceManager(this.root, installationSecrets(this.root).session);
+    const prepared = this.workspaces.prepare(project, taskId, scopeRevisionId); return { root: prepared.root, sourceHash: prepared.sourceHash };
+  }
   private adapter(execution: Execution): Adapter {
     const profile = this.config.providers.find(p => p.id === execution.providerId);
+    if (profile && profile.kind !== 'fixture' && profile.billingMode === 'unknown') throw new DomainError('billing_mode_required', 422);
+    if (profile?.kind === 'codex' && profile.billingMode === 'metered') throw new DomainError('codex_monetary_cap_unavailable', 422);
     const project = this.config.projects.find(p => p.id === execution.projectId);
     if (!profile || !project) throw new DomainError('provider_unavailable', 503);
+    if (profile.kind !== 'fixture' && (profile.profile !== 'constrained' || !profile.home || (!this.options.liveCertification && !certificationValid(this.root, profile)))) throw new DomainError('uncertified_provider_profile', 422);
     const key = profile.kind === 'codex' ? profile.id : `${profile.id}:${project.id}:${execution.scopeRevisionId}`;
     const existing = this.adapters.get(key); if (existing) return existing;
     let adapter: Adapter;
@@ -78,7 +90,9 @@ export class Broker {
   async start(input: unknown) {
     const parsed = executionSchema.safeParse(input); if (!parsed.success) throw new DomainError('invalid_execution', 400);
     const execution = parsed.data; const project = this.config.projects.find(p => p.id === execution.projectId);
-    if (!project || project.providerId !== execution.providerId || canonicalPath(project.root) !== canonicalPath(execution.root) || execution.operations.some(op => !project.operations.includes(op))) throw new DomainError('scope_denied', 403);
+    if (!project || project.providerId !== execution.providerId || execution.operations.some(op => !project.operations.includes(op))) throw new DomainError('scope_denied', 403);
+    if (this.options.testMode) { if (canonicalPath(project.root) !== canonicalPath(execution.root)) throw new DomainError('scope_denied', 403); }
+    else { this.workspaces ??= new WorkspaceManager(this.root, installationSecrets(this.root).session); this.workspaces.validate(project, execution.taskId, execution.scopeRevisionId, execution.root); }
     if (this.options.testMode && !within(this.root, execution.root)) throw new DomainError('test_workspace_denied', 403);
     if (this.options.liveCertification && (execution.limits.turns > 4 || execution.limits.runMinutes > 5)) throw new DomainError('live_test_budget_denied', 403);
     if (execution.limits.turns > this.config.limits.turns || execution.limits.runMinutes > this.config.limits.runMinutes) throw new DomainError('budget_denied', 403);
@@ -87,6 +101,7 @@ export class Broker {
     const adapter = this.adapter(execution);
     const probe = await adapter.probe();
     if (!probe.authenticated || !probe.capabilities.start) throw new DomainError('provider_authentication_required', 503);
+    if (profile && profile.kind !== 'fixture' && probe.capabilities.billingMode !== profile.billingMode) throw new DomainError('billing_mode_mismatch', 403);
     const capabilities = probe.capabilities;
     if (!this.journal.receipt(execution.commandId)) {
       for (const [commandId, root] of this.roots) if (commandId !== execution.commandId && (within(root, execution.root) || within(execution.root, root))) throw new DomainError('resource_busy');
@@ -122,7 +137,7 @@ export class Broker {
     return { status: 'accepted' as const, sequence: receipt.sequence, result: receipt.result! };
   }
   events(runId: string, after: number) { return this.log.read(runId, after); }
-  async reconcile(runId: string) { const run = this.runs.get(runId); return run ? { state: run.state === 'reconciling' ? 'reconciling' : (await run.adapter.reconcile(runId)).state } : { state: 'needs_attention' }; }
+  async reconcile(runId: string) { const run = this.runs.get(runId); if (run) return { state: run.state === 'reconciling' ? 'reconciling' : (await run.adapter.reconcile(runId)).state }; const receipt = this.journal.list().findLast(record => (record.result?.ref as RunRef | undefined)?.runId === runId); return { state: receipt?.state === 'resolved' && typeof receipt.result?.state === 'string' ? receipt.result.state : 'needs_attention' }; }
   async steer(runId: string, text: string, turnId: string) { const run = this.runs.get(runId); if (!run || run.ref.turnId !== turnId) throw new DomainError('stale_run'); return run.adapter.enqueue(run.ref, text); }
   async interrupt(runId: string) {
     const run = this.runs.get(runId); if (!run) throw new DomainError('unmanaged_run');
@@ -132,6 +147,7 @@ export class Broker {
     return { acknowledged: false, state: 'stop_pending' };
   }
   async probes() { return Promise.all([...this.adapters.entries()].map(async ([id, adapter]) => ({ id, ...(await adapter.probe()) }))); }
+  prune() { const db = new Database(join(this.root, 'state/ceston.sqlite'), { readonly: true }); try { const rows = db.prepare("SELECT usage_json FROM runs WHERE state IN ('succeeded','failed','interrupted') AND ended_at<? AND id NOT IN (SELECT run_id FROM leases)").all(Date.now() - 30 * 86400000) as { usage_json: string }[]; const acknowledged = new Map<string, number>(); for (const row of rows) { const value = JSON.parse(row.usage_json) as { providerRunId?: string; cursor?: number }; if (value.providerRunId && Number.isSafeInteger(value.cursor)) acknowledged.set(value.providerRunId, value.cursor!); } const events = this.log.prune(acknowledged); this.journal.compact(); return { events, receiptTombstones: 'preserved' }; } finally { db.close(); } }
   async recipe(runId: string, recipeId: string) {
     const run = this.runs.get(runId); if (!run) throw new DomainError('unmanaged_run');
     const project = this.config.projects.find(p => p.id === run.execution.projectId)!;
@@ -144,8 +160,8 @@ export class Broker {
         const content = readFileSync(safePath(project.root, recipe.args[0]!), 'utf8');
         return { exitCode: content.startsWith('Synthetic cestOn fixture artifact') ? 0 : 1, outputHash: createHash('sha256').update(content).digest('hex') };
       }
-      return executeSandboxedRecipe(this.root, this.config, recipe, project.root);
-    }, { root: canonicalPath(project.root), taskId: run.taskId, projectId: project.id });
+      return executeSandboxedRecipe(this.root, this.config, recipe, run.execution.root);
+    }, { root: canonicalPath(run.execution.root), taskId: run.taskId, projectId: project.id });
     this.journal.resolve(key, result.result);
     return result.result as { exitCode: number; outputHash: string };
   }
@@ -153,6 +169,8 @@ export class Broker {
     const profile = this.config.providers.find(p => p.id === providerId);
     if (!profile || !profile.home || !['codex', 'claude'].includes(profile.kind) || profile.profile !== 'constrained' || !certificationValid(this.root, profile)) throw new DomainError('model_profile_uncertified', 422);
     if (this.roots.size + this.modelActive >= this.config.limits.concurrency) throw new DomainError('model_capacity_unavailable', 503);
+    if (profile.billingMode === 'unknown') throw new DomainError('billing_mode_required', 422);
+    if (profile.kind === 'codex' && profile.billingMode === 'metered') throw new DomainError('codex_monetary_cap_unavailable', 422);
     if (profile.billingMode === 'metered' && !this.config.limits.spendUsd) throw new DomainError('spend_ceiling_required', 403);
     this.modelActive++;
     const workspace = join(this.root, 'staging', 'model-workspace'); mkdirSync(workspace, { recursive: true });
@@ -160,6 +178,7 @@ export class Broker {
     env[profile.kind === 'codex' ? 'CODEX_HOME' : 'CLAUDE_CONFIG_DIR'] = profile.home;
     const adapter = profile.kind === 'codex' ? new CodexAdapter({ command: profile.executable.endsWith('.js') ? process.execPath : profile.executable, args: [...(profile.executable.endsWith('.js') ? [profile.executable] : []), 'app-server'], cwd: workspace, env }, { version: profile.version, certified: true, readOnly: true, ...(profile.model ? { model: profile.model } : {}) }) : new ClaudeAdapter({ executable: profile.executable, version: profile.version, workspace, env, certified: true, billingMode: profile.billingMode, tools: [], check: () => ({ allowed: false, reason: 'Interpretation has no tool authority' }), ...(profile.model ? { model: profile.model } : {}) });
     try {
+      const probe = await adapter.probe(); if (!probe.authenticated || probe.capabilities.billingMode !== profile.billingMode) throw new DomainError('model_authentication_or_billing_mismatch', 503);
       const ref = await adapter.start({ commandId: randomUUID(), taskId: randomUUID(), workspace, prompt, operations: ['read'], limits: { turns: kind === 'plan' ? 2 : 1, runMinutes: 1, ...(this.config.limits.spendUsd ? { spendUsd: this.config.limits.spendUsd } : {}) }, outputSchema: (kind === 'plan' ? planSchema : intentSchema).toJSONSchema() });
       let text = ''; let result: unknown;
       const timer = setTimeout(() => { void adapter.interrupt(ref); }, 60000);

@@ -3,6 +3,9 @@
   "version": "0.1.0-dev.0",
   "private": true,
   "type": "module",
+  "bin": {
+    "ceston": "dist/apps/supervisor/src/cli.js"
+  },
   "license": "UNLICENSED",
   "engines": {
     "node": ">=24 <25",
@@ -29,6 +32,7 @@
     "verify": "tsx scripts/verify.ts",
     "package:local": "tsx scripts/package.ts",
     "doctor": "tsx scripts/doctor.ts",
+    "ceston": "tsx apps/supervisor/src/cli.ts",
     "icons": "tsx scripts/icons.ts",
     "checkpoint": "tsx scripts/checkpoint.ts"
   },
@@ -45,12 +49,16 @@
     "@types/react": "19.3.0",
     "@types/react-dom": "19.3.0",
     "@types/web-push": "3.6.4",
+    "@types/yauzl": "3.4.0",
+    "@types/yazl": "3.3.1",
     "eslint": "10.15.0",
     "sharp": "0.35.5",
     "tsx": "4.23.15",
     "typescript": "6.0.3",
     "typescript-eslint": "8.72.2",
     "vite": "8.3.8",
-    "vitest": "5.1.0"
+    "vitest": "5.1.0",
+    "yauzl": "3.4.0",
+    "yazl": "3.3.1"
   }
 }

@@ -1,8 +1,9 @@
 import { execFileSync } from 'node:child_process';
 import { readFileSync, existsSync } from 'node:fs';
 import { resolve, dirname } from 'node:path';
+import { publicSourceFiles } from '../apps/supervisor/src/package.js';
 
-const files = execFileSync('git', ['ls-files', '--cached', '--others', '--exclude-standard', '-z'], { encoding: 'utf8' }).split('\0').filter(Boolean);
+let files: string[]; try { files = execFileSync('git', ['ls-files', '--cached', '--others', '--exclude-standard', '-z'], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }).split('\0').filter(Boolean); } catch { files = publicSourceFiles(process.cwd()); }
 const errors: string[] = [];
 for (const file of [...new Set(files)]) {
   if (file.includes('reference-private') || file.includes('evidence-private')) { errors.push('Private content appears in public file list'); continue; }

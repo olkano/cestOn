@@ -46,6 +46,8 @@ export class Store {
     if (this.testMode ? !within(this.dataRoot, root) : within(this.dataRoot, root) || within(root, this.dataRoot)) throw new DomainError('project_root_denied', 403);
     const existing = this.db.prepare('SELECT id FROM projects WHERE canonical_root=?').get(root) as { id: string } | undefined;
     if (existing && existing.id !== config.id) throw new DomainError('duplicate_project_root');
+    const prior = this.db.prepare('SELECT canonical_root FROM projects WHERE id=?').get(config.id) as { canonical_root: string } | undefined;
+    if (prior && prior.canonical_root !== root) throw new DomainError('project_root_change_requires_new_id');
     this.db.prepare('INSERT INTO projects(id,display_name,canonical_root,kind,config_json) VALUES(?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET display_name=excluded.display_name,config_json=excluded.config_json,revision=projects.revision+1').run(config.id, config.displayName, root, config.kind, canonicalJson(config));
   }
   project(id: string): ProjectRow {

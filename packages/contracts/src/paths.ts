@@ -17,6 +17,7 @@ export function within(root: string, target: string): boolean {
 }
 export function safePath(root: string, path: string): string {
   if (isAbsolute(path) || path.includes('\0')) throw new Error('Relative path required');
+  if (path.includes(':') || path.split(/[\\/]/).some(part => (part !== '.' && part !== '..' && /[. ]$/.test(part)) || /^(?:con|prn|aux|nul|com[1-9]|lpt[1-9])(?:\.|$)/i.test(part))) throw new Error('Unsafe portable path');
   const target = resolve(root, path);
   if (!within(root, target)) throw new Error('Path escapes registered root');
   return target;

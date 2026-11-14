@@ -34,6 +34,6 @@ Use Node 24 LTS and npm 11. Run `npm ci`, then `npx playwright install chromium`
 
 Run `npm run verify` for typecheck, lint, unit, integration, Chromium E2E, build, and documentation checks. Security and update checks are separate: `npm run test:security` and `npm run test:updates`. All tests use synthetic data. `npm run doctor` reports local runtime readiness without executing provider work.
 
-Use `npm run checkpoint` to inspect resumable implementation state. Read `AGENTS.md` and the [implementation entry point](zz_Specifications/00-start-here.md) before making changes. Commands for later phases remain contracts until their ledger evidence exists. The current package and live-provider commands fail closed while those capabilities are unimplemented.
+Use `npm run checkpoint` to inspect resumable implementation state. Read `AGENTS.md` and the [implementation entry point](zz_Specifications/00-start-here.md) before making changes. `npm run package:local` verifies and creates an immutable local bundle with checksums. The [operations guide](docs/operations.md) covers the owner CLI, startup preparation, backup and frozen recovery. Native provider execution and automatic application remain disabled without live certification.
 
 Public release, package publication, tunnel provisioning, and app-store submission remain distinct operations. The release checklist describes their prerequisites; writing these specifications performs none of them.

@@ -1,2 +1,15 @@
-throw new Error('Release packaging is unavailable until phase 6 supplies verified manifests and the supervisor.');
-export {};
+import { join, resolve } from 'node:path';
+import { randomUUID, createHash } from 'node:crypto';
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { packageRelease, sourceSnapshot } from '../apps/supervisor/src/package.js';
+import { archiveRelease } from './zip.js';
+import { fork } from 'node:child_process';
+import { verificationEnvironment } from './environment.js';
+const verification = fork(resolve('scripts/record-verification.ts'), ['verify', 'test:security', 'test:updates'], { execArgv: ['--import', 'tsx'], stdio: ['ignore', 'inherit', 'inherit', 'ipc'], windowsHide: true, env: verificationEnvironment() });
+let recordPath = ''; verification.on('message', value => { const message = value as { recordPath?: string }; if (message.recordPath) recordPath = message.recordPath; });
+await new Promise<void>((resolve, reject) => { verification.once('error', reject); verification.once('exit', code => code === 0 && recordPath ? resolve() : reject(new Error('Package verification failed'))); });
+const record = JSON.parse(readFileSync(recordPath, 'utf8')) as { sourceSnapshotHash: string; records: { result: string }[] }; if (record.records.length !== 3 || record.records.some(item => item.result !== 'pass') || record.sourceSnapshotHash !== sourceSnapshot(process.cwd())) throw new Error('Package verification evidence is incomplete or source changed');
+const requestId = randomUUID(); const output = resolve('artifacts', `ceston-${requestId}`); mkdirSync('artifacts', { recursive: true });
+const bundled = packageRelease({ sourceRoot: process.cwd(), runtimeRoot: process.cwd(), output, requestId, testEvidenceHashes: [createHash('sha256').update(readFileSync(recordPath)).digest('hex')], npmCli: process.env.npm_execpath! });
+const archive = `${output}.zip`; await archiveRelease(output, archive); const checksum = createHash('sha256').update(readFileSync(archive)).digest('hex'); writeFileSync(`${archive}.sha256`, `${checksum}  ${archive.split(/[\\/]/).at(-1)}\n`);
+console.log(JSON.stringify({ state: 'local_package_verified', releaseId: bundled.manifest.releaseId, manifestHash: bundled.hash, archive: join('artifacts', archive.split(/[\\/]/).at(-1)!), sha256: checksum, activated: false, published: false }));

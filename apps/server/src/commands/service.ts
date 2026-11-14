@@ -45,6 +45,8 @@ export class CommandService {
       db.prepare('INSERT INTO commands(id,task_id,device_id,idempotency_key,payload_hash,type,payload_json,expected_revision,scope_revision_id,state,created_at) VALUES(?,?,?,?,?,?,?,?,?,\'queued\',?)').run(id, taskId, deviceId, key, hash, command.type, JSON.stringify(command), 'expectedRevision' in command ? command.expectedRevision : null, taskId ? this.store.taskRow(taskId).scope_revision_id : null, this.store.now());
       if (command.type === 'task.create') dispatch = true;
       else if (command.type === 'installation.pause' || command.type === 'installation.resume') {
+        const recovery = db.prepare("SELECT state_json FROM service_checkpoints WHERE name='recovery'").get() as { state_json: string } | undefined;
+        if (command.type === 'installation.resume' && recovery && (JSON.parse(recovery.state_json) as { reconciliationRequired?: boolean }).reconciliationRequired) throw new DomainError('restore_reconciliation_required');
         const paused = command.type === 'installation.pause';
         db.prepare('UPDATE installations SET dispatch_paused=?,revision=revision+1').run(paused ? 1 : 0);
         this.store.event(this.store.installation().id, this.store.installation().revision, 'host.status', { dispatchPaused: paused });
@@ -110,6 +112,8 @@ export class CommandService {
     const id = randomUUID(); const scopeId = randomUUID(); const now = this.store.now();
     this.store.db.prepare('INSERT INTO tasks(id,project_id,title,goal,state,scope_revision_id,created_at,updated_at,next_action) VALUES(?,?,?,?,\'queued\',?,?,?,?)').run(id, project.id, redactText(command.payload.title), redactText(command.payload.goal), scopeId, now, now, 'Waiting for an eligible worker.');
     this.store.db.prepare('INSERT INTO scope_revisions(id,task_id,revision,allowed_operations_json,roots_json,resources_json,budgets_json,completion_boundary,authority_source,created_at,request_hash) VALUES(?,?,1,?,?,?,?,?,?,?,?)').run(scopeId, id, JSON.stringify(scope.operations), JSON.stringify([project.canonical_root]), JSON.stringify([`workspace:${project.id}`]), JSON.stringify(scope.budgets), scope.completionBoundary, `device:${deviceId}`, now, requestHash);
+    const provider = this.config.providers.find(provider => provider.id === profile.providerId) ?? null;
+    this.store.db.prepare('INSERT INTO scope_profiles VALUES(?,?,?,?)').run(scopeId, JSON.stringify(profile), JSON.stringify(provider), this.store.payloadHash({ project: profile, provider }));
     const cursor = this.store.event(id, 1, 'task.changed', { state: 'queued', title: command.payload.title });
     this.store.db.prepare('UPDATE tasks SET summary_cursor=? WHERE id=?').run(cursor, id);
     if (command.payload.sourceIds.length) this.store.event(id, 1, 'task.sources', { sourceIds: command.payload.sourceIds, authority: 'untrusted_source' });
