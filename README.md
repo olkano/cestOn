@@ -6,6 +6,7 @@ cestOn is a self-hosted assistant in development for coordinating coding and ope
 
 ## Start here
 
+- [Start using cestOn](docs/getting-started.md): launch the demo, try your first task, and prepare for your own projects.
 - [Implementation entry point](zz_Specifications/00-start-here.md): reading order, scope, authority, and completion rules.
 - [Product contract](zz_Specifications/01-product.md): what cestOn must do.
 - [Interactive experience](design/cestOn-experience.html): desktop and mobile examples, dark and light themes, and self-improvement.
