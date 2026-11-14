@@ -5,7 +5,7 @@ import { randomUUID } from 'node:crypto';
 
 export function createTestRoot() {
   const runId = randomUUID(); const installationId = randomUUID();
-  const root = mkdtempSync(join(tmpdir(), 'ceston-test-'));
+  const root = mkdtempSync(join(realpathSync.native(tmpdir()), 'ceston-test-'));
   writeFileSync(join(root, '.ceston-test.json'), JSON.stringify({ runId, installationId }), { flag: 'wx' });
   return { root, runId, installationId };
 }
