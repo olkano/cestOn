@@ -41,14 +41,13 @@ public static class CestonCiOwner {
     finally { Marshal.FreeHGlobal(memory); }
   }
   public static int Run(string node,string script,string directory) {
-    IntPtr original=IntPtr.Zero,restricted=IntPtr.Zero,admin=IntPtr.Zero,user=IntPtr.Zero,medium=IntPtr.Zero,input=IntPtr.Zero,output=IntPtr.Zero,error=IntPtr.Zero;
+    IntPtr original=IntPtr.Zero,restricted=IntPtr.Zero,admin=IntPtr.Zero,user=IntPtr.Zero,input=IntPtr.Zero,output=IntPtr.Zero,error=IntPtr.Zero;
     var process=new ProcessInfo();
     try {
       Check(OpenProcessToken(GetCurrentProcess(),0x008b,out original));
       admin=Sid(new SecurityIdentifier(WellKnownSidType.BuiltinAdministratorsSid,null));
       var disabled=new SidAttributes { Sid=admin,Attributes=0 }; Check(CreateRestrictedToken(original,1,1,ref disabled,0,IntPtr.Zero,0,IntPtr.Zero,out restricted));
       user=Sid(WindowsIdentity.GetCurrent().User); TokenData(restricted,4,user,0,true);
-      medium=Sid(new SecurityIdentifier("S-1-16-8192")); TokenData(restricted,25,medium,0x20,false);
       Check(DuplicateHandle(GetCurrentProcess(),GetStdHandle(-10),GetCurrentProcess(),out input,0,true,2));
       Check(DuplicateHandle(GetCurrentProcess(),GetStdHandle(-11),GetCurrentProcess(),out output,0,true,2));
       Check(DuplicateHandle(GetCurrentProcess(),GetStdHandle(-12),GetCurrentProcess(),out error,0,true,2));
@@ -58,7 +57,7 @@ public static class CestonCiOwner {
       uint code; Check(GetExitCodeProcess(process.process,out code)); return (int)code;
     } finally {
       foreach(var handle in new[]{process.thread,process.process,input,output,error,restricted,original}) if(handle!=IntPtr.Zero) CloseHandle(handle);
-      foreach(var pointer in new[]{admin,user,medium}) if(pointer!=IntPtr.Zero) Marshal.FreeHGlobal(pointer);
+      foreach(var pointer in new[]{admin,user}) if(pointer!=IntPtr.Zero) Marshal.FreeHGlobal(pointer);
     }
   }
 }
