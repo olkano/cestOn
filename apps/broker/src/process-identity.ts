@@ -8,7 +8,7 @@ export async function processIdentity(pid: number): Promise<ProcessIdentity | nu
   if (!Number.isSafeInteger(pid) || pid <= 0) return null;
   try {
     if (process.platform === 'win32') {
-      const result = await promisify(execFile)('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', '$targetProcess = Get-Process -Id ([int]$env:CESTON_PROCESS_ID) -ErrorAction Stop; [Console]::Write($targetProcess.StartTime.ToUniversalTime().Ticks.ToString())'], { env: { ...windowsHelperEnvironment(), CESTON_PROCESS_ID: String(pid) }, timeout: 5000, windowsHide: true });
+      const result = await promisify(execFile)('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', '$targetProcess = [Diagnostics.Process]::GetProcessById([int]$env:CESTON_PROCESS_ID); [Console]::Write($targetProcess.StartTime.ToUniversalTime().Ticks.ToString())'], { env: { ...windowsHelperEnvironment(), CESTON_PROCESS_ID: String(pid) }, timeout: 10000, windowsHide: true });
       return { pid, startedAt: result.stdout.trim() };
     }
     const stat = readFileSync(`/proc/${pid}/stat`, 'utf8');

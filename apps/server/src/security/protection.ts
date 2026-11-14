@@ -17,7 +17,7 @@ export class OsProtector implements Protector {
     if (process.platform !== 'win32') throw new DomainError('os_protection_unavailable', 503);
     if (Buffer.byteLength(value) > 65536) throw new DomainError('protected_value_too_large', 413);
     const child = spawn('powershell.exe', ['-NoProfile', '-NonInteractive', '-File', resolve('scripts/os-protect.ps1'), '-Mode', mode], { shell: false, windowsHide: true, stdio: ['pipe', 'pipe', 'pipe'], env: windowsHelperEnvironment() });
-    return new Promise<string>((resolve, reject) => { let output = ''; const timer = setTimeout(() => { child.kill(); reject(new DomainError('os_protection_timeout', 503)); }, 5000);
+    return new Promise<string>((resolve, reject) => { let output = ''; const timer = setTimeout(() => { child.kill(); reject(new DomainError('os_protection_timeout', 503)); }, 15000);
       child.stdout.on('data', data => { output += String(data); if (output.length > 200000) child.kill(); }); child.stderr.on('data', () => {}); child.stdin.on('error', () => {});
       child.once('error', () => { clearTimeout(timer); reject(new DomainError('os_protection_unavailable', 503)); }); child.once('exit', code => { clearTimeout(timer); if (code !== 0) reject(new DomainError('os_protection_failed', 503)); else resolve(output.trim()); });
       child.stdin.end(JSON.stringify({ value: mode === 'Protect' ? Buffer.from(value).toString('base64') : value, purpose: `${this.installationId}:${purpose}` }));

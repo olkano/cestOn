@@ -1,5 +1,5 @@
 import { readFileSync, existsSync, mkdirSync, writeFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { join, resolve } from 'node:path';
 import { createHmac, randomBytes, timingSafeEqual } from 'node:crypto';
 import { canonicalJson } from '../../../packages/contracts/src/commands.js';
 import type { ProviderConfig } from '../../../packages/contracts/src/config.js';
@@ -17,10 +17,11 @@ export const providerChecks = ['start-resume-interrupt', 'forbidden-tools', 'out
 export function policyFingerprint(root: string, provider: ProviderConfig) {
   const key = installationSecrets(root).certification; const hash = createHmac('sha256', key).update('execution-policy-v2');
   hash.update(process.version).update(process.platform).update(process.arch).update(release());
-  for (const relative of ['./runtime.js', './update-worker.js', './update-grants.js', './confinement.js', './workspaces.js', './recipes.js', './policy/index.js', '../../../packages/contracts/src/paths.js', '../../../packages/adapters/src/codex/permissions.js', '../../../packages/adapters/src/codex/index.js', '../../../packages/adapters/src/claude/index.js']) {
+  for (const relative of ['./runtime.js', './update-worker.js', './update-grants.js', './confinement.js', './windows-environment.js', '../../supervisor/src/self-update-certification.js', './workspaces.js', './recipes.js', './policy/index.js', '../../../packages/contracts/src/paths.js', '../../../packages/adapters/src/codex/permissions.js', '../../../packages/adapters/src/codex/index.js', '../../../packages/adapters/src/claude/index.js']) {
     const compiled = fileURLToPath(new URL(relative, import.meta.url)); const file = existsSync(compiled) ? compiled : compiled.replace(/\.js$/, '.ts'); hash.update(relative).update(readFileSync(file));
   }
   if (provider.kind === 'claude') { const require = createRequire(import.meta.url); hash.update(readFileSync(require.resolve('@anthropic-ai/claude-agent-sdk'))); }
+  if (process.platform === 'win32') for (const name of ['windows-access.ps1', 'windows-compile.ps1', 'windows-mutex.ps1', 'windows-pipe-host.ps1', 'os-protect.ps1']) hash.update(name).update(readFileSync(resolve('scripts', name)));
   if (provider.home) for (const name of ['config.toml', 'settings.json', 'settings.local.json', '.claude.json']) { const path = join(provider.home, name); hash.update(name).update(existsSync(path) ? readFileSync(path) : 'absent'); }
   return hash.digest('hex');
 }

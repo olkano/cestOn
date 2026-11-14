@@ -1,6 +1,8 @@
 param([Parameter(Mandatory=$true)][ValidatePattern('^ceston-[a-f0-9]{64}$')][string]$Name)
 $ErrorActionPreference = 'Stop'
-Add-Type -TypeDefinition @'
+$PSModuleAutoLoadingPreference = 'None'
+. ([IO.Path]::Combine($PSScriptRoot,'windows-compile.ps1'))
+$source = @'
 using System;
 using System.Threading;
 using System.Security.AccessControl;
@@ -18,4 +20,5 @@ public static class CestonMutex {
   }
 }
 '@
+Add-CestonType $source
 [CestonMutex]::Run($Name)

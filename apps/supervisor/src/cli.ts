@@ -9,6 +9,7 @@ import { recoverBackup } from './backups.js';
 import { dataAccess } from '../../server/src/security/access.js';
 import { safePath } from '../../../packages/contracts/src/paths.js';
 import { certifyProvider } from './provider-certification.js';
+import { certifySelfUpdate } from './self-update-certification.js';
 const args = process.argv.slice(2); const command = args[0] ?? 'help'; const option = (name: string) => { const index = args.indexOf(`--${name}`); return index < 0 ? undefined : args[index + 1]; }; const root = resolve(option('root') ?? defaultRoot()); const testMode = args.includes('--test');
 try {
   let result: unknown;
@@ -18,6 +19,7 @@ try {
   else if (command === 'status' || command === 'version') result = await localStatus(root, testMode);
   else if (command === 'doctor') result = await doctor(root, testMode);
   else if (command === 'certify-provider') { const providerId = option('provider'); if (!providerId) throw new DomainError('provider_required'); result = await certifyProvider(root, providerId, testMode); }
+  else if (command === 'certify-self-update') { const providerId = option('provider'); if (!providerId || testMode) throw new DomainError('explicit_native_provider_required'); result = await certifySelfUpdate(root, providerId); }
   else if (command === 'pair') { if (!process.stdout.isTTY || args.includes('--json')) throw new DomainError('pairing_requires_private_terminal', 403); console.log(`One-use invitation, expires in ten minutes:\n${await pairingInvitation(root, testMode)}`); process.exit(0); }
   else if (command === 'backup') result = await backupInstallation(root);
   else if (command === 'recover') {
@@ -27,6 +29,6 @@ try {
     else result = await supervisorRequest(root, 'recover', {}, testMode);
   }
   else if (command === 'install-startup' || command === 'uninstall-startup') result = await startup(root, command === 'install-startup' ? 'Install' : 'Uninstall', args.includes('--plan'), testMode);
-  else result = { commands: ['init --bundle PATH --config PATH', 'start', 'stop --scope coordinator|all', 'status', 'version', 'pair', 'doctor', 'certify-provider --provider ID', 'backup', 'recover', 'install-startup --plan', 'uninstall-startup --plan'], options: ['--root PATH', '--json'], note: 'Starting is temporary. Installing startup is a separate explicit operation. Pairing is private terminal output only.' };
+  else result = { commands: ['init --bundle PATH --config PATH', 'start', 'stop --scope coordinator|all', 'status', 'version', 'pair', 'doctor', 'certify-provider --provider ID', 'certify-self-update --provider ID', 'backup', 'recover', 'install-startup --plan', 'uninstall-startup --plan'], options: ['--root PATH', '--json'], note: 'Starting is temporary. Installing startup is a separate explicit operation. Pairing is private terminal output only.' };
   console.log(JSON.stringify(result, null, 2));
 } catch (error) { console.error(JSON.stringify({ error: { code: error instanceof DomainError ? error.code : 'operation_failed', message: 'The operation did not complete. Run doctor for sanitized checks.' } })); process.exitCode = 1; }

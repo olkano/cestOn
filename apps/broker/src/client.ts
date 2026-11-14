@@ -49,7 +49,7 @@ export async function spawnBroker(root: string, installationId: string, testMode
   let endpoint: string;
   try {
     endpoint = await new Promise<string>((resolve, reject) => {
-      const timeout = setTimeout(() => reject(new Error(`Broker startup timeout: ${stderr}`)), 10000);
+      const timeout = setTimeout(() => reject(new Error(`Broker startup timeout: ${stderr}`)), 30000);
       child.once('error', error => { clearTimeout(timeout); reject(error); });
       child.once('exit', () => { clearTimeout(timeout); reject(new Error(`Broker exited at startup: ${stderr}`)); });
       child.once('message', value => { const ready = value as { ready: boolean; endpoint: string }; clearTimeout(timeout); if (!ready.ready) reject(new Error('Invalid broker startup')); else resolve(ready.endpoint); });

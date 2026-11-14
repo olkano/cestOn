@@ -1,8 +1,10 @@
 param([ValidateSet('Protect','Unprotect')][string]$Mode)
 $ErrorActionPreference = 'Stop'
+$PSModuleAutoLoadingPreference = 'None'
 try {
-  Add-Type -AssemblyName System.Security
-  $request = [Console]::In.ReadToEnd() | ConvertFrom-Json
+  [void][Reflection.Assembly]::LoadWithPartialName('System.Security')
+  [void][Reflection.Assembly]::LoadWithPartialName('System.Web.Extensions')
+  $request = [Web.Script.Serialization.JavaScriptSerializer]::new().DeserializeObject([Console]::In.ReadToEnd())
   $bytes = [Convert]::FromBase64String($request.value)
   $entropy = [Text.Encoding]::UTF8.GetBytes($request.purpose)
   $scope = [Security.Cryptography.DataProtectionScope]::CurrentUser

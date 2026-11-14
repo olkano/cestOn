@@ -1,8 +1,10 @@
 param([Parameter(Mandatory=$true)][ValidatePattern('^[a-zA-Z0-9_.-]{1,160}$')][string]$PipeName)
 $ErrorActionPreference = 'Stop'
-[Console]::OutputEncoding = New-Object System.Text.UTF8Encoding($false)
-[Console]::InputEncoding = New-Object System.Text.UTF8Encoding($false)
-Add-Type -ReferencedAssemblies System.Core,System.Web.Extensions -TypeDefinition @'
+$PSModuleAutoLoadingPreference = 'None'
+[Console]::OutputEncoding = [Text.UTF8Encoding]::new($false)
+[Console]::InputEncoding = [Text.UTF8Encoding]::new($false)
+. ([IO.Path]::Combine($PSScriptRoot,'windows-compile.ps1'))
+$source = @'
 using System;
 using System.IO;
 using System.IO.Pipes;
@@ -88,6 +90,7 @@ public static class CestonOwnerPipe {
   }
 }
 '@
+Add-CestonType $source @('System','System.Core','System.Web.Extensions')
 [CestonOwnerPipe]::Start($PipeName)
 try {
   while ($true) { $line = [Console]::ReadLine(); if ($null -eq $line) { break }; [CestonOwnerPipe]::Respond($line) }

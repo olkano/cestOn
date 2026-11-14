@@ -32,7 +32,7 @@ export async function startIpcServer(options: IpcOptions, handler: (method: stri
     const lines = createInterface({ input: host.stdout });
     try {
       await new Promise<void>((ready, reject) => {
-        const timeout = setTimeout(() => reject(new Error(`IPC ACL startup failed: ${stderr}`)), 8000);
+        const timeout = setTimeout(() => reject(new Error(`IPC ACL startup failed: ${stderr}`)), 20000);
         host.once('error', error => { clearTimeout(timeout); reject(error); });
         host.once('exit', () => { clearTimeout(timeout); reject(new Error(`IPC ACL host exited: ${stderr}`)); });
         lines.on('line', (line: string) => {
