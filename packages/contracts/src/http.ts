@@ -6,5 +6,6 @@ export const intakeSchema = z.strictObject({ projectId: z.uuid(), mime: z.enum([
 export const pageSchema = z.strictObject({ after: z.coerce.number().int().min(0).default(0) });
 export const taskQuerySchema = pageSchema.extend({ state: z.string().max(32).optional(), project: z.uuid().optional(), search: z.string().max(160).optional(), attention: z.enum(['true', 'false']).optional() });
 export const idSchema = z.strictObject({ id: z.uuid() });
+export const subscriptionSchema = z.strictObject({ endpoint: z.url().max(4096), expirationTime: z.number().nullable().optional(), keys: z.strictObject({ p256dh: z.string().regex(/^[a-zA-Z0-9_-]{87,88}$/), auth: z.string().regex(/^[a-zA-Z0-9_-]{22,24}$/) }) });
 export type ApiEnvelope<T> = { data: T; meta: { requestId: string } };
 export type ApiFailure = { error: { code: string; message: string; retryable: boolean }; meta: { requestId: string } };

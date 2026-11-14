@@ -2,8 +2,8 @@
   "formatVersion": 1,
   "objective": "Implement phases 0-9, independently verify relevant steps, commit and push verified milestones",
   "status": "in_progress",
-  "currentPhase": 5,
-  "nextAction": "Implement asset-only service worker, durable unsent delivery identity, speech adapters and durable notifications; native workspace isolation remains mandatory before native writes",
+  "currentPhase": 6,
+  "nextAction": "Implement immutable packaging, supervisor, owner-only operations CLI, broker reconnect, encrypted recovery, retention and isolated workspace ownership; certify native policy fingerprints before native writes",
   "tracking": "zz_Specifications/implementation-run.md",
   "ledger": "zz_Specifications/implementation-status.md",
   "authorized": [
@@ -42,11 +42,11 @@
     },
     {
       "id": 5,
-      "status": "in_progress"
+      "status": "local_fixture_verified_devices_blocked"
     },
     {
       "id": 6,
-      "status": "pending"
+      "status": "in_progress"
     },
     {
       "id": 7,
@@ -74,7 +74,7 @@
     },
     {
       "id": "physical_devices",
-      "status": "pending",
+      "status": "blocked",
       "input": "Android/iOS installation, microphone and push checks after phase 5"
     }
   ]

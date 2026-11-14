@@ -34,8 +34,8 @@ export const configSchema = z.strictObject({
   limits: limitsSchema.prefault({}),
   assistant: z.strictObject({ providerId: z.string().optional() }).prefault({}),
   executionHost: z.strictObject({ codexExecutable: z.string().optional(), version: z.string().optional() }).prefault({}),
-  voice: z.strictObject({ enabled: z.boolean().default(false), endpoint: z.url().optional(), credentialEnv: z.string().optional(), model: z.string().optional() }).prefault({}),
-  push: z.strictObject({ enabled: z.boolean().default(false), subject: z.string().optional(), publicKey: z.string().optional(), privateKeyEnv: z.string().optional() }).prefault({}),
+  voice: z.strictObject({ enabled: z.boolean().default(false), endpoint: z.url().refine(value => { const url = new URL(value); return url.protocol === 'https:' && !url.username && !url.password && !url.search && !url.hash; }).optional(), credentialEnv: z.string().regex(/^CESTON_SPEECH_[A-Z0-9_]+$/).optional(), model: z.string().optional() }).prefault({}),
+  push: z.strictObject({ enabled: z.boolean().default(false), subject: z.string().optional(), publicKey: z.string().optional(), privateKeyEnv: z.string().regex(/^CESTON_PUSH_[A-Z0-9_]+$/).optional() }).prefault({}),
   updates: z.strictObject({ requestedLocalApply: z.boolean().default(false), retainVerifiedReleases: z.number().int().min(3).max(10).default(3) }).prefault({}),
 });
 export type Config = z.infer<typeof configSchema>;

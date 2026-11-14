@@ -41,12 +41,12 @@ export class AuthService {
     })(); } catch (error) { if (error instanceof DomainError && error.code === 'invalid_invitation') { this.limit(`pair:${source}`, 5, 900000); this.limit('pair:installation', 5, 900000); } throw error; }
   }
   device(id: string) { return this.store.db.prepare('SELECT id,display_name,created_at,last_seen_at,expires_at,revoked_at,csrf_hash FROM devices WHERE id=?').get(id) as Device; }
-  authenticate(token: string | undefined): Device {
+  authenticate(token: string | undefined, touch = true): Device {
     if (!token || token.length !== 43) throw new DomainError('authentication_required', 401);
     const row = this.store.db.prepare('SELECT id FROM devices WHERE token_hash=? AND revoked_at IS NULL AND expires_at>? AND created_at>?').get(this.hash(token), this.store.now(), this.store.now() - 30 * 86400000) as { id: string } | undefined;
     if (!row) throw new DomainError('authentication_required', 401);
     const device = this.device(row.id);
-    this.store.db.prepare('UPDATE devices SET last_seen_at=?,expires_at=? WHERE id=?').run(this.store.now(), Math.min(this.store.now() + 7 * 86400000, device.created_at + 30 * 86400000), row.id);
+    if (touch) this.store.db.prepare('UPDATE devices SET last_seen_at=?,expires_at=? WHERE id=?').run(this.store.now(), Math.min(this.store.now() + 7 * 86400000, device.created_at + 30 * 86400000), row.id);
     return this.device(row.id);
   }
   checkCsrf(device: Device, value: unknown) {

@@ -1,4 +1,4 @@
-import { createServer } from 'vite';
+import { createServer, preview } from 'vite';
 import { generateIcons } from './icons.js';
 import { coordinator } from '../apps/server/src/runtime.js';
 import { createTestRoot, assertTestRoot, cleanupTestRoot } from '../packages/test-support/src/index.js';
@@ -13,8 +13,9 @@ const owned = process.env.CESTON_E2E_ROOT ? null : createTestRoot(); const root 
 assertTestRoot(root); if (!existsSync(join(root, 'state/config.json'))) fixtureConfig(root);
 const runtime = await coordinator(root, { testMode: true, origin: `http://127.0.0.1:${webPort}` });
 await runtime.app.listen({ host: '127.0.0.1', port: apiPort });
-const web = await createServer({ root: 'apps/web', server: { host: '127.0.0.1', port: webPort, strictPort: true, proxy: { '/api': { target: `http://127.0.0.1:${apiPort}`, changeOrigin: false }, '/health': `http://127.0.0.1:${apiPort}` } } });
-await web.listen(); web.printUrls();
+const proxy = { '/api': { target: `http://127.0.0.1:${apiPort}`, changeOrigin: false }, '/health': `http://127.0.0.1:${apiPort}` };
+const web = process.env.CESTON_E2E_STATIC === '1' ? await preview({ root: 'apps/web', preview: { host: '127.0.0.1', port: webPort, strictPort: true, proxy } }) : await createServer({ root: 'apps/web', server: { host: '127.0.0.1', port: webPort, strictPort: true, proxy } });
+if ('listen' in web) await web.listen(); web.printUrls();
 if (owned) console.log(`Synthetic development installation. Pairing code (10 minutes, one use): ${runtime.auth!.invite()}`);
 let closing = false;
 async function close() { if (closing) return; closing = true; await web.close(); await runtime.close(); if (owned) cleanupTestRoot(root, owned.runId); }

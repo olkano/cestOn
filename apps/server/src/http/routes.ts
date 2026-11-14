@@ -18,8 +18,10 @@ import type { ActionService } from '../authority/actions.js';
 import type { BrokerClient } from '../../../broker/src/client.js';
 import { openapi } from '../../../../packages/contracts/src/openapi.js';
 import { redactText } from '../../../../packages/contracts/src/logging.js';
+import type { SpeechService } from '../voice/index.js';
+import type { NotificationService } from '../notifications/index.js';
 
-export type ApiServices = { commands?: CommandService; assistant?: Assistant; actions?: ActionService; broker?: BrokerClient };
+export type ApiServices = { commands?: CommandService; assistant?: Assistant; actions?: ActionService; broker?: BrokerClient; speech?: SpeechService; notifications?: NotificationService; staticBundle?: string };
 export async function registerApi(app: FastifyInstance, config: Config, input: ApiServices & { store?: Store; origin?: string }) {
   const store = input.store; const auth = store ? new AuthService(store) : null;
   const commands = input.commands ?? (store ? new CommandService(store, config) : null);
@@ -57,13 +59,19 @@ export async function registerApi(app: FastifyInstance, config: Config, input: A
   });
   app.get('/api/v1/me', async request => {
     const device = auth!.authenticate(request.cookies.ceston);
-    return data({ installationId: store!.installation().id, deviceId: device.id, displayName: device.display_name, csrf: auth!.csrf(request.cookies.ceston!), protocol: 1, capabilities: { voice: config.voice.enabled, push: config.push.enabled, providers: config.providers.map(p => ({ id: p.id, kind: p.kind, profile: p.profile })) } }, request.id);
+    return data({ installationId: store!.installation().id, deviceId: device.id, displayName: device.display_name, csrf: auth!.csrf(request.cookies.ceston!), protocol: 1, capabilities: { voice: input.speech?.available ?? false, push: config.push.enabled && Boolean(input.notifications?.pushAvailable), pushPublicKey: config.push.enabled && input.notifications?.pushAvailable ? config.push.publicKey ?? null : null, providers: config.providers.map(p => ({ id: p.id, kind: p.kind, profile: p.profile })) } }, request.id);
   });
   app.get('/api/v1/openapi.json', async () => openapi);
-  app.get('/api/v1/health/ready', async request => data({ ready: true, protocol: 1, database: 'ready', release: store!.installation().active_release ?? 'development' }, request.id));
+  app.get('/api/v1/health/ready', async request => data({ ready: true, protocol: 1, database: 'ready', release: store!.installation().active_release ?? 'development', staticBundle: input.staticBundle ?? null }, request.id));
   app.get('/api/v1/snapshot', async request => { const query = pageSchema.extend({ expectedCursor: z.coerce.number().int().min(0).optional() }).parse(request.query); return data(store!.snapshot(query.after, query.expectedCursor), request.id); });
   app.get('/api/v1/sources', async request => { const query = z.strictObject({ projectId: z.uuid() }).parse(request.query); store!.project(query.projectId); return data(store!.db.prepare('SELECT id,kind,created_at AS createdAt FROM sources WHERE project_id=? ORDER BY created_at DESC LIMIT 100').all(query.projectId), request.id); });
   app.get('/api/v1/limits', async request => data(config.limits, request.id));
+  app.get('/api/v1/notifications', async request => data(input.notifications?.list() ?? [], request.id));
+  app.post('/api/v1/notifications/:id/read', async request => { if (!input.notifications) throw new DomainError('notifications_unavailable', 422); input.notifications.markRead(idSchema.parse(request.params).id); return data({ read: true }, request.id); });
+  app.post('/api/v1/push/subscriptions', async request => { if (!config.push.enabled || !input.notifications?.pushAvailable) throw new DomainError('push_unavailable', 422); return data(await input.notifications.subscribe(auth!.authenticate(request.cookies.ceston).id, request.body), request.id); });
+  app.delete('/api/v1/push/subscriptions/:id', async request => { if (!input.notifications) throw new DomainError('push_unavailable', 422); await input.notifications.unsubscribe(auth!.authenticate(request.cookies.ceston).id, idSchema.parse(request.params).id); return data({ removed: true }, request.id); });
+  app.post('/api/v1/voice/transcribe', async request => { auth!.commandLimit(auth!.authenticate(request.cookies.ceston).id); if (!input.speech?.available) throw new DomainError('speech_unavailable', 422); const file = await request.file(); if (!file) throw new DomainError('audio_required', 400); return data(await input.speech.transcribe(await file.toBuffer(), file.mimetype), request.id); });
+  app.post('/api/v1/voice/speak', async () => { throw new DomainError('server_voice_unavailable_use_browser_playback', 422); });
   app.get('/api/v1/projects', async request => data(store!.snapshot().projects.map(p => ({ ...p, operations: config.projects.find(c => c.id === p.id)?.operations ?? ['read'], recipes: config.projects.find(c => c.id === p.id)?.recipes.map(r => ({ id: r.id, operation: r.operation })) ?? [] })), request.id));
   app.get('/api/v1/tasks', async request => {
     const { attention, ...query } = taskQuerySchema.parse(request.query); const tasks = store!.listTasks({ after: query.after, ...(query.state ? { state: query.state } : {}), ...(query.project ? { project: query.project } : {}), ...(query.search ? { search: query.search } : {}), attention: attention === 'true' });
@@ -141,7 +149,7 @@ export async function registerApi(app: FastifyInstance, config: Config, input: A
     const send = (value: string) => { if (!stream.write(value)) blocked = true; }; stream.on('drain', () => { blocked = false; });
     const poll = () => {
       try {
-        auth!.authenticate(token); if (blocked) return;
+        auth!.authenticate(token, false); if (blocked) return;
         const earliest = (store!.db.prepare('SELECT MIN(sequence) AS n FROM events').get() as { n: number | null }).n;
         if ((earliest !== null && cursor > 0 && cursor < earliest - 1) || cursor > store!.latestCursor()) { send('event: resync_required\ndata: {"snapshot":"/api/v1/snapshot"}\n\n'); stream.end(); return; }
         for (const event of store!.events(cursor)) { send(`id: ${event.sequence}\nevent: ${event.type}\ndata: ${JSON.stringify({ eventId: event.event_id, aggregateId: event.aggregate_id, revision: event.aggregate_revision, occurredAt: new Date(event.created_at).toISOString(), data: JSON.parse(event.sanitized_payload_json) as unknown })}\n\n`); cursor = event.sequence; if (blocked) break; }

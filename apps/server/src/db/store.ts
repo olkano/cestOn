@@ -2,7 +2,7 @@ import Database from 'better-sqlite3';
 import { mkdirSync, existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { createHash, randomUUID } from 'node:crypto';
-import { schemaSql, schemaVersion } from './schema.js';
+import { migrate, currentSchemaVersion as schemaVersion } from './migrations.js';
 import { assertTestRoot } from '../../../../packages/test-support/src/index.js';
 import { canonicalPath, validateDataRoot, within } from '../../../../packages/contracts/src/paths.js';
 import { canonicalJson, DomainError, type Receipt, type Scope } from '../../../../packages/contracts/src/commands.js';
@@ -33,11 +33,7 @@ export class Store {
     this.db.pragma('journal_mode = WAL'); this.db.pragma('foreign_keys = ON'); this.db.pragma('busy_timeout = 5000');
     try {
       this.db.transaction(() => {
-        this.db.exec(schemaSql);
-        const hash = createHash('sha256').update(schemaSql).digest('hex');
-        const old = this.db.prepare('SELECT hash FROM migrations WHERE version=?').get(schemaVersion) as { hash: string } | undefined;
-        if (old && old.hash !== hash) throw new DomainError('migration_hash_mismatch');
-        if (!old) this.db.prepare('INSERT INTO migrations VALUES(?,?,?)').run(schemaVersion, this.now(), hash);
+        migrate(this.db, this.now());
         if (!this.db.prepare('SELECT id FROM installations').get()) this.db.prepare('INSERT INTO installations(id,schema_version,created_at) VALUES(?,?,?)').run(randomUUID(), schemaVersion, this.now());
         if (this.installation().schema_version !== schemaVersion) throw new DomainError('schema_incompatible');
       })();
