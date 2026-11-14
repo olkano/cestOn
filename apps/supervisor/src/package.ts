@@ -8,12 +8,13 @@ import { DomainError } from '../../../packages/contracts/src/commands.js';
 import type { ReleaseManifest } from '../../../packages/contracts/src/release.js';
 import { inventory, verifyRelease } from './releases.js';
 const directories = new Set(['apps', 'packages', 'scripts', 'tests', 'assets', 'docs', 'design', 'zz_Specifications', 'zz_Tickets', '.github']);
-const rootFiles = new Set(['README.md', 'AGENTS.md', 'LICENSE', 'NOTICE', 'THIRD_PARTY_NOTICES.md', 'package.json', 'package-lock.json', '.npmrc', '.node-version', '.gitignore', 'tsconfig.json', 'tsconfig.build.json', 'vitest.config.ts', 'playwright.config.ts', 'eslint.config.mjs']);
+const rootFiles = new Set(['README.md', 'AGENTS.md', 'LICENSE', 'NOTICE', 'THIRD_PARTY_NOTICES.md', 'package.json', 'package-lock.json', '.npmrc', '.node-version', '.gitignore', '.gitattributes', 'tsconfig.json', 'tsconfig.build.json', 'vitest.config.ts', 'playwright.config.ts', 'eslint.config.mjs']);
+const generatedIcons = new Set(['cestOn-icon.svg', 'icon-180.png', 'icon-192.png', 'icon-512.png', 'maskable-192.png', 'maskable-512.png'].map(name => `apps/web/public/${name}`));
 const excluded = new Set(['node_modules', '.git', 'dist', 'reference-private', 'evidence-private', 'test-results', 'coverage', '.ceston']);
 export function publicSourceFiles(root: string) {
   const files: string[] = [];
   function walk(directory: string, prefix: string) { for (const entry of readdirSync(directory, { withFileTypes: true })) { if (excluded.has(entry.name) || /^\.env(?:\.|$)/.test(entry.name) || /\.(sqlite|log|key|pem)$/.test(entry.name)) continue; const path = prefix ? `${prefix}/${entry.name}` : entry.name; if (!prefix && !(entry.isDirectory() ? directories.has(entry.name) : rootFiles.has(entry.name))) continue; if (entry.isSymbolicLink()) throw new DomainError('source_link_denied', 403); if (entry.isDirectory()) walk(join(directory, entry.name), path); else if (entry.isFile()) files.push(path); } }
-  walk(root, ''); return files.sort();
+  walk(root, ''); return files.filter(path => !generatedIcons.has(path)).sort();
 }
 export function sourceSnapshot(root: string, files = publicSourceFiles(root)) { const hash = createHash('sha256'); for (const file of files) hash.update(file).update(readFileSync(safePath(root, file))); return hash.digest('hex'); }
 export function packageRelease(options: { sourceRoot: string; runtimeRoot: string; output: string; requestId?: string; baseReleaseId?: string; testEvidenceHashes: string[]; npmCli: string; includeDependencies?: boolean }) {

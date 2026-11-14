@@ -14,3 +14,8 @@ it('T09/T27 denies unknown tools, credential paths, shell and junction escape in
     expect(childEnvironment({ PATH: 'safe', ANTHROPIC_API_KEY: 'private', CESTON_IPC_TOKEN: 'private', HOME: 'home' })).toEqual({ PATH: 'safe', HOME: 'home' });
   } finally { cleanupTestRoot(t.root, t.runId); cleanupTestRoot(other.root, other.runId); }
 });
+it('Windows child environments preserve required OS names regardless of case and still exclude secrets', () => {
+  const input = { SYSTEMROOT: 'system', windir: 'windows', ComSpec: 'command', Path: 'bin', NPM_TOKEN: 'private' };
+  expect(childEnvironment(input)).toEqual(process.platform === 'win32' ? { SYSTEMROOT: 'system', WINDIR: 'windows', COMSPEC: 'command', PATH: 'bin' } : { Path: 'bin' });
+  if (process.platform === 'win32') expect(() => childEnvironment({ PATH: 'one', Path: 'another' })).toThrow('conflicting_child_environment');
+});

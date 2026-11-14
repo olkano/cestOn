@@ -32,6 +32,14 @@ On resume, read AGENTS, README, this file, `implementation-status.md`, and `impl
 
 ## Milestones
 
+### Resume checkpoint, phase 9 final checks
+
+HEAD `634cddd` is pushed. Hosted run `43638021131` still fails Windows helper startup despite serial tests. A local regression proves case-sensitive environment filtering drops uppercase Windows OS names; normalization and a zero-work hosted startup diagnostic are ready for commit. Local type/lint/unit and focused ACL/DPAPI/IPC checks pass. Public provenance now excludes the six generated icon files, with a failed-before/passed-after export regression, and exports an LF checkout policy to keep generated API JSON stable on fresh Windows checkouts.
+
+Package record `2026-11-14T20-16-07-172Z-3e7ac085` passes 21 unit, 51 integration, 13 Chromium, 4 security and 7 update tests for the earlier source. Bundle `ceston-9d7c6b10-1720-49e5-9cce-7c4e3d9d250f` has archive SHA-256 `9b58252b90faf0a4a2e3987521be694ac5d37658f3e5a76ee704a4ccc304de99`. Expanded production-mode empty-owner rehearsal `package-rehearsal-1794688818550` passes actual HTTP pairing, DPAPI backup and restore, verified bootstrap, authenticated restored API, paused restart, owned stop, external synthetic project preservation and cleanup. No providers or persistence were configured.
+
+Manual rollback run `self-update-fixture-1794687388359` reached applied and rolled back but failed its immediate draft assertion after navigation. Retry `1794688343939` failed candidate verification at a three-phase browser completion expectation before activation. The harness now awaits the saved IndexedDB value and retains browser failure evidence; the workflow wait is 15 seconds and its focused journey passes. These failed runs both cleaned up; neither is a passing manual rollback acceptance result. Build a fresh baseline for the next full run. Finish fresh package/install/restore, clean export and hosted CI read-back, then reconcile this ledger and the acceptance matrix. The native full self-update certification issuer still needs assessment. External native/device/operational gates and the old quarantined folder remain as above.
+
 | Phase | Commit | Verification / remaining work |
 |---|---|---|
 | Tracking initialized | `3d79515` | Resume procedure and machine-readable checkpoint created before implementation edits. |

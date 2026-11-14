@@ -1,0 +1,5 @@
+import { execFile } from 'node:child_process';
+import { promisify } from 'node:util';
+import { childEnvironment } from '../apps/broker/src/policy/index.js';
+if (process.platform !== 'win32') console.log(JSON.stringify({ result: 'not_applicable', capability: 'Windows helper startup' }));
+else { const environment = childEnvironment(process.env); if (!environment.SYSTEMROOT || !environment.PATH) throw new Error('required_windows_environment_missing'); const start = Date.now(); const result = await promisify(execFile)('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', "[Console]::Write('ready')"], { env: environment, windowsHide: true, timeout: 15000, maxBuffer: 4096 }); if (result.stdout !== 'ready') throw new Error('unexpected_windows_helper_response'); console.log(JSON.stringify({ result: 'ready', elapsedMs: Date.now() - start, sourceSystemRootSpelling: Object.keys(process.env).find(name => name.toUpperCase() === 'SYSTEMROOT'), sourceComSpecSpelling: Object.keys(process.env).find(name => name.toUpperCase() === 'COMSPEC'), modelTurns: 0, note: 'Only required variable names are reported; values and credentials are omitted.' })); }

@@ -5,8 +5,10 @@ import type { ProjectConfig } from '../../../../packages/contracts/src/config.js
 
 export type Permission = { allowed: boolean; reason: string };
 export function childEnvironment(source: NodeJS.ProcessEnv, credentialNames: string[] = []): NodeJS.ProcessEnv {
-  const allow = new Set(['PATH', 'Path', 'SystemRoot', 'WINDIR', 'COMSPEC', 'PATHEXT', 'TEMP', 'TMP', 'HOME', 'USERPROFILE', 'APPDATA', 'LOCALAPPDATA', 'LANG', 'TERM', ...credentialNames]);
-  return Object.fromEntries(Object.entries(source).filter(([key, value]) => allow.has(key) && value !== undefined));
+  const normalize = (name: string) => process.platform === 'win32' ? name.toUpperCase() : name;
+  const allow = new Set(['PATH', 'Path', 'SystemRoot', 'WINDIR', 'COMSPEC', 'PATHEXT', 'TEMP', 'TMP', 'HOME', 'USERPROFILE', 'APPDATA', 'LOCALAPPDATA', 'LANG', 'TERM', ...credentialNames].map(normalize)); const result: NodeJS.ProcessEnv = {};
+  for (const [name, value] of Object.entries(source)) { const key = normalize(name); if (!allow.has(key) || value === undefined) continue; if (result[key] !== undefined && result[key] !== value) throw new Error('conflicting_child_environment'); result[key] = value; }
+  return result;
 }
 export class ToolPolicy {
   readonly root: string;
