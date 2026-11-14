@@ -7,12 +7,14 @@ import { installationSecrets } from './certification.js';
 import { parseConfig } from '../../../packages/contracts/src/config.js';
 import { DomainError } from '../../../packages/contracts/src/commands.js';
 import { writeOwner } from './registry.js';
+import { acquireInstance } from './instance.js';
 
 const root = process.argv[2]!; const installationId = process.argv[3]!; const testMode = process.argv.includes('--test');
 const config = parseConfig(JSON.parse(readFileSync(join(root, 'state', 'config.json'), 'utf8')), { testMode });
 const fixtureDelay = Number(process.argv.find(value => value.startsWith('--fixture-delay='))?.split('=')[1] ?? 100);
 if (testMode && (!Number.isInteger(fixtureDelay) || fixtureDelay < 0 || fixtureDelay > 5000)) throw new DomainError('invalid_fixture_delay');
 const broker = new Broker(root, config, { testMode, fixtureDelayMs: testMode ? fixtureDelay : 0 });
+const instance = await acquireInstance(root, 'broker', installationSecrets(root).broker);
 const runSchema = z.strictObject({ runId: z.string().min(1).max(100) });
 const server = await startIpcServer({ root, name: 'broker', installationId, token: installationSecrets(root).broker }, async (method, payload) => {
   if (method === 'start') return broker.start(payload);
@@ -35,6 +37,6 @@ const server = await startIpcServer({ root, name: 'broker', installationId, toke
 await writeOwner(root, 'broker', installationId, server.endpoint, installationSecrets(root).broker);
 process.send?.({ ready: true, endpoint: server.endpoint });
 let closing = false;
-async function close() { if (closing) return; closing = true; await broker.close(); await server.close(); if (process.connected) process.disconnect(); }
+async function close() { if (closing) return; closing = true; await broker.close(); await server.close(); await instance.release(); if (process.connected) process.disconnect(); }
 process.on('SIGINT', () => { void close(); }); process.on('SIGTERM', () => { void close(); });
 process.on('message', message => { if ((message as { type?: string })?.type === 'shutdown') void close(); });

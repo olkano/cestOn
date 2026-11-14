@@ -9,8 +9,10 @@ import { ProcessHost } from './host.js';
 import { RotatingLog } from './logs.js';
 import { Store } from '../../server/src/db/store.js';
 import { retention } from './retention.js';
+import { acquireInstance } from '../../broker/src/instance.js';
 const root = process.argv[2]!; const testMode = process.argv.includes('--test'); await dataAccess(root); const current = installation(root, testMode);
 if (await readOwner(root, 'supervisor', current.id, current.key)) throw new DomainError('supervisor_already_running');
+const instance = await acquireInstance(root, 'supervisor', current.key);
 const host = new ProcessHost(root, current.id, current.config, testMode); const supervisor = new Supervisor(root, current.key, host, { testMode });
 let stopping = false;
 const log = new RotatingLog(root, 'supervisor'); let pruning = false; const prune = async () => { if (pruning) return; pruning = true; const store = new Store(root, { testMode }); try { retention(store, false); await (await host.connectBroker()).prune(); log.write({ operation: 'retention', result: 'pass' }); } catch { log.write({ operation: 'retention', result: 'blocked' }); } finally { store.close(); pruning = false; } }; const timer = setInterval(() => { void prune(); }, 86400000);
@@ -25,5 +27,5 @@ const server = await startIpcServer({ root, name: 'supervisor', installationId: 
 await writeOwner(root, 'supervisor', current.id, server.endpoint, current.key);
 try { const pointer = supervisor.pointer(); await host.connectBroker(); if (!await host.healthy(pointer.current)) await host.startCoordinator(pointer.current); const recovered = await supervisor.recover(); if (['stable', 'applied', 'rolled_back'].includes(recovered.state)) await host.freeze(false); await prune(); log.write({ operation: 'supervisor.start', result: 'ready' }); process.send?.({ ready: true }); }
 catch { await host.freeze(true); process.send?.({ ready: true, recovery: true }); }
-async function close() { if (stopping) return; stopping = true; clearInterval(timer); await server.close(); if (process.connected) process.disconnect(); }
+async function close() { if (stopping) return; stopping = true; clearInterval(timer); await server.close(); await instance.release(); if (process.connected) process.disconnect(); }
 process.on('SIGTERM', () => { void host.freeze(true).then(() => host.stopCoordinator()).then(close); });

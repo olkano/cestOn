@@ -16,8 +16,10 @@ import { NotificationService, configuredPush } from './notifications/index.js';
 import { OsProtector, TestProtector } from './security/protection.js';
 import { SpeechService, FixtureSpeechAdapter, HttpSpeechAdapter } from './voice/index.js';
 import { dataAccess } from './security/access.js';
+import { DomainError } from '../../../packages/contracts/src/commands.js';
 
 export async function coordinator(root: string, options: { testMode?: boolean; origin?: string; dispatchFrozen?: boolean } = {}) {
+  if (existsSync(join(root, 'state/recovery-fence.json'))) throw new DomainError('installation_retired_for_restore');
   if (!options.testMode) await dataAccess(root);
   const config = parseConfig(JSON.parse(readFileSync(join(root, 'state', 'config.json'), 'utf8')), options);
   const store = new Store(root, options); for (const project of config.projects) store.registerProject(project);
@@ -34,7 +36,7 @@ export async function coordinator(root: string, options: { testMode?: boolean; o
   let planning = false; let closing = false; const active = new Set<Promise<void>>();
   let frozen = options.dispatchFrozen === true;
   const track = (work: Promise<void>) => { const job = work.catch(() => { console.error(JSON.stringify({ operation: 'coordinator.tick', result: 'failed', code: 'reconciliation_required' })); }).finally(() => active.delete(job)); active.add(job); };
-  const pump = () => { if (closing) return; if (!planning && !frozen) { planning = true; track(planner.tick().finally(() => { planning = false; })); } track(scheduler.tick()); if (!frozen) track(actions.tick()); track(notifications.tick()); };
+  const pump = () => { if (closing) return; const dispatch = !frozen && !store.installation().dispatch_paused; if (!planning && dispatch) { planning = true; track(planner.tick().finally(() => { planning = false; })); } track(scheduler.tick()); if (dispatch) track(actions.tick()); track(notifications.tick()); };
   track(scheduler.recover());
   const timer = setInterval(pump, 250);
   return { ...services, store, broker, scheduler, freeze(value: boolean) { frozen = value; scheduler.freeze(value); worker.freeze(value); if (!value) track(scheduler.recover()); }, async close() { closing = true; scheduler.freeze(true); clearInterval(timer); worker.detach(); await services.app.close(); await broker.close(); await Promise.all(active); await scheduler.idle(); store.close(); } };

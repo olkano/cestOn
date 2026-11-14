@@ -7,8 +7,13 @@ import { startIpcServer } from '../../broker/src/ipc.js';
 import { writeOwner } from '../../broker/src/registry.js';
 import { installationSecrets } from '../../broker/src/certification.js';
 import { DomainError } from '../../../packages/contracts/src/commands.js';
+import { acquireInstance } from '../../broker/src/instance.js';
+import { dataAccess } from './security/access.js';
+import { assertTestRoot } from '../../../packages/test-support/src/index.js';
 
 const root = process.argv[2]!; const testMode = process.argv.includes('--test'); const staticRoot = resolve(process.argv[3] ?? 'apps/web/dist');
+if (testMode) assertTestRoot(root); else await dataAccess(root);
+const instance = await acquireInstance(root, 'coordinator', installationSecrets(root).supervisor);
 const runtime = await coordinator(root, { testMode, dispatchFrozen: process.argv.includes('--frozen') }); const config = runtime.config; const secret = installationSecrets(root); const installationId = runtime.store.installation().id;
 const release = JSON.parse(readFileSync(join(staticRoot, 'release.json'), 'utf8')) as { protocol: number; staticBundle: string };
 if (release.protocol !== 1) throw new DomainError('static_protocol_incompatible');
@@ -24,5 +29,5 @@ const control = await startIpcServer({ root, name: 'coordinator', installationId
 if (process.argv.includes('--frozen')) runtime.freeze(true);
 await runtime.app.listen(config.listen);
 await writeOwner(root, 'coordinator', installationId, control.endpoint, secret.supervisor); process.send?.({ ready: true, port: config.listen.port });
-async function close() { if (closing) return; closing = true; await control.close(); await runtime.close(); if (process.connected) process.disconnect(); }
+async function close() { if (closing) return; closing = true; await control.close(); await runtime.close(); await instance.release(); if (process.connected) process.disconnect(); }
 process.on('message', value => { if ((value as { type?: string })?.type === 'shutdown') void close(); }); process.on('SIGINT', () => { void close(); }); process.on('SIGTERM', () => { void close(); });

@@ -2,8 +2,8 @@
   "formatVersion": 1,
   "objective": "Implement phases 0-9, independently verify relevant steps, commit and push verified milestones",
   "status": "in_progress",
-  "currentPhase": 6,
-  "nextAction": "Finish phase 6 packaged installation rehearsal and backup-delta reconciliation. Local supervisor, CLI, immutable packaging, isolation, reconnect and retention checks pass. Latest verify evidence 2026-11-14T18-10-05-509Z-4ccc79ae. Continue native certificate tooling, phase 7 improvement workflow, phase 8 resilience and phase 9 clean export. Native Windows sandbox requires setup; no provider turns started. Preserve quarantined failed rehearsal ceston-test-ZykHxS; its processes are stopped but removal was policy-rejected.",
+  "currentPhase": 7,
+  "nextAction": "Implement phase 7 improvement service and regression-first isolated candidate workflow, actual UI success/failure/protected scenarios, then native certificate tooling, phase 8 resilience and phase 9 clean export. Phase 6 local suite and packaged install/start/stop/cleanup pass. Latest verification 2026-11-14T18-18-51-224Z-ed69382a. Native sandbox setup and authenticated managed homes remain blocked; zero live turns. Old failed rehearsal ceston-test-ZykHxS remains quarantined after policy-rejected cleanup, with its owned processes stopped.",
   "tracking": "zz_Specifications/implementation-run.md",
   "ledger": "zz_Specifications/implementation-status.md",
   "authorized": [
@@ -46,11 +46,11 @@
     },
     {
       "id": 6,
-      "status": "in_progress"
+      "status": "local_fixture_verified_operational_gates_pending"
     },
     {
       "id": 7,
-      "status": "pending"
+      "status": "in_progress"
     },
     {
       "id": 8,
