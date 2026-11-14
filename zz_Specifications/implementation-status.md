@@ -1,12 +1,12 @@
 # Implementation status
 
-Specification baseline: 2026-11-14. Current status: Phase 0 scaffold locally verified. Managed task execution and the remaining feature phases are in progress. No persistent pilot is activated.
+Specification baseline: 2026-11-14. Current status: Phases 0-1 locally verified. Provider ownership and the remaining feature phases are in progress. No persistent pilot is activated.
 
 | Phase | Status | Verification | Blocker / next action |
 |---|---|---|---|
 | 0 Scaffold and capability baseline | local verified; live gates pending | `npm ci`; `npm run verify`; `test:security`; `test:updates`; `doctor`; audit; visual desktop/phone inspection. [Checkpoint](implementation-run.md). | Codex/Claude executable baselines detected; real managed-policy certification remains phase 2. |
-| 1 Durable domain and commands | in progress | Regression tests next | Durable schema, state transitions, commands, leases, and crash recovery. |
-| 2 Providers and ownership | pending | Not run | Phases 0-1. |
+| 1 Durable domain and commands | local verified | `npm run verify`; security/update baselines; 9 unit and 14 integration checks, including actual process kills at commit boundaries, lost-ack reconciliation, WAL backup and pruning. [Checkpoint](implementation-run.md). | Process ownership and live-provider controls are phase 2. |
+| 2 Providers and ownership | in progress | Protocol and policy tests next | Separate broker, owner-restricted IPC, Codex/Claude transports and certification. |
 | 3 Scheduler and assistant | pending | Not run | Phases 1-2. |
 | 4 Authenticated UI | pending | Not run | Phases 1-3. |
 | 5 PWA, voice, notifications | pending | Not run | Phase 4; device/provider gates tracked separately. |

@@ -4,7 +4,10 @@ import { isAbsolute, relative, resolve, sep } from 'node:path';
 export function canonicalPath(input: string): string {
   if (!isAbsolute(input)) throw new Error('An absolute root is required');
   let path = resolve(input); const suffix: string[] = [];
-  while (!existsSync(path)) { const parent = resolve(path, '..'); if (parent === path) throw new Error('Root not found'); suffix.unshift(path.slice(parent.length + (parent.endsWith(sep) ? 0 : 1))); path = parent; }
+  while (!existsSync(path)) {
+    try { if (lstatSync(path).isSymbolicLink()) throw new Error('Dangling path link is unsafe'); } catch (error) { if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error; }
+    const parent = resolve(path, '..'); if (parent === path) throw new Error('Root not found'); suffix.unshift(path.slice(parent.length + (parent.endsWith(sep) ? 0 : 1))); path = parent;
+  }
   const real = resolve(realpathSync.native(path), ...suffix);
   return process.platform === 'win32' ? real.toLowerCase() : real;
 }

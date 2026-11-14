@@ -2,8 +2,8 @@
   "formatVersion": 1,
   "objective": "Implement phases 0-9, independently verify relevant steps, commit and push verified milestones",
   "status": "in_progress",
-  "currentPhase": 1,
-  "nextAction": "Write failing durable-domain, command, decision-race, lease and receipt-journal tests, then implement phase 1",
+  "currentPhase": 2,
+  "nextAction": "Implement separate broker and owner-restricted IPC, inspect pinned provider schemas, add permission and transport fixtures, certify safe live profiles within caps",
   "tracking": "zz_Specifications/implementation-run.md",
   "ledger": "zz_Specifications/implementation-status.md",
   "authorized": [
@@ -26,11 +26,11 @@
     },
     {
       "id": 1,
-      "status": "in_progress"
+      "status": "local_verified"
     },
     {
       "id": 2,
-      "status": "pending"
+      "status": "in_progress"
     },
     {
       "id": 3,

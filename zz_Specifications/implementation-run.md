@@ -8,13 +8,13 @@ On resume, read AGENTS, README, this file, `implementation-status.md`, and `impl
 
 ## Current checkpoint
 
-- Phase: 1, durable domain and command service.
-- Completed: Phase 0 npm workspace, exact dependency lock, config/limits, path validation, fail-closed test roots, log filtering, synthetic adapter, loopback shell, icon generation, build, doctor, and verification tooling.
-- Verification: clean `npm ci`, zero audit findings; 7 unit, 1 loopback integration, 2 Chromium viewport/theme tests, 1 security baseline, and 1 update-default test pass. `npm run verify` includes types, lint, tests, build and local-document links. Independently inspected desktop dark and phone light screenshots. These are scaffold checks, not full feature acceptance.
-- Evidence: `evidence-private/2026-11-14T14-42-32-508Z-03b2323c/record.json`. Detailed results remain ignored. Browser Chromium 159.0.8154.6; Node 24.14.0; Windows.
-- Next: add failing phase-1 tests, then implement SQLite schema/migrations, strict commands, immutable authority, revision checks, outbox, decisions, canonical locks, broker receipts, and reconciliation.
+- Phase: 2, providers and ownership.
+- Completed: Phase 0 scaffold (`2402afa`); Phase 1 strict command/state schemas, SQLite WAL/migration integrity, immutable scope, transactional task/command/outbox, decision race handling, dependencies, canonical leases, consistent reconnect projection, checksummed broker receipt journal, lost-ack reconciliation, retention guard, and consistent SQLite backups.
+- Verification: phase-1 tests were observed failing before implementations. Current 9 unit, 14 integration, 2 Chromium shell, 1 security baseline and 1 update-default checks pass. Actual child processes were killed before and after SQLite commit; recovered state and pending dispatch matched durable intent. An accepted broker action survived acknowledgement loss without a second start. Uncertain acceptance remained unresolved. WAL backup opened with integrity OK. Full `npm run verify`, security/update baselines, and final affected test/build reruns pass.
+- Evidence: `evidence-private/2026-11-14T14-53-00-536Z-4c0c16c7/record.json`. Detailed evidence is ignored; recorded source snapshot hash, runtime/browser, commands, outputs and exits accompany the run. Final canonical-JSON adjustment was followed by unit/integration/build reruns.
+- Next: implement broker process/IPC isolation and process identity; inspect exact Codex protocol and Claude SDK; add transport, scope-policy, discovery/handoff, cancellation and restart tests. Run bounded live certification only in isolated roots. The current live and package entry points deliberately fail closed until implemented.
 - Known gates: real providers, physical Android/iOS, speech/push, constrained real-provider self-update. No persistent pilot or remote origin activation was requested.
-- Documentation review: README now owns actual development commands; provider compatibility owns detected runtime limits; these change future setup and prevent false capability claims. The tracking files own phase history. No product scope was expanded.
+- Documentation review: the owning command spec defines installation resume and preserves individual pauses. Existing architecture remains accurate; no additional README update qualifies in this phase.
 
 ## Clarifications to encode with their owning modules
 
@@ -27,4 +27,5 @@ On resume, read AGENTS, README, this file, `implementation-status.md`, and `impl
 | Phase | Commit | Verification / remaining work |
 |---|---|---|
 | Tracking initialized | `3d79515` | Resume procedure and machine-readable checkpoint created before implementation edits. |
-| 0 Scaffold | See phase commit in Git history | Local scaffold verification passes; live-provider certification remains pending. |
+| 0 Scaffold | `2402afa` | Local scaffold verification passes; live-provider certification remains pending. |
+| 1 Durable domain | See phase commit in Git history | Strict transactional commands, crash recovery, leases and WAL backup verified locally. |
