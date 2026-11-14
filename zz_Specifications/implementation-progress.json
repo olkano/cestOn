@@ -1,0 +1,23 @@
+{
+  "formatVersion": 1,
+  "objective": "Implement phases 0-9, independently verify relevant steps, commit and push verified milestones",
+  "status": "in_progress",
+  "currentPhase": 0,
+  "nextAction": "Create pinned scaffold and fail-closed synthetic test infrastructure",
+  "tracking": "zz_Specifications/implementation-run.md",
+  "ledger": "zz_Specifications/implementation-status.md",
+  "authorized": ["local_implementation", "isolated_tests", "bounded_provider_smoke_tests", "git_commit", "git_push"],
+  "notAuthorized": ["persistent_pilot_activation", "infrastructure_changes", "paid_service_provisioning", "application_package_publication"],
+  "phases": [
+    {"id": 0, "status": "in_progress"},
+    {"id": 1, "status": "pending"},
+    {"id": 2, "status": "pending"},
+    {"id": 3, "status": "pending"},
+    {"id": 4, "status": "pending"},
+    {"id": 5, "status": "pending"},
+    {"id": 6, "status": "pending"},
+    {"id": 7, "status": "pending"},
+    {"id": 8, "status": "pending"},
+    {"id": 9, "status": "pending"}
+  ]
+}
