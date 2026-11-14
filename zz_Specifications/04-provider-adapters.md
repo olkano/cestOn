@@ -1,0 +1,51 @@
+# Provider and cestDone adapters
+
+## Shared interface
+
+Implement `probe()`, `listSessions(cursor)`, `readHistory(sessionRef,cursor)`, `start(runRequest)`, `resume(exactRef,runRequest)`, `enqueue(command)`, `interrupt(runRef)`, `reconcile(runRef)`, and `events(runRef)`. An unsupported operation returns a typed capability error, never simulated success. `probe` records executable path, actual version, authentication availability without secrets, transport, tested capabilities, and last verification time.
+
+Capabilities are separate booleans or enums: `discover`, `readHistory`, `start`, `resumeExact`, `steerActive`, `interruptOwned`, `toolApproval`, `usage`, `structuredResult`, `sandbox`, `reattachOwned`, and `billingMode`. A resume API does not imply live attachment. Persist a capability snapshot with each run and downgrade controls when the current probe changes.
+
+Normalize provider events to `session.created`, `turn.started`, `message.delta`, `tool.requested`, `tool.started`, `tool.completed`, `usage.updated`, `turn.completed`, and `provider.error`. Preserve provider IDs internally. Never derive authority from free-text output. Cap messages and redact credential-shaped fields before storage or display.
+
+## Codex
+
+Use an owned Codex app-server subprocess over local stdio for rich interaction. Generate or inspect the protocol types from the exact installed/pinned runtime. Perform `initialize` and `initialized` before other operations; map `thread/start`, `thread/resume`, `turn/start`, `turn/steer`, and `turn/interrupt` through the adapter. Use exact thread and active-turn IDs for steering and reject stale targets. See the official source in `11-research-and-decisions.md`.
+
+Do not connect a public socket to app-server. One managed provider home and ownership mapping prevents another process from silently acquiring an active thread. Existing IDE threads may be discovered and read, but require handoff before a managed continuation. If the runtime cannot prove current ownership, fork or start a new thread with an evidence brief and show the change in the timeline.
+
+Prefer the operator's supported saved Codex authentication. Detect and display its billing mode; do not assume every account includes the same allowance. Do not copy credentials into the repository, browser, logs, or another provider's child environment. Adapter approval/sandbox controls must match task scope. Never use a no-approval setting as a substitute for a real authority decision.
+
+At phase 0, pin a supported runtime, test schemas and approval behavior, and record compatibility. A future unsupported runtime disables managed writes until certification, while metadata viewing can remain available. Do not mutate the user's global Codex settings to make a test pass.
+
+## Claude
+
+Use the supported TypeScript Agent SDK with structured events, exact session resume, interruption, and tool permission integration where supported by the certified version. Preserve provider session IDs from startup events. Keep one managed live query per owned session. Queue normal instructions until the current turn boundary unless the tested SDK version supports safe live input; the UI says “queued” when it is queued.
+
+Use supported session enumeration/history helpers where available. A metadata-only fallback reader may read bounded JSONL records under an explicitly registered provider home. Never edit provider storage. Malformed or changing files yield `unknown` and retry later, not a crash or invented completed status.
+
+Permission mode, allow/deny rules, hooks, and approval callbacks interact. Prove a forbidden tool is blocked and an allowed operation runs under the exact configured SDK version. Do not assume `canUseTool` sees calls already allowed by another mechanism. Disable bypass modes in the managed profile. Authentication and billing mode are operator-configured; API-key SDK access and subscription CLI access are not interchangeable assumptions.
+
+If a subscription-only environment requires CLI transport, implement a separate certified `claude-cli` profile using structured non-interactive output and exact resume. Advertise reduced capabilities accurately. The baseline requirement is reliable start/resume/interrupt for both providers, not active steering parity.
+
+## Discovery and adoption
+
+Scan only configured provider homes and registered projects. Initial discovery is metadata-only: provider ID, canonical cwd, title if available, source, and timestamps. Bound each pass to 500 files and incremental cursors; read at most 64 KiB metadata per file before deferring to the next pass. Use provider APIs before undocumented parsing. No file modification time by itself means “running.”
+
+An adoption transaction records old ownership, operator request, last observed event, stopped-owner evidence, new managed session ID or handoff ID, and scope revision. Refuse adoption while a verified owner is active. If stopped state is uncertain, offer a new isolated task/worktree, not a forced takeover. Cross-provider continuation always creates a new provider session and preserves the cestOn task ID.
+
+## Optional cestDone batch profile
+
+Source inspection baseline: sibling `cestdone` commit `fb30d27`, 2026-11-14. Its `src/cli/index.ts` exports `handleRun`; its CLI and configuration support non-interactive runs and configurable auto-commit. Its backend implementations are internal interfaces, not an established public cestOn bridge. README says ISC while package metadata says MIT and no root LICENSE was found. Do not copy its code or assume a resolved redistribution license.
+
+Integrate through an explicitly configured executable, not private imports. Start a dedicated subprocess with an isolated working directory and explicit spec/target/config arguments determined by the certified CLI's `--help`. Never inherit the operational `.cestdonerc.json`, `.env`, scheduler, webhook listener, notification settings, or global auto-commit defaults. Build a minimal per-run configuration with notifications and unauthorized Git operations disabled; validate the effective configuration before execution.
+
+Declare the profile `batch`: start, observe, cancel owned process, and collect review artifacts. It cannot answer live questions or steer an arbitrary daemon job. A required human decision terminates or pauses the batch according to proven CLI behavior and creates a cestOn attention item. Do not automatically approve a business decision because the CLI supports non-interactive operation.
+
+Collect a versioned result manifest from the isolated run directory and independently verify named artifacts and tests. A zero exit code alone is insufficient. If the CLI cannot provide safe isolated configuration and trustworthy completion evidence, leave the optional adapter unavailable with a reason; all core use cases must still work through managed providers. Any necessary cestDone code change is a separate scoped change in that Git root, with its own tests and authorization.
+
+## Cancellation and limits
+
+Use process handles and platform-safe process groups, never kill by executable name. A stop first prevents new dispatch, requests provider interruption, waits up to 10 seconds, then escalates only for owned processes according to the configured policy. Do not release a workspace lock while an owned child may still write. Show `stop_pending` and the unresolved process if interruption fails.
+
+Run limits apply even if monetary usage is unavailable. Treat authentication failure, rate limit, schema mismatch, sandbox denial, timeout, and unresolved cancellation as distinct errors. Retry a proven pre-dispatch rate limit with capped backoff; never retry an uncertain executed command automatically. No hard-coded model name is required; an operator chooses available profiles and phase 0 certifies them.

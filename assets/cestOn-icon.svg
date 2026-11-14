@@ -1,0 +1,85 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 1254 1254" role="img" aria-labelledby="title desc">
+  <title id="title">Layered Sessions — app icon</title>
+  <desc id="desc">A cyan-to-blue rounded geometric frame surrounding three overlapping session cards, on a transparent background.</desc>
+  <defs>
+    <linearGradient id="outer" x1="9%" y1="92%" x2="92%" y2="23%">
+      <stop offset="0" stop-color="#00e7ed"/>
+      <stop offset="0.35" stop-color="#07c2f6"/>
+      <stop offset="0.7" stop-color="#0879fc"/>
+      <stop offset="1" stop-color="#087af5"/>
+    </linearGradient>
+    <linearGradient id="cyanSide" x1="18%" y1="80%" x2="36%" y2="45%">
+      <stop offset="0" stop-color="#00e3e8"/>
+      <stop offset="1" stop-color="#00cfff"/>
+    </linearGradient>
+    <linearGradient id="navy" x1="22%" y1="55%" x2="90%" y2="69%">
+      <stop offset="0" stop-color="#071f65"/>
+      <stop offset="0.55" stop-color="#061f63"/>
+      <stop offset="1" stop-color="#031951"/>
+    </linearGradient>
+    <linearGradient id="backCard" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0a9eff"/>
+      <stop offset="1" stop-color="#0081f5"/>
+    </linearGradient>
+    <linearGradient id="middleCard" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#65d2fb"/>
+      <stop offset="1" stop-color="#2cb5f7"/>
+    </linearGradient>
+    <linearGradient id="frontCard" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#c5f6ff"/>
+      <stop offset="1" stop-color="#8bdef8"/>
+    </linearGradient>
+  </defs>
+
+  <!-- One continuous, gently asymmetric blue outer frame. -->
+  <path d="M 135,506
+           C 151,447 202,398 268,369
+           L 817,134
+           C 872,109 906,109 947,137
+           C 977,155 1035,218 1071,255
+           C 1101,289 1118,322 1118,374
+           L 1118,830
+           C 1118,916 1084,961 1015,997
+           L 657,1150
+           C 607,1171 554,1170 480,1169
+           C 424,1168 386,1150 349,1119
+           L 170,941
+           C 130,902 118,857 118,810
+           L 118,600
+           C 118,560 122,532 135,506 Z"
+        fill="url(#outer)"/>
+
+  <!-- Cyan edge makes the silhouette distinct from the VS Code ribbon. -->
+  <path d="M 135,506
+           L 387,988
+           C 409,1033 440,1051 495,1051
+           L 603,1051
+           L 649,1152
+           C 608,1170 557,1171 480,1169
+           C 423,1168 386,1149 349,1119
+           L 170,941
+           C 130,902 118,857 118,810
+           L 118,600
+           C 118,561 123,531 135,506 Z"
+        fill="url(#cyanSide)"/>
+
+  <!-- Dark inset; its angled left edge meets the cyan edge naturally. -->
+  <path d="M 177,567
+           C 193,525 230,501 286,478
+           L 813,276
+           C 858,258 884,259 906,267
+           C 936,280 959,315 959,360
+           L 959,852
+           C 959,896 944,920 899,941
+           L 648,1043
+           C 627,1053 614,1052 597,1052
+           L 496,1052
+           C 444,1052 409,1032 386,987
+           Z"
+        fill="url(#navy)"/>
+
+  <!-- Three overlapping active sessions: back to front. -->
+  <rect x="548" y="452" width="335" height="279" rx="61" fill="url(#backCard)"/>
+  <rect x="450" y="529" width="364" height="279" rx="60" fill="url(#middleCard)"/>
+  <rect x="356" y="605" width="389" height="270" rx="61" fill="url(#frontCard)"/>
+</svg>

@@ -1,0 +1,15 @@
+node_modules/
+dist/
+coverage/
+playwright-report/
+test-results/
+.playwright-mcp/
+.env
+.env.*
+!.env.example
+.ceston/
+*.sqlite
+*.sqlite-*
+*.log
+zz_Specifications/reference-private/
+zz_Specifications/evidence-private/
