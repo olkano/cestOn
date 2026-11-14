@@ -35,7 +35,10 @@
     "doctor": "tsx scripts/doctor.ts",
     "ceston": "tsx apps/supervisor/src/cli.ts",
     "icons": "tsx scripts/icons.ts",
-    "checkpoint": "tsx scripts/checkpoint.ts"
+    "checkpoint": "tsx scripts/checkpoint.ts",
+    "check:export": "tsx scripts/export-check.ts",
+    "test:clean-export": "tsx scripts/clean-export.ts",
+    "test:execution-host": "tsx scripts/probe-execution-host.ts"
   },
   "overrides": {
     "@typescript-eslint/typescript-estree": {

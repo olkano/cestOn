@@ -88,10 +88,16 @@ export class Supervisor {
     try { await this.host.freeze(true); await this.host.stopCoordinator(); verifyRelease(this.path(prior.current)); this.setPointer({ ...prior, updateId, phase: 'checking' }); await this.host.startCoordinator(prior.current); if (!await this.host.healthy(prior.current) || checkpoint && !await this.host.preserved(checkpoint)) throw new DomainError('rollback_health_failed'); this.setPointer({ ...prior, updateId, phase: 'stable' }); this.journal.append({ updateId, phase: 'rolled_back', current: prior.current, previous: prior.previous, candidate, candidateHash, requestHash, occurredAt: Date.now() }); await this.host.freeze(false); return { state: 'rolled_back', releaseId: prior.current }; }
     catch { this.setPointer({ ...prior, updateId, phase: 'recovery' }); this.journal.append({ updateId, phase: 'recovery', current: prior.current, previous: prior.previous, candidate, candidateHash, requestHash, occurredAt: Date.now(), error: 'rollback_failed' }); return { state: 'recovery', releaseId: prior.current }; }
   }
-  async recover() {
-    const pointer = this.pointer(); const latest = this.journal.latest(); if (!latest) return { state: pointer.phase, releaseId: pointer.current };
+  markRecovery() { const pointer = this.pointer(); this.setPointer({ ...pointer, phase: 'recovery' }); }
+  async recover(retryFrozen = false) {
+    const pointer = this.pointer(); const latest = this.journal.latest();
+    if (!latest) {
+      if (pointer.phase === 'recovery' && retryFrozen) { await this.host.freeze(true); const checkpoint = await this.host.capture(); try { verifyRelease(this.path(pointer.current)); await this.host.stopCoordinator(); await this.host.startCoordinator(pointer.current); if (!await this.host.healthy(pointer.current) || !await this.host.preserved(checkpoint) || !await this.host.canary(pointer.current)) throw new DomainError('recovery_health_failed'); this.setPointer({ ...pointer, phase: 'stable' }); await this.host.freeze(false); return { state: 'stable', releaseId: pointer.current }; } catch { return { state: 'recovery', releaseId: pointer.current }; } }
+      return { state: pointer.phase, releaseId: pointer.current };
+    }
     try { verifyRelease(this.path(pointer.current), pointer.current === latest.candidate ? latest.candidateHash : undefined); } catch { await this.host.freeze(true); return this.rollback({ current: latest.current, previous: latest.previous, updateId: latest.updateId, phase: 'stable' }, latest.updateId, latest.candidate, latest.candidateHash, latest.requestHash, latest.checkpoint); }
     if (latest.phase === 'applied' && pointer.current === latest.candidate && await this.host.healthy(pointer.current)) { await this.host.freeze(false); return { state: 'applied', releaseId: pointer.current }; }
+    if (latest.phase === 'recovery' && retryFrozen) return this.rollback({ current: latest.current, previous: latest.previous, updateId: latest.updateId, phase: 'stable' }, latest.updateId, latest.candidate, latest.candidateHash, latest.requestHash, latest.checkpoint);
     if (['rolled_back', 'recovery'].includes(latest.phase)) return { state: latest.phase, releaseId: pointer.current };
     if (latest.phase === 'verified' && pointer.current === latest.candidate && await this.host.healthy(pointer.current)) { this.setPointer({ ...pointer, phase: 'stable' }); this.journal.append({ ...latest, phase: 'applied', occurredAt: Date.now() }); await this.host.freeze(false); return { state: 'applied', releaseId: pointer.current }; }
     return this.rollback({ current: latest.current, previous: latest.previous, updateId: latest.updateId, phase: 'stable' }, latest.updateId, latest.candidate, latest.candidateHash, latest.requestHash, latest.checkpoint);

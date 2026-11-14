@@ -40,6 +40,10 @@ export class Broker {
   readonly journal: ReceiptJournal; private log: BrokerEvents; private runs = new Map<string, OwnedRun>(); private adapters = new Map<string, Adapter>(); private discoveries = new Map<string, SessionDiscovery>();
   private roots = new Map<string, string>();
   private modelActive = 0;
+  private closing = false;
+  private ownedOperations = new Set<Promise<unknown>>();
+  private async own<T>(action: () => Promise<T>): Promise<T> { if (this.closing) throw new DomainError('broker_closing'); const work = action(); this.ownedOperations.add(work); try { return await work; } finally { this.ownedOperations.delete(work); } }
+  activeOperations() { return this.roots.size + this.ownedOperations.size + this.updateWorker.activity().filter(run => run.state === 'reconciling').length; }
   private updateWorker: UpdateExecution;
   private updatePending = new Set<Promise<void>>();
   private workspaces?: WorkspaceManager;
@@ -93,7 +97,8 @@ export class Broker {
     }
     this.adapters.set(key, adapter); return adapter;
   }
-  async start(input: unknown) {
+  async start(input: unknown) { return this.own(() => this.startOwned(input)); }
+  private async startOwned(input: unknown) {
     const parsed = executionSchema.safeParse(input); if (!parsed.success) throw new DomainError('invalid_execution', 400);
     const execution = parsed.data; const project = this.config.projects.find(p => p.id === execution.projectId);
     if (!project || project.providerId !== execution.providerId || execution.operations.some(op => !project.operations.includes(op))) throw new DomainError('scope_denied', 403);
@@ -111,7 +116,7 @@ export class Broker {
     const capabilities = probe.capabilities;
     if (!this.journal.receipt(execution.commandId)) {
       for (const [commandId, root] of this.roots) if (commandId !== execution.commandId && (within(root, execution.root) || within(execution.root, root))) throw new DomainError('resource_busy');
-      if (!this.roots.has(execution.commandId) && this.roots.size + this.modelActive + this.updateWorker.activity().length >= this.config.limits.concurrency) throw new DomainError('concurrency_limit');
+      if (!this.roots.has(execution.commandId) && this.roots.size + this.modelActive + this.updateWorker.activity().filter(run => run.state === 'reconciling').length >= this.config.limits.concurrency) throw new DomainError('concurrency_limit');
       this.roots.set(execution.commandId, canonicalPath(execution.root));
     }
     const receipt = await this.journal.dispatch(execution.commandId, execution, async () => {
@@ -153,8 +158,18 @@ export class Broker {
     return { acknowledged: false, state: 'stop_pending' };
   }
   async probes() { return Promise.all([...this.adapters.entries()].map(async ([id, adapter]) => ({ id, ...(await adapter.probe()) }))); }
+  async profileProbe(providerId: string) { return this.own(() => this.profileProbeOwned(providerId)); }
+  private async profileProbeOwned(providerId: string) {
+    const profile = this.config.providers.find(provider => provider.id === providerId); if (!profile) throw new DomainError('provider_not_found');
+    if (profile.kind === 'fixture' && this.options.testMode) return { authenticated: true, billingMode: 'unknown', fixture: true, modelTurns: 0 };
+    if (!['codex', 'claude'].includes(profile.kind) || !profile.home) throw new DomainError('profile_probe_unavailable');
+    const workspace = join(this.root, 'staging/probe-workspace'); mkdirSync(workspace, { recursive: true }); const environment = childEnvironment(process.env, profile.kind === 'claude' && profile.billingMode === 'metered' ? ['ANTHROPIC_API_KEY'] : []); environment[profile.kind === 'codex' ? 'CODEX_HOME' : 'CLAUDE_CONFIG_DIR'] = profile.home;
+    const adapter = profile.kind === 'codex' ? new CodexAdapter({ command: profile.executable, args: ['app-server'], cwd: workspace, env: environment }, { version: profile.version, certified: false, readOnly: true }) : new ClaudeAdapter({ executable: profile.executable, version: profile.version, workspace, env: environment, certified: false, billingMode: profile.billingMode, tools: [], check: () => ({ allowed: false, reason: 'Authentication probe has no tool authority' }) });
+    try { const observed = await adapter.probe(); return { authenticated: observed.authenticated, billingMode: observed.capabilities.billingMode, fixture: false, modelTurns: 0 }; } finally { await adapter.close(); }
+  }
   prune() { const db = new Database(join(this.root, 'state/ceston.sqlite'), { readonly: true }); try { const rows = db.prepare("SELECT usage_json FROM runs WHERE state IN ('succeeded','failed','interrupted') AND ended_at<? AND id NOT IN (SELECT run_id FROM leases)").all(Date.now() - 30 * 86400000) as { usage_json: string }[]; const acknowledged = new Map<string, number>(); for (const row of rows) { const value = JSON.parse(row.usage_json) as { providerRunId?: string; cursor?: number }; if (value.providerRunId && Number.isSafeInteger(value.cursor)) acknowledged.set(value.providerRunId, value.cursor!); } const events = this.log.prune(acknowledged); this.journal.compact(); return { events, receiptTombstones: 'preserved' }; } finally { db.close(); } }
-  async recipe(runId: string, recipeId: string) {
+  async recipe(runId: string, recipeId: string) { return this.own(() => this.recipeOwned(runId, recipeId)); }
+  private async recipeOwned(runId: string, recipeId: string) {
     const run = this.runs.get(runId); if (!run) throw new DomainError('unmanaged_run');
     const project = this.config.projects.find(p => p.id === run.execution.projectId)!;
     const recipe = project.recipes.find(r => r.id === recipeId);
@@ -171,10 +186,11 @@ export class Broker {
     this.journal.resolve(key, result.result);
     return result.result as { exitCode: number; outputHash: string };
   }
-  async infer(providerId: string, kind: 'plan' | 'intent', prompt: string) {
+  async infer(providerId: string, kind: 'plan' | 'intent', prompt: string) { return this.own(() => this.inferOwned(providerId, kind, prompt)); }
+  private async inferOwned(providerId: string, kind: 'plan' | 'intent', prompt: string) {
     const profile = this.config.providers.find(p => p.id === providerId);
     if (!profile || !profile.home || !['codex', 'claude'].includes(profile.kind) || profile.profile !== 'constrained' || !certificationValid(this.root, profile)) throw new DomainError('model_profile_uncertified', 422);
-    if (this.roots.size + this.modelActive + this.updateWorker.activity().length >= this.config.limits.concurrency) throw new DomainError('model_capacity_unavailable', 503);
+    if (this.roots.size + this.modelActive + this.updateWorker.activity().filter(run => run.state === 'reconciling').length >= this.config.limits.concurrency) throw new DomainError('model_capacity_unavailable', 503);
     if (profile.billingMode === 'unknown') throw new DomainError('billing_mode_required', 422);
     if (profile.kind === 'codex' && profile.billingMode === 'metered') throw new DomainError('codex_monetary_cap_unavailable', 422);
     if (profile.billingMode === 'metered' && !this.config.limits.spendUsd) throw new DomainError('spend_ceiling_required', 403);
@@ -198,9 +214,10 @@ export class Broker {
       const value = result ?? text; return typeof value === 'string' ? JSON.parse(value) as unknown : value;
     } finally { this.modelActive--; await adapter.close(); }
   }
-  async updateEdit(grantId: string) {
+  async updateEdit(grantId: string) { return this.own(() => this.updateEditOwned(grantId)); }
+  private async updateEditOwned(grantId: string) {
     const grant = readUpdateGrant(this.root, grantId);
-    if (this.roots.size + this.modelActive + this.updateWorker.activity().length >= this.config.limits.concurrency) throw new DomainError('model_capacity_unavailable', 503);
+    if (this.roots.size + this.modelActive + this.updateWorker.activity().filter(run => run.state === 'reconciling').length >= this.config.limits.concurrency) throw new DomainError('model_capacity_unavailable', 503);
     // Reserve synchronously before provider probes can yield to an ordinary dispatch.
     this.modelActive++;
     const job = this.updateWorker.edit(grant.workspace, grant.request, grant.stage, grant.regression); this.updatePending.add(job);
@@ -216,6 +233,7 @@ export class Broker {
   discover(providerId: string, cursor?: string) { return this.discovery(providerId).scan(cursor); }
   history(providerId: string, id: string, after = 0) { return this.discovery(providerId).history(id, after); }
   async close() {
+    this.closing = true; await Promise.allSettled([...this.ownedOperations]);
     await Promise.allSettled([...this.updatePending]);
     for (const run of this.runs.values()) if (['running', 'starting'].includes((await run.adapter.reconcile(run.ref.runId)).state)) await this.interrupt(run.ref.runId);
     await Promise.all([...this.runs.values()].map(r => r.collecting));

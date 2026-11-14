@@ -2,7 +2,7 @@
 
 ## Installation model
 
-Version 1 is self-hosted. A public source repository and downloadable package let another operator run their own installation with their own providers. Do not provision a shared hosted service, reuse Olkano accounts, or require access to Daniel's folders. Proposed GitHub destination: `olkano/cestOn`; verify availability and authorization at release time.
+Version 1 is self-hosted. A public source repository and downloadable package let another operator run their own installation with their own providers. Do not provision a shared hosted service, reuse Olkano accounts, or require access to a developer's folders. Proposed GitHub destination: `olkano/cestOn`; verify availability and authorization at release time.
 
 The implementation supplies a local CLI with these commands: `ceston doctor`, `ceston start`, `ceston stop`, `ceston status`, `ceston pair`, `ceston install-startup`, `ceston uninstall-startup`, `ceston backup`, `ceston recover`, and `ceston version`. Commands return structured JSON with `--json`; interactive secrets such as pairing invitations never appear in status/log output. `start` does not install persistence automatically. `stop` reports broker-owned work and requires a deliberate chosen stop scope.
 

@@ -36,7 +36,7 @@ Use a local named pipe with an owner-restricted ACL on Windows for coordinator/b
 
 ## Persistence and roots
 
-The development checkout contains source, specs, and fixtures only. The default operator state root is `%LOCALAPPDATA%/cestOn/`, with `state/`, `logs/`, `releases/`, `staging/`, `backups/`, and `supervisor/`. Resolve the real identity's home directory; do not bake in Daniel's path. Allow an explicit absolute data root. Reject a data root inside a source checkout or cloud-synchronized folder.
+The development checkout contains source, specs, and fixtures only. The default operator state root is `%LOCALAPPDATA%/cestOn/`, with `state/`, `logs/`, `releases/`, `staging/`, `backups/`, and `supervisor/`. Resolve the real identity's home directory; do not bake in a developer's path. Allow an explicit absolute data root. Reject a data root inside a source checkout or cloud-synchronized folder.
 
 SQLite runs in WAL mode with foreign keys enabled, transactional migrations, a single coordinator writer, a 5-second busy timeout, and bounded queries. The broker uses a separate append-only receipt journal with checksummed records and periodic atomic compaction. Broker acknowledgement includes its durable receipt sequence. SQLite recovery reconciles that sequence after restart.
 

@@ -1,0 +1,2 @@
+import { inspectPublicSource, inspectPublicHistory } from '../apps/supervisor/src/export.js';
+const source = inspectPublicSource(process.cwd()); const history = inspectPublicHistory(process.cwd()); console.log(JSON.stringify({ sourceFiles: source.files.length, sourceSnapshotHash: source.sourceSnapshotHash, sourceIssues: source.issues, history }, null, 2)); if (source.issues.length || history.issues.length) process.exitCode = 1;

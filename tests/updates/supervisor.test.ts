@@ -37,6 +37,7 @@ it('T33 verified candidates apply once; failed health rolls back; failed rollbac
     const t = createTestRoot(); const host = new Host(); const supervisor = new Supervisor(t.root, 'synthetic key', host, { testMode: true }); const requestId = randomUUID();
     try { await supervisor.initialize(bundle(t.root, 'base', null, randomUUID())); const candidate = bundle(t.root, 'candidate', 'base', requestId); expect((await supervisor.stage(requestId, candidate, 'request')).state).toBe('staged'); if (mode !== 'pass') host.fail.add('candidate'); if (mode === 'both') host.fail.add('base');
       const result = await supervisor.activate(requestId, 'request'); expect(result.state).toBe(mode === 'pass' ? 'applied' : mode === 'bad' ? 'rolled_back' : 'recovery'); expect(host.frozen).toBe(mode === 'both'); expect(supervisor.pointer().current).toBe(mode === 'pass' ? 'candidate' : 'base'); expect(await supervisor.activate(requestId, 'request')).toEqual(result);
+      if (mode === 'both') { host.fail.delete('base'); expect((await supervisor.recover()).state).toBe('recovery'); expect(host.frozen).toBe(true); expect((await supervisor.recover(true)).state).toBe('rolled_back'); expect(host.frozen).toBe(false); }
     } finally { cleanupTestRoot(t.root, t.runId); }
   }
 });

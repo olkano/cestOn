@@ -22,7 +22,8 @@ for (const script of scripts) {
   records.push({ command: `npm run ${script}`, startedAt: start, endedAt: new Date().toISOString(), expected: 'Exit 0, tests clean up owned resources', exitCode: code, result: code === 0 ? 'pass' : 'fail' });
   if (code !== 0) break;
 }
-writeFileSync(join(root, 'record.json'), JSON.stringify({ runId, sourceCommit: execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).trim(), sourceSnapshotHash, runtime: process.version, browserVersion, platform: process.platform, mode: 'fixture', records, limits: 'This record proves only the commands and test assertions shown; live providers and devices require separate evidence.' }, null, 2), { flag: 'wx' });
+let sourceCommit = `snapshot:${sourceSnapshotHash}`; try { sourceCommit = execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim(); } catch { /* A reviewed public export has content provenance without Git metadata. */ }
+writeFileSync(join(root, 'record.json'), JSON.stringify({ runId, sourceCommit, sourceSnapshotHash, runtime: process.version, browserVersion, platform: process.platform, mode: 'fixture', records, limits: 'This record proves only the commands and test assertions shown; live providers and devices require separate evidence.' }, null, 2), { flag: 'wx' });
 console.log(`Evidence: ${root}/record.json`);
 process.send?.({ recordPath: join(root, 'record.json') });
 if (records.some(r => r.result === 'fail')) process.exitCode = 1;

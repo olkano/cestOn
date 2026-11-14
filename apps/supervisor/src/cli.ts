@@ -5,9 +5,8 @@ import { DomainError } from '../../../packages/contracts/src/commands.js';
 import { initializeInstallation, startInstallation, supervisorRequest, localStatus, pairingInvitation, backupInstallation, doctor, defaultRoot } from './operations.js';
 import { startup } from './startup.js';
 import { reconcileRestore } from './recovery.js';
-import { Store } from '../../server/src/db/store.js';
-import { BackupService } from './backups.js';
-import { OsProtector } from '../../server/src/security/protection.js';
+import { recoverBackup } from './backups.js';
+import { dataAccess } from '../../server/src/security/access.js';
 import { safePath } from '../../../packages/contracts/src/paths.js';
 import { certifyProvider } from './provider-certification.js';
 const args = process.argv.slice(2); const command = args[0] ?? 'help'; const option = (name: string) => { const index = args.indexOf(`--${name}`); return index < 0 ? undefined : args[index + 1]; }; const root = resolve(option('root') ?? defaultRoot()); const testMode = args.includes('--test');
@@ -24,7 +23,7 @@ try {
   else if (command === 'recover') {
     const source = option('reconcile-from'); const backup = option('backup'); const target = option('target');
     if (source) result = await reconcileRestore(root, resolve(source), testMode);
-    else if (backup && target) { if (!/^backup-[a-zA-Z0-9-]+\.ceston$/.test(backup)) throw new DomainError('invalid_backup_name'); const store = new Store(root, { testMode }); try { result = await new BackupService(store, new OsProtector(store.installation().id)).restore(safePath(root, `backups/${backup}`), resolve(target), testMode); } finally { store.close(); } }
+    else if (backup && target) { if (!/^backup-[a-zA-Z0-9-]+\.ceston$/.test(backup)) throw new DomainError('invalid_backup_name'); await dataAccess(root); result = await recoverBackup(safePath(root, `backups/${backup}`), resolve(target), testMode); }
     else result = await supervisorRequest(root, 'recover', {}, testMode);
   }
   else if (command === 'install-startup' || command === 'uninstall-startup') result = await startup(root, command === 'install-startup' ? 'Install' : 'Uninstall', args.includes('--plan'), testMode);

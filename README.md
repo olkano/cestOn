@@ -2,7 +2,7 @@
 
 cestOn is a self-hosted assistant in development for coordinating coding and operational agents from a desktop or phone. It brings tasks, decisions, progress, voice interaction, and requested improvements to cestOn itself into one workspace.
 
-**Current state:** durable tasks, bounded scheduling, separate broker, authenticated device access, desktop/phone interface and fixture-backed execution are implemented. Native provider certification, mobile installation and update operations remain under verification. No persistent pilot or application package release is active.
+**Current state:** durable tasks, bounded scheduling, separate broker and supervisor, authenticated device access, desktop/phone PWA, voice/notification contracts and requested local updates are implemented and locally fixture-tested. Native provider certification and physical-device/operational acceptance remain blocked. No persistent pilot or application package release is active.
 
 ## Start here
 
@@ -30,10 +30,10 @@ The original requirements, exploration, and first mockup have been moved unchang
 
 ## Development
 
-Use Node 24 LTS and npm 11. Run `npm ci`, then `npx playwright install chromium` once for browser verification. `npm run dev` starts the loopback UI at `http://127.0.0.1:4317` and API at port 4318 in a marked temporary synthetic installation. Use the one-use pairing code printed in its console. It runs a separate fixture broker and registered synthetic artifact check, without connecting a native provider. Stop the process to clean up its owned test data; it does not install persistence.
+Use Node 24 LTS and npm 11. Run `npm ci --ignore-scripts`, verify the distributed addon with `node scripts/check-native.mjs`, then `npx playwright install chromium` once for browser verification. `npm run dev` starts the loopback UI at `http://127.0.0.1:4317` and API at port 4318 in a marked temporary synthetic installation. Use the one-use pairing code printed in its console. It runs a separate fixture broker and registered synthetic artifact check, without connecting a native provider. Stop the process to clean up its owned test data; it does not install persistence.
 
 Run `npm run verify` for typecheck, lint, unit, integration, Chromium E2E, build, and documentation checks. Security and update checks are separate: `npm run test:security` and `npm run test:updates`. All tests use synthetic data. `npm run doctor` reports local runtime readiness without executing provider work.
 
 Use `npm run checkpoint` to inspect resumable implementation state. Read `AGENTS.md` and the [implementation entry point](zz_Specifications/00-start-here.md) before making changes. `npm run package:local` verifies and creates an immutable local bundle with checksums. The [operations guide](docs/operations.md) covers the owner CLI, startup preparation, backup and frozen recovery. Native provider execution and automatic application remain disabled without live certification.
 
-Public release, package publication, tunnel provisioning, and app-store submission remain distinct operations. The release checklist describes their prerequisites; writing these specifications performs none of them.
+See [setup](docs/setup.md), [support and acceptance boundaries](docs/support-matrix.md), [contributing](docs/contributing.md), and [release preparation](docs/release.md). `npm run check:export` scans the public source/history; `npm run test:clean-export` verifies independent setup. The application remains `UNLICENSED` and private for package distribution pending the owner's license choice. Public source pushes, application publication and persistent activation are tracked separately.

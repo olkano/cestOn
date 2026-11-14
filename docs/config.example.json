@@ -1,0 +1,10 @@
+{
+  "configVersion": 1,
+  "listen": { "host": "127.0.0.1", "port": 4318 },
+  "projects": [],
+  "providers": [],
+  "limits": { "concurrency": 2, "phaseAttempts": 2, "runMinutes": 45, "taskPhases": 8, "turns": 32 },
+  "voice": { "enabled": false },
+  "push": { "enabled": false },
+  "updates": { "requestedLocalApply": false, "retainVerifiedReleases": 3 }
+}

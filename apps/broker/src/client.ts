@@ -29,8 +29,10 @@ export class BrokerClient {
   reconcile(runId: string) { return this.request<{ state: string }>('reconcile', { runId }); }
   interrupt(runId: string) { return this.request<{ acknowledged: boolean; state: string }>('interrupt', { runId }); }
   steer(runId: string, turnId: string, text: string) { return this.request<{ state: string }>('steer', { runId, turnId, text }); }
+  activity() { return this.request<{ activeOperations: number }>('activity', {}); }
   sessions() { return this.request<{ sessionId: string; runId: string; providerId: string; taskId: string; state: string; ownership: string }[]>('sessions', {}); }
   probes() { return this.request<Record<string, unknown>[]>('probe', {}); }
+  profileProbe(providerId: string) { return this.request<{ authenticated: boolean; billingMode: string; fixture: boolean; modelTurns: number }>('profile.probe', { providerId }); }
   prune() { return this.request<{ events: number }>('prune', {}); }
   shutdown() { return this.request('shutdown', {}); }
   infer(providerId: string, kind: 'plan' | 'intent', prompt: string) { return this.request<unknown>('infer', { providerId, kind, prompt }); }

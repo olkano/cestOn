@@ -1,0 +1,13 @@
+import { readdirSync, existsSync, readFileSync, rmSync } from 'node:fs';
+import { join } from 'node:path';
+import { verifyRelease } from './releases.js';
+import { canonicalPath, safePath, within } from '../../../packages/contracts/src/paths.js';
+export function pruneReleases(root: string, retain: number, pinned: string[], dryRun = true) {
+  if (!Number.isInteger(retain) || retain < 3 || retain > 10) throw new Error('invalid_release_retention'); const directory = join(root, 'releases'); if (!existsSync(directory)) return { removed: [] as string[], retained: [] as string[], blocked: [] as string[] };
+  const verified: { id: string; root: string; hash: string; date: string; protectedMaterial: boolean }[] = []; const blocked: string[] = [];
+  for (const entry of readdirSync(directory, { withFileTypes: true })) { if (!entry.isDirectory() || entry.isSymbolicLink()) { blocked.push(entry.name); continue; } try { const path = safePath(directory, entry.name); const release = verifyRelease(path); if (release.manifest.releaseId !== entry.name) throw new Error(); verified.push({ id: entry.name, root: path, hash: release.hash, date: release.manifest.createdAt, protectedMaterial: release.manifest.files.some(file => /(?:^|\/)(?:\.env(?:\.|$)|id_(?:rsa|ed25519)|auth\.json$|credentials\.json$)|\.(?:pem|key)$/i.test(file.path)) }); } catch { blocked.push(entry.name); } }
+  verified.sort((a, b) => b.date.localeCompare(a.date) || a.id.localeCompare(b.id)); const keep = new Set([...pinned, ...verified.slice(0, retain).map(release => release.id)]); const removed: string[] = [];
+  for (const release of verified) { if (keep.has(release.id)) continue; if (release.protectedMaterial) { blocked.push(release.id); continue; } const actual = canonicalPath(release.root); if (!within(canonicalPath(directory), actual) || actual !== canonicalPath(safePath(directory, release.id))) throw new Error('release_cleanup_path_denied'); verifyRelease(actual, release.hash); if (!dryRun) rmSync(actual, { recursive: true, force: false }); removed.push(release.id); }
+  return { removed, retained: verified.filter(release => !removed.includes(release.id)).map(release => release.id), blocked };
+}
+export function releasePins(root: string) { if (!existsSync(join(root, 'supervisor/active.json'))) return null; const pointer = JSON.parse(readFileSync(join(root, 'supervisor/active.json'), 'utf8')) as { current: string; previous: string | null }; const pins = [pointer.current, pointer.previous].filter((id): id is string => Boolean(id)); for (const id of pins) if (verifyRelease(safePath(root, `releases/${id}`)).manifest.releaseId !== id) throw new Error('release_pin_invalid'); return pins; }

@@ -25,12 +25,14 @@ const server = await startIpcServer({ root, name: 'broker', installationId, toke
   if (method === 'reconcile') return broker.reconcile(runSchema.parse(payload).runId);
   if (method === 'interrupt') return broker.interrupt(runSchema.parse(payload).runId);
   if (method === 'steer') { const p = z.strictObject({ runId: z.string().max(100), text: z.string().min(1).max(32768), turnId: z.string().max(100) }).parse(payload); return broker.steer(p.runId, p.text, p.turnId); }
+  if (method === 'activity') { z.strictObject({}).parse(payload); return { activeOperations: broker.activeOperations() }; }
   if (method === 'sessions') { z.strictObject({}).parse(payload); return broker.sessions(); }
   if (method === 'discover') { const p = z.strictObject({ providerId: z.string().max(80), cursor: z.uuid().optional() }).parse(payload); return broker.discover(p.providerId, p.cursor); }
   if (method === 'history') { const p = z.strictObject({ providerId: z.string().max(80), id: z.uuid(), after: z.number().int().nonnegative().default(0) }).parse(payload); return broker.history(p.providerId, p.id, p.after); }
   if (method === 'probe') { z.strictObject({}).parse(payload); return broker.probes(); }
+  if (method === 'profile.probe') return broker.profileProbe(z.strictObject({ providerId: z.string().max(80) }).parse(payload).providerId);
   if (method === 'prune') { z.strictObject({}).parse(payload); return broker.prune(); }
-  if (method === 'shutdown') { z.strictObject({}).parse(payload); if (broker.sessions().some(run => !['succeeded','failed','interrupted'].includes(run.state))) throw new DomainError('broker_not_idle'); setTimeout(() => { void close(); }, 100); return { stopping: true }; }
+  if (method === 'shutdown') { z.strictObject({}).parse(payload); if (broker.activeOperations() > 0 || broker.sessions().some(run => !['succeeded','failed','interrupted'].includes(run.state))) throw new DomainError('broker_not_idle'); setTimeout(() => { void close(); }, 100); return { stopping: true }; }
   if (method === 'infer') { const p = z.strictObject({ providerId: z.string().max(80), kind: z.enum(['plan', 'intent']), prompt: z.string().min(1).max(65536).refine(text => Buffer.byteLength(text) <= 65536) }).parse(payload); return broker.infer(p.providerId, p.kind, p.prompt); }
   if (method === 'recipe') { const p = z.strictObject({ runId: z.string().max(100), recipeId: z.string().max(80) }).parse(payload); return broker.recipe(p.runId, p.recipeId); }
   throw new DomainError('unsupported_capability', 422);
