@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { commandSchema, DomainError } from './commands.js';
 
-export const artifactSchema = z.strictObject({ path: z.string().min(1).max(500).refine(p => !/^[\\/]|^[a-z]:/i.test(p) && !p.split(/[\\/]/).some(part => part === '..' || part === '.git' || part === ''), 'Artifact path must stay within workspace'), sha256: z.string().regex(/^[a-f0-9]{64}$/).optional(), maxBytes: z.number().int().positive().max(10485760).default(1048576) });
+export const artifactSchema = z.strictObject({ path: z.string().min(1).max(500).refine(p => !/^[\\/]|^[a-z]:/i.test(p) && !p.split(/[\\/]/).some(part => part === '..' || part === '.git' || part === '' || /^\.env(?:\.(?!example$).*)?$|^(?:auth|credentials)\.json$|^id_(?:rsa|ed25519)$|\.(?:pem|key)$/i.test(part)), 'Artifact path must stay within workspace and exclude credentials'), sha256: z.string().regex(/^[a-f0-9]{64}$/).optional(), maxBytes: z.number().int().positive().max(10485760).default(1048576) });
 export const planSchema = z.strictObject({
   goal: z.string().min(1).max(32768), completionBoundary: z.enum(['user_review', 'automatic']),
   phases: z.array(z.strictObject({ id: z.string().min(1).max(80), ordinal: z.number().int().positive(), goal: z.string().min(1).max(4000), dependsOn: z.array(z.string()).max(32), allowedRecipeIds: z.array(z.string()).max(32), expectedArtifacts: z.array(artifactSchema).max(100), verificationRecipeIds: z.array(z.string()).max(32), decisionBoundary: z.boolean() })).min(1).max(32),

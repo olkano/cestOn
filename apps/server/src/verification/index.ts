@@ -1,4 +1,4 @@
-import { readFileSync, statSync, mkdirSync, writeFileSync } from 'node:fs';
+import { readFileSync, statSync, mkdirSync, writeFileSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { createHash, randomUUID } from 'node:crypto';
 import type { Store } from '../db/store.js';
@@ -11,6 +11,15 @@ export type RecipeResult = { exitCode: number; outputHash: string };
 export type RecipeExecutor = (recipe: ProjectConfig['recipes'][number], root: string, context?: { runId: string; taskId: string; phaseId: string }) => Promise<RecipeResult>;
 export class ArtifactVerifier {
   constructor(private store: Store, private executeRecipe: RecipeExecutor) {}
+  captureBaseline(input: { runId: string; taskId: string; root: string; phase: PhasePlan }) {
+    const directory = join(this.store.dataRoot, 'state', 'evidence'); mkdirSync(directory, { recursive: true }); const file = join(directory, `${input.runId}.baseline.json`);
+    if (existsSync(file)) { const saved = JSON.parse(readFileSync(file, 'utf8')) as { taskId: string }; if (saved.taskId !== input.taskId) throw new DomainError('baseline_integrity_failed'); return; }
+    let total = 0;
+    const artifacts = input.phase.expectedArtifacts.map(expected => { const path = safePath(input.root, expected.path); if (!existsSync(path)) return { path: expected.path, before: null };
+      const stat = statSync(path); if (!stat.isFile() || stat.size > expected.maxBytes || (total += stat.size) > 25 * 1048576) throw new DomainError('baseline_too_large'); const bytes = readFileSync(path);
+      return { path: expected.path, before: { bytes: bytes.toString('base64'), hash: createHash('sha256').update(bytes).digest('hex') } }; });
+    writeFileSync(file, JSON.stringify({ taskId: input.taskId, artifacts }), { flag: 'wx', mode: 0o600 });
+  }
   async verify(input: { runId: string; phaseId: string; taskId: string; root: string; phase: PhasePlan; completion: unknown }) {
     const parsed = workerCompletionSchema.safeParse(input.completion);
     if (!parsed.success || parsed.data.runId !== input.runId || parsed.data.phaseId !== input.phaseId) throw new DomainError('worker_envelope_invalid');
@@ -40,6 +49,7 @@ export class ArtifactVerifier {
     const directory = join(this.store.dataRoot, 'state', 'evidence'); mkdirSync(directory, { recursive: true });
     const evidence = files.map(file => {
       const id = randomUUID(); const relative = `state/evidence/${id}.blob`; writeFileSync(join(this.store.dataRoot, relative), file.bytes, { flag: 'wx', mode: 0o600 });
+      writeFileSync(join(directory, `${id}.json`), JSON.stringify({ path: file.path, taskId: input.taskId, runId: input.runId, hash: file.hash }), { flag: 'wx', mode: 0o600 });
       return { id, relative, ...file };
     });
     this.store.db.transaction(() => {

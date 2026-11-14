@@ -82,6 +82,8 @@ Use a client-generated UUID idempotency key retained until a command is resolved
 
 ## SSE and reconnect
 
+`GET /snapshot?after=0` captures state and its event cursor in one read transaction. Each page contains at most 100 tasks, totalTasks and nextCursor. Additional pages include `expectedCursor` from the first page; any intervening event returns `409 snapshot_changed` so the client restarts the snapshot instead of merging inconsistent decisions. Project pages contain no host paths. Generated request schemas are in `docs/api.openapi.json`; browser command and request types derive from the shared Zod contracts.
+
 Emit `id: sequence`, `event: task.changed|command.changed|decision.changed|update.changed|host.status`, and JSON `{eventId,aggregateId,revision,occurredAt,data}`. Heartbeat every 15 seconds. Client marks connection stale after 45 seconds without a heartbeat, reconnects with exponential backoff capped at 30 seconds plus jitter, and requests changes after the last committed cursor. A cursor older than retention returns a `resync_required` event and a full snapshot route; never silently skip missing decisions. Disconnect when a device is revoked.
 
 ## Transactions and tests

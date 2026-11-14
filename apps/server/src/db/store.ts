@@ -17,7 +17,7 @@ export type CommandRow = { id: string; task_id: string | null; device_id: string
 export type DecisionOption = { id: string; label: string; meaning: string };
 export type DecisionRow = { id: string; task_id: string; revision: number; prompt: string; options_json: string; evidence_cursor: number; expires_at: number; state: string; chosen_option_id: string | null; command_id: string | null; scope_revision_id: string };
 export type EventRow = { sequence: number; event_id: string; aggregate_id: string; aggregate_revision: number; type: string; sanitized_payload_json: string; created_at: number; provider_event_key: string | null };
-export type TaskView = { id: string; projectId: string; project: string; title: string; goal: string; state: string; priority: number; scopeRevisionId: string; revision: number; createdAt: string; updatedAt: string; nextAction: string; freshness: 'fresh' | 'stale' | 'unknown'; summaryCursor: number; scope: Scope; phases: Record<string, unknown>[]; decision: ReturnType<Store['decisionView']> | null; evidence: Record<string, unknown>[] };
+export type TaskView = { id: string; projectId: string; project: string; title: string; goal: string; state: string; priority: number; dependencyIds: string[]; scopeRevisionId: string; revision: number; createdAt: string; updatedAt: string; nextAction: string; freshness: 'fresh' | 'stale' | 'unknown'; summaryCursor: number; scope: Scope; phases: Record<string, unknown>[]; decision: ReturnType<Store['decisionView']> | null; evidence: Record<string, unknown>[] };
 
 export class Store {
   readonly db: Database.Database;
@@ -98,14 +98,18 @@ export class Store {
     const decision = this.db.prepare("SELECT * FROM decisions WHERE task_id=? AND state='open' ORDER BY revision DESC LIMIT 1").get(id) as DecisionRow | undefined;
     const phases = this.db.prepare('SELECT id,ordinal,goal,state,attempt_count,max_attempts,revision FROM phases WHERE task_id=? ORDER BY ordinal').all(id) as Record<string, unknown>[];
     const evidence = this.db.prepare('SELECT id,kind,content_hash,source,observed_at FROM evidence WHERE task_id=? ORDER BY observed_at DESC LIMIT 100').all(id) as Record<string, unknown>[];
-    return { id, projectId: row.project_id, project: this.project(row.project_id).display_name, title: row.title, goal: row.goal, state: row.state, priority: row.priority, scopeRevisionId: row.scope_revision_id, revision: row.revision, createdAt: new Date(row.created_at).toISOString(), updatedAt: new Date(row.updated_at).toISOString(), nextAction: row.next_action, freshness: this.now() - row.updated_at > 45000 ? 'stale' : 'fresh', summaryCursor: row.summary_cursor, scope: { operations: JSON.parse(scope.allowed_operations_json) as Scope['operations'], budgets: JSON.parse(scope.budgets_json) as Scope['budgets'], completionBoundary: scope.completion_boundary as Scope['completionBoundary'] }, phases, decision: decision ? this.decisionView(decision) : null, evidence };
+    const dependencyIds = (this.db.prepare('SELECT depends_on_id FROM task_dependencies WHERE task_id=?').all(id) as { depends_on_id: string }[]).map(d => d.depends_on_id);
+    return { id, projectId: row.project_id, project: this.project(row.project_id).display_name, title: row.title, goal: row.goal, state: row.state, priority: row.priority, dependencyIds, scopeRevisionId: row.scope_revision_id, revision: row.revision, createdAt: new Date(row.created_at).toISOString(), updatedAt: new Date(row.updated_at).toISOString(), nextAction: row.next_action, freshness: this.now() - row.updated_at > 45000 ? 'stale' : 'fresh', summaryCursor: row.summary_cursor, scope: { operations: JSON.parse(scope.allowed_operations_json) as Scope['operations'], budgets: JSON.parse(scope.budgets_json) as Scope['budgets'], completionBoundary: scope.completion_boundary as Scope['completionBoundary'] }, phases, decision: decision ? this.decisionView(decision) : null, evidence };
   }
-  snapshot() {
-    return this.db.transaction(() => ({
+  snapshot(after = 0, expectedCursor?: number) {
+    return this.db.transaction(() => {
+      if (expectedCursor !== undefined && this.latestCursor() !== expectedCursor) throw new DomainError('snapshot_changed');
+      const totalTasks = (this.db.prepare('SELECT COUNT(*) AS n FROM tasks').get() as { n: number }).n;
+      return {
       cursor: this.latestCursor(), installation: { ...this.installation(), active_release: this.installation().active_release ?? 'development' },
       projects: this.db.prepare('SELECT id,display_name AS displayName,kind,revision FROM projects WHERE archived_at IS NULL LIMIT 100').all() as { id: string; displayName: string; kind: string; revision: number }[],
-      tasks: this.listTasks(), capturedAt: new Date(this.now()).toISOString(),
-    }))();
+      tasks: this.listTasks({ after }), totalTasks, nextCursor: after + 100 < totalTasks ? after + 100 : null, capturedAt: new Date(this.now()).toISOString(),
+    }; })();
   }
   changeTask(id: string, to: string, nextAction: string) {
     const row = this.taskRow(id); transition('task', row.state, to);

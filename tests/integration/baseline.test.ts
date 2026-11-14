@@ -7,7 +7,8 @@ it('T01/T02 runs a loopback service without claiming managed readiness', async (
     const origin = await app.listen({ host: '127.0.0.1', port: 0 });
     expect((await fetch(`${origin}/health/live`)).status).toBe(200);
     expect((await fetch(`${origin}/api/v1/health/ready`)).status).toBe(503);
-    expect((await fetch(`${origin}/api/v1/tasks`)).status).toBe(404);
+    const tasks = await fetch(`${origin}/api/v1/tasks`); expect(tasks.status).toBe(503);
+    expect((await tasks.json() as { error: { code: string } }).error.code).toBe('setup_required');
     expect((await fetch(`${origin}/health/live`)).headers.get('content-security-policy')).toContain("default-src 'self'");
   } finally { await app.close(); }
 });

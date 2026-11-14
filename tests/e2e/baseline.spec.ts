@@ -1,9 +1,10 @@
 import { test, expect } from '@playwright/test';
+import { pair } from './helpers.js';
 
 for (const viewport of [{ width: 1440, height: 900 }, { width: 390, height: 844 }]) {
   test(`T17 shell and keyboard theme controls at ${viewport.width}`, async ({ page }, info) => {
-    await page.setViewportSize(viewport); await page.goto('/today');
-    await expect(page.getByRole('heading', { name: 'A clear place to direct your agents.' })).toBeVisible();
+    await page.setViewportSize(viewport); await pair(page);
+    await expect(page.getByRole('heading', { name: 'Today', exact: true })).toBeVisible();
     for (const theme of ['dark', 'light']) {
       await page.getByLabel('Appearance').selectOption(theme);
       await expect(page.locator('html')).toHaveAttribute('data-theme', theme);

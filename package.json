@@ -14,7 +14,7 @@
     "lint": "eslint .",
     "test:unit": "vitest run --project unit",
     "test:integration": "vitest run --project integration",
-    "test:e2e": "playwright test",
+    "test:e2e": "tsx scripts/e2e.ts",
     "test:security": "vitest run --project security",
     "test:updates": "vitest run --project updates",
     "test:providers:fixture": "vitest run packages/adapters --project unit",

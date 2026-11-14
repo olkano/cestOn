@@ -4,7 +4,7 @@ import { validateIntent, type Intent } from '../../../../packages/contracts/src/
 import { DomainError, type Receipt } from '../../../../packages/contracts/src/commands.js';
 import { redactText } from '../../../../packages/contracts/src/logging.js';
 
-export type ConversationInput = { deviceId: string; messageId: string; text: string; taskId?: string; expectedRevision?: number; scopeRevisionId?: string; decisionId?: string; decisionRevision?: number };
+export type ConversationInput = { deviceId: string; messageId: string; text: string; taskId?: string | undefined; expectedRevision?: number | undefined; scopeRevisionId?: string | undefined; decisionId?: string | undefined; decisionRevision?: number | undefined };
 export type AssistantContext = { taskIds: string[]; evidenceIds: string[]; selectedTask: ReturnType<Store['getTask']> | null; summaries: { id: string; title: string; state: string; nextAction: string; freshness: string }[]; recentMessages: { type: string; content: unknown }[]; sourcePolicy: string };
 export interface IntentModel { interpret(context: AssistantContext, text: string, schemaError?: string): Promise<unknown>; }
 export type AssistantResponse = Intent | { kind: 'receipt'; receipt: Receipt; text: string };

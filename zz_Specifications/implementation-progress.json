@@ -2,8 +2,8 @@
   "formatVersion": 1,
   "objective": "Implement phases 0-9, independently verify relevant steps, commit and push verified milestones",
   "status": "in_progress",
-  "currentPhase": 4,
-  "nextAction": "Implement authenticated API, pairing, device revocation, CSRF, consistent snapshot and SSE before UI; enforce isolated real workspace ownership before enabling native writes",
+  "currentPhase": 5,
+  "nextAction": "Implement asset-only service worker, durable unsent delivery identity, speech adapters and durable notifications; native workspace isolation remains mandatory before native writes",
   "tracking": "zz_Specifications/implementation-run.md",
   "ledger": "zz_Specifications/implementation-status.md",
   "authorized": [
@@ -38,11 +38,11 @@
     },
     {
       "id": 4,
-      "status": "in_progress"
+      "status": "local_fixture_verified"
     },
     {
       "id": 5,
-      "status": "pending"
+      "status": "in_progress"
     },
     {
       "id": 6,

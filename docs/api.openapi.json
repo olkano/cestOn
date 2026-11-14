@@ -1,0 +1,1817 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "cestOn local API",
+    "version": "1.0.0"
+  },
+  "servers": [
+    {
+      "url": "/"
+    }
+  ],
+  "paths": {
+    "/health/live": {
+      "get": {
+        "operationId": "get__health_live",
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "Successful response. JSON uses data and meta.requestId; evidence uses attachment bytes."
+          },
+          "400": {
+            "description": "Malformed request."
+          },
+          "401": {
+            "description": "Device pairing is required."
+          },
+          "403": {
+            "description": "Authority, origin, host or CSRF rejected."
+          },
+          "409": {
+            "description": "Stale revision, identity conflict or snapshot changed."
+          },
+          "422": {
+            "description": "Unsupported capability."
+          },
+          "429": {
+            "description": "Rate limit."
+          },
+          "503": {
+            "description": "Dependency unavailable."
+          }
+        }
+      }
+    },
+    "/api/v1/health/ready": {
+      "get": {
+        "operationId": "get__api_v1_health_ready",
+        "security": [
+          {
+            "deviceSession": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response. JSON uses data and meta.requestId; evidence uses attachment bytes."
+          },
+          "400": {
+            "description": "Malformed request."
+          },
+          "401": {
+            "description": "Device pairing is required."
+          },
+          "403": {
+            "description": "Authority, origin, host or CSRF rejected."
+          },
+          "409": {
+            "description": "Stale revision, identity conflict or snapshot changed."
+          },
+          "422": {
+            "description": "Unsupported capability."
+          },
+          "429": {
+            "description": "Rate limit."
+          },
+          "503": {
+            "description": "Dependency unavailable."
+          }
+        }
+      }
+    },
+    "/api/v1/pairing/redeem": {
+      "post": {
+        "operationId": "post__api_v1_pairing_redeem",
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Pairing"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful response. JSON uses data and meta.requestId; evidence uses attachment bytes."
+          },
+          "400": {
+            "description": "Malformed request."
+          },
+          "401": {
+            "description": "Device pairing is required."
+          },
+          "403": {
+            "description": "Authority, origin, host or CSRF rejected."
+          },
+          "409": {
+            "description": "Stale revision, identity conflict or snapshot changed."
+          },
+          "422": {
+            "description": "Unsupported capability."
+          },
+          "429": {
+            "description": "Rate limit."
+          },
+          "503": {
+            "description": "Dependency unavailable."
+          }
+        }
+      }
+    },
+    "/api/v1/me": {
+      "get": {
+        "operationId": "get__api_v1_me",
+        "security": [
+          {
+            "deviceSession": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response. JSON uses data and meta.requestId; evidence uses attachment bytes."
+          },
+          "400": {
+            "description": "Malformed request."
+          },
+          "401": {
+            "description": "Device pairing is required."
+          },
+          "403": {
+            "description": "Authority, origin, host or CSRF rejected."
+          },
+          "409": {
+            "description": "Stale revision, identity conflict or snapshot changed."
+          },
+          "422": {
+            "description": "Unsupported capability."
+          },
+          "429": {
+            "description": "Rate limit."
+          },
+          "503": {
+            "description": "Dependency unavailable."
+          }
+        }
+      }
+    },
+    "/api/v1/snapshot": {
+      "get": {
+        "operationId": "get__api_v1_snapshot",
+        "security": [
+          {
+            "deviceSession": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response. JSON uses data and meta.requestId; evidence uses attachment bytes."
+          },
+          "400": {
+            "description": "Malformed request."
+          },
+          "401": {
+            "description": "Device pairing is required."
+          },
+          "403": {
+            "description": "Authority, origin, host or CSRF rejected."
+          },
+          "409": {
+            "description": "Stale revision, identity conflict or snapshot changed."
+          },
+          "422": {
+            "description": "Unsupported capability."
+          },
+          "429": {
+            "description": "Rate limit."
+          },
+          "503": {
+            "description": "Dependency unavailable."
+          }
+        }
+      }
+    },
+    "/api/v1/tasks": {
+      "get": {
+        "operationId": "get__api_v1_tasks",
+        "security": [
+          {
+            "deviceSession": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response. JSON uses data and meta.requestId; evidence uses attachment bytes."
+          },
+          "400": {
+            "description": "Malformed request."
+          },
+          "401": {
+            "description": "Device pairing is required."
+          },
+          "403": {
+            "description": "Authority, origin, host or CSRF rejected."
+          },
+          "409": {
+            "description": "Stale revision, identity conflict or snapshot changed."
+          },
+          "422": {
+            "description": "Unsupported capability."
+          },
+          "429": {
+            "description": "Rate limit."
+          },
+          "503": {
+            "description": "Dependency unavailable."
+          }
+        }
+      }
+    },
+    "/api/v1/tasks/{id}": {
+      "get": {
+        "operationId": "get__api_v1_tasks__id_",
+        "security": [
+          {
+            "deviceSession": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response. JSON uses data and meta.requestId; evidence uses attachment bytes."
+          },
+          "400": {
+            "description": "Malformed request."
+          },
+          "401": {
+            "description": "Device pairing is required."
+          },
+          "403": {
+            "description": "Authority, origin, host or CSRF rejected."
+          },
+          "409": {
+            "description": "Stale revision, identity conflict or snapshot changed."
+          },
+          "422": {
+            "description": "Unsupported capability."
+          },
+          "429": {
+            "description": "Rate limit."
+          },
+          "503": {
+            "description": "Dependency unavailable."
+          }
+        }
+      }
+    },
+    "/api/v1/tasks/{id}/events": {
+      "get": {
+        "operationId": "get__api_v1_tasks__id__events",
+        "security": [
+          {
+            "deviceSession": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response. JSON uses data and meta.requestId; evidence uses attachment bytes."
+          },
+          "400": {
+            "description": "Malformed request."
+          },
+          "401": {
+            "description": "Device pairing is required."
+          },
+          "403": {
+            "description": "Authority, origin, host or CSRF rejected."
+          },
+          "409": {
+            "description": "Stale revision, identity conflict or snapshot changed."
+          },
+          "422": {
+            "description": "Unsupported capability."
+          },
+          "429": {
+            "description": "Rate limit."
+          },
+          "503": {
+            "description": "Dependency unavailable."
+          }
+        }
+      }
+    },
+    "/api/v1/tasks/{id}/approvals": {
+      "get": {
+        "operationId": "get__api_v1_tasks__id__approvals",
+        "security": [
+          {
+            "deviceSession": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response. JSON uses data and meta.requestId; evidence uses attachment bytes."
+          },
+          "400": {
+            "description": "Malformed request."
+          },
+          "401": {
+            "description": "Device pairing is required."
+          },
+          "403": {
+            "description": "Authority, origin, host or CSRF rejected."
+          },
+          "409": {
+            "description": "Stale revision, identity conflict or snapshot changed."
+          },
+          "422": {
+            "description": "Unsupported capability."
+          },
+          "429": {
+            "description": "Rate limit."
+          },
+          "503": {
+            "description": "Dependency unavailable."
+          }
+        }
+      }
+    },
+    "/api/v1/decisions/{id}": {
+      "get": {
+        "operationId": "get__api_v1_decisions__id_",
+        "security": [
+          {
+            "deviceSession": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response. JSON uses data and meta.requestId; evidence uses attachment bytes."
+          },
+          "400": {
+            "description": "Malformed request."
+          },
+          "401": {
+            "description": "Device pairing is required."
+          },
+          "403": {
+            "description": "Authority, origin, host or CSRF rejected."
+          },
+          "409": {
+            "description": "Stale revision, identity conflict or snapshot changed."
+          },
+          "422": {
+            "description": "Unsupported capability."
+          },
+          "429": {
+            "description": "Rate limit."
+          },
+          "503": {
+            "description": "Dependency unavailable."
+          }
+        }
+      }
+    },
+    "/api/v1/projects": {
+      "get": {
+        "operationId": "get__api_v1_projects",
+        "security": [
+          {
+            "deviceSession": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response. JSON uses data and meta.requestId; evidence uses attachment bytes."
+          },
+          "400": {
+            "description": "Malformed request."
+          },
+          "401": {
+            "description": "Device pairing is required."
+          },
+          "403": {
+            "description": "Authority, origin, host or CSRF rejected."
+          },
+          "409": {
+            "description": "Stale revision, identity conflict or snapshot changed."
+          },
+          "422": {
+            "description": "Unsupported capability."
+          },
+          "429": {
+            "description": "Rate limit."
+          },
+          "503": {
+            "description": "Dependency unavailable."
+          }
+        }
+      }
+    },
+    "/api/v1/sources": {
+      "get": {
+        "operationId": "get__api_v1_sources",
+        "security": [
+          {
+            "deviceSession": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response. JSON uses data and meta.requestId; evidence uses attachment bytes."
+          },
+          "400": {
+            "description": "Malformed request."
+          },
+          "401": {
+            "description": "Device pairing is required."
+          },
+          "403": {
+            "description": "Authority, origin, host or CSRF rejected."
+          },
+          "409": {
+            "description": "Stale revision, identity conflict or snapshot changed."
+          },
+          "422": {
+            "description": "Unsupported capability."
+          },
+          "429": {
+            "description": "Rate limit."
+          },
+          "503": {
+            "description": "Dependency unavailable."
+          }
+        }
+      }
+    },
+    "/api/v1/limits": {
+      "get": {
+        "operationId": "get__api_v1_limits",
+        "security": [
+          {
+            "deviceSession": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response. JSON uses data and meta.requestId; evidence uses attachment bytes."
+          },
+          "400": {
+            "description": "Malformed request."
+          },
+          "401": {
+            "description": "Device pairing is required."
+          },
+          "403": {
+            "description": "Authority, origin, host or CSRF rejected."
+          },
+          "409": {
+            "description": "Stale revision, identity conflict or snapshot changed."
+          },
+          "422": {
+            "description": "Unsupported capability."
+          },
+          "429": {
+            "description": "Rate limit."
+          },
+          "503": {
+            "description": "Dependency unavailable."
+          }
+        }
+      }
+    },
+    "/api/v1/sessions": {
+      "get": {
+        "operationId": "get__api_v1_sessions",
+        "security": [
+          {
+            "deviceSession": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response. JSON uses data and meta.requestId; evidence uses attachment bytes."
+          },
+          "400": {
+            "description": "Malformed request."
+          },
+          "401": {
+            "description": "Device pairing is required."
+          },
+          "403": {
+            "description": "Authority, origin, host or CSRF rejected."
+          },
+          "409": {
+            "description": "Stale revision, identity conflict or snapshot changed."
+          },
+          "422": {
+            "description": "Unsupported capability."
+          },
+          "429": {
+            "description": "Rate limit."
+          },
+          "503": {
+            "description": "Dependency unavailable."
+          }
+        }
+      }
+    },
+    "/api/v1/sessions/discovery": {
+      "get": {
+        "operationId": "get__api_v1_sessions_discovery",
+        "security": [
+          {
+            "deviceSession": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response. JSON uses data and meta.requestId; evidence uses attachment bytes."
+          },
+          "400": {
+            "description": "Malformed request."
+          },
+          "401": {
+            "description": "Device pairing is required."
+          },
+          "403": {
+            "description": "Authority, origin, host or CSRF rejected."
+          },
+          "409": {
+            "description": "Stale revision, identity conflict or snapshot changed."
+          },
+          "422": {
+            "description": "Unsupported capability."
+          },
+          "429": {
+            "description": "Rate limit."
+          },
+          "503": {
+            "description": "Dependency unavailable."
+          }
+        }
+      }
+    },
+    "/api/v1/sessions/{id}/history": {
+      "get": {
+        "operationId": "get__api_v1_sessions__id__history",
+        "security": [
+          {
+            "deviceSession": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response. JSON uses data and meta.requestId; evidence uses attachment bytes."
+          },
+          "400": {
+            "description": "Malformed request."
+          },
+          "401": {
+            "description": "Device pairing is required."
+          },
+          "403": {
+            "description": "Authority, origin, host or CSRF rejected."
+          },
+          "409": {
+            "description": "Stale revision, identity conflict or snapshot changed."
+          },
+          "422": {
+            "description": "Unsupported capability."
+          },
+          "429": {
+            "description": "Rate limit."
+          },
+          "503": {
+            "description": "Dependency unavailable."
+          }
+        }
+      }
+    },
+    "/api/v1/commands": {
+      "post": {
+        "operationId": "post__api_v1_commands",
+        "security": [
+          {
+            "deviceSession": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Command"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Successful response. JSON uses data and meta.requestId; evidence uses attachment bytes."
+          },
+          "400": {
+            "description": "Malformed request."
+          },
+          "401": {
+            "description": "Device pairing is required."
+          },
+          "403": {
+            "description": "Authority, origin, host or CSRF rejected."
+          },
+          "409": {
+            "description": "Stale revision, identity conflict or snapshot changed."
+          },
+          "422": {
+            "description": "Unsupported capability."
+          },
+          "429": {
+            "description": "Rate limit."
+          },
+          "503": {
+            "description": "Dependency unavailable."
+          }
+        }
+      }
+    },
+    "/api/v1/commands/{id}": {
+      "get": {
+        "operationId": "get__api_v1_commands__id_",
+        "security": [
+          {
+            "deviceSession": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response. JSON uses data and meta.requestId; evidence uses attachment bytes."
+          },
+          "400": {
+            "description": "Malformed request."
+          },
+          "401": {
+            "description": "Device pairing is required."
+          },
+          "403": {
+            "description": "Authority, origin, host or CSRF rejected."
+          },
+          "409": {
+            "description": "Stale revision, identity conflict or snapshot changed."
+          },
+          "422": {
+            "description": "Unsupported capability."
+          },
+          "429": {
+            "description": "Rate limit."
+          },
+          "503": {
+            "description": "Dependency unavailable."
+          }
+        }
+      }
+    },
+    "/api/v1/conversation": {
+      "post": {
+        "operationId": "post__api_v1_conversation",
+        "security": [
+          {
+            "deviceSession": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Conversation"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful response. JSON uses data and meta.requestId; evidence uses attachment bytes."
+          },
+          "400": {
+            "description": "Malformed request."
+          },
+          "401": {
+            "description": "Device pairing is required."
+          },
+          "403": {
+            "description": "Authority, origin, host or CSRF rejected."
+          },
+          "409": {
+            "description": "Stale revision, identity conflict or snapshot changed."
+          },
+          "422": {
+            "description": "Unsupported capability."
+          },
+          "429": {
+            "description": "Rate limit."
+          },
+          "503": {
+            "description": "Dependency unavailable."
+          }
+        }
+      }
+    },
+    "/api/v1/intake": {
+      "post": {
+        "operationId": "post__api_v1_intake",
+        "security": [
+          {
+            "deviceSession": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TextIntake"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful response. JSON uses data and meta.requestId; evidence uses attachment bytes."
+          },
+          "400": {
+            "description": "Malformed request."
+          },
+          "401": {
+            "description": "Device pairing is required."
+          },
+          "403": {
+            "description": "Authority, origin, host or CSRF rejected."
+          },
+          "409": {
+            "description": "Stale revision, identity conflict or snapshot changed."
+          },
+          "422": {
+            "description": "Unsupported capability."
+          },
+          "429": {
+            "description": "Rate limit."
+          },
+          "503": {
+            "description": "Dependency unavailable."
+          }
+        }
+      }
+    },
+    "/api/v1/evidence/{id}": {
+      "get": {
+        "operationId": "get__api_v1_evidence__id_",
+        "security": [
+          {
+            "deviceSession": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response. JSON uses data and meta.requestId; evidence uses attachment bytes."
+          },
+          "400": {
+            "description": "Malformed request."
+          },
+          "401": {
+            "description": "Device pairing is required."
+          },
+          "403": {
+            "description": "Authority, origin, host or CSRF rejected."
+          },
+          "409": {
+            "description": "Stale revision, identity conflict or snapshot changed."
+          },
+          "422": {
+            "description": "Unsupported capability."
+          },
+          "429": {
+            "description": "Rate limit."
+          },
+          "503": {
+            "description": "Dependency unavailable."
+          }
+        }
+      }
+    },
+    "/api/v1/devices": {
+      "get": {
+        "operationId": "get__api_v1_devices",
+        "security": [
+          {
+            "deviceSession": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response. JSON uses data and meta.requestId; evidence uses attachment bytes."
+          },
+          "400": {
+            "description": "Malformed request."
+          },
+          "401": {
+            "description": "Device pairing is required."
+          },
+          "403": {
+            "description": "Authority, origin, host or CSRF rejected."
+          },
+          "409": {
+            "description": "Stale revision, identity conflict or snapshot changed."
+          },
+          "422": {
+            "description": "Unsupported capability."
+          },
+          "429": {
+            "description": "Rate limit."
+          },
+          "503": {
+            "description": "Dependency unavailable."
+          }
+        }
+      }
+    },
+    "/api/v1/devices/{id}": {
+      "delete": {
+        "operationId": "delete__api_v1_devices__id_",
+        "security": [
+          {
+            "deviceSession": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response. JSON uses data and meta.requestId; evidence uses attachment bytes."
+          },
+          "400": {
+            "description": "Malformed request."
+          },
+          "401": {
+            "description": "Device pairing is required."
+          },
+          "403": {
+            "description": "Authority, origin, host or CSRF rejected."
+          },
+          "409": {
+            "description": "Stale revision, identity conflict or snapshot changed."
+          },
+          "422": {
+            "description": "Unsupported capability."
+          },
+          "429": {
+            "description": "Rate limit."
+          },
+          "503": {
+            "description": "Dependency unavailable."
+          }
+        }
+      }
+    },
+    "/api/v1/events": {
+      "get": {
+        "operationId": "get__api_v1_events",
+        "security": [
+          {
+            "deviceSession": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Authenticated server-sent events; bounded replay and explicit resync."
+          },
+          "400": {
+            "description": "Malformed request."
+          },
+          "401": {
+            "description": "Device pairing is required."
+          },
+          "403": {
+            "description": "Authority, origin, host or CSRF rejected."
+          },
+          "409": {
+            "description": "Stale revision, identity conflict or snapshot changed."
+          },
+          "422": {
+            "description": "Unsupported capability."
+          },
+          "429": {
+            "description": "Rate limit."
+          },
+          "503": {
+            "description": "Dependency unavailable."
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "deviceSession": {
+        "type": "apiKey",
+        "in": "cookie",
+        "name": "ceston"
+      }
+    },
+    "schemas": {
+      "Command": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "oneOf": [
+          {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "const": "task.create"
+              },
+              "payload": {
+                "type": "object",
+                "properties": {
+                  "projectId": {
+                    "type": "string",
+                    "format": "uuid",
+                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                  },
+                  "title": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 160
+                  },
+                  "goal": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 32768
+                  },
+                  "requestedScope": {
+                    "type": "object",
+                    "properties": {
+                      "operations": {
+                        "default": [
+                          "read"
+                        ],
+                        "minItems": 1,
+                        "maxItems": 16,
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "enum": [
+                            "read",
+                            "edit",
+                            "test",
+                            "build",
+                            "git.commit",
+                            "git.push",
+                            "external.write",
+                            "deploy",
+                            "publish"
+                          ]
+                        }
+                      },
+                      "budgets": {
+                        "type": "object",
+                        "properties": {
+                          "concurrency": {
+                            "default": 2,
+                            "type": "integer",
+                            "minimum": 1,
+                            "maximum": 8
+                          },
+                          "phaseAttempts": {
+                            "default": 2,
+                            "type": "integer",
+                            "minimum": 1,
+                            "maximum": 5
+                          },
+                          "runMinutes": {
+                            "default": 45,
+                            "type": "integer",
+                            "minimum": 1,
+                            "maximum": 180
+                          },
+                          "taskPhases": {
+                            "default": 8,
+                            "type": "integer",
+                            "minimum": 1,
+                            "maximum": 32
+                          },
+                          "turns": {
+                            "default": 32,
+                            "type": "integer",
+                            "minimum": 1,
+                            "maximum": 128
+                          },
+                          "spendUsd": {
+                            "type": "number",
+                            "exclusiveMinimum": 0,
+                            "maximum": 100
+                          }
+                        },
+                        "required": [
+                          "concurrency",
+                          "phaseAttempts",
+                          "runMinutes",
+                          "taskPhases",
+                          "turns"
+                        ],
+                        "additionalProperties": false
+                      },
+                      "completionBoundary": {
+                        "default": "user_review",
+                        "type": "string",
+                        "enum": [
+                          "user_review",
+                          "automatic"
+                        ]
+                      }
+                    },
+                    "required": [
+                      "operations",
+                      "budgets",
+                      "completionBoundary"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "sourceIds": {
+                    "default": [],
+                    "maxItems": 20,
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "format": "uuid",
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                    }
+                  }
+                },
+                "required": [
+                  "projectId",
+                  "title",
+                  "goal",
+                  "requestedScope",
+                  "sourceIds"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "type",
+              "payload"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "const": "task.instruct"
+              },
+              "taskId": {
+                "type": "string",
+                "format": "uuid",
+                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+              },
+              "expectedRevision": {
+                "type": "integer",
+                "exclusiveMinimum": 0,
+                "maximum": 9007199254740991
+              },
+              "scopeRevisionId": {
+                "type": "string",
+                "format": "uuid",
+                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+              },
+              "payload": {
+                "type": "object",
+                "properties": {
+                  "text": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 32768
+                  },
+                  "deliveryMode": {
+                    "default": "queue",
+                    "type": "string",
+                    "enum": [
+                      "queue",
+                      "steer"
+                    ]
+                  }
+                },
+                "required": [
+                  "text",
+                  "deliveryMode"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "type",
+              "taskId",
+              "expectedRevision",
+              "scopeRevisionId",
+              "payload"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "const": "decision.answer"
+              },
+              "taskId": {
+                "type": "string",
+                "format": "uuid",
+                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+              },
+              "expectedRevision": {
+                "type": "integer",
+                "exclusiveMinimum": 0,
+                "maximum": 9007199254740991
+              },
+              "scopeRevisionId": {
+                "type": "string",
+                "format": "uuid",
+                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+              },
+              "payload": {
+                "type": "object",
+                "properties": {
+                  "decisionId": {
+                    "type": "string",
+                    "format": "uuid",
+                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                  },
+                  "decisionRevision": {
+                    "type": "integer",
+                    "exclusiveMinimum": 0,
+                    "maximum": 9007199254740991
+                  },
+                  "optionId": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 80
+                  }
+                },
+                "required": [
+                  "decisionId",
+                  "decisionRevision",
+                  "optionId"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "type",
+              "taskId",
+              "expectedRevision",
+              "scopeRevisionId",
+              "payload"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "const": "task.pause"
+              },
+              "taskId": {
+                "type": "string",
+                "format": "uuid",
+                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+              },
+              "expectedRevision": {
+                "type": "integer",
+                "exclusiveMinimum": 0,
+                "maximum": 9007199254740991
+              },
+              "scopeRevisionId": {
+                "type": "string",
+                "format": "uuid",
+                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+              },
+              "payload": {
+                "default": {},
+                "type": "object",
+                "properties": {},
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "type",
+              "taskId",
+              "expectedRevision",
+              "scopeRevisionId",
+              "payload"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "const": "task.resume"
+              },
+              "taskId": {
+                "type": "string",
+                "format": "uuid",
+                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+              },
+              "expectedRevision": {
+                "type": "integer",
+                "exclusiveMinimum": 0,
+                "maximum": 9007199254740991
+              },
+              "scopeRevisionId": {
+                "type": "string",
+                "format": "uuid",
+                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+              },
+              "payload": {
+                "default": {},
+                "type": "object",
+                "properties": {},
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "type",
+              "taskId",
+              "expectedRevision",
+              "scopeRevisionId",
+              "payload"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "const": "task.cancel"
+              },
+              "taskId": {
+                "type": "string",
+                "format": "uuid",
+                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+              },
+              "expectedRevision": {
+                "type": "integer",
+                "exclusiveMinimum": 0,
+                "maximum": 9007199254740991
+              },
+              "scopeRevisionId": {
+                "type": "string",
+                "format": "uuid",
+                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+              },
+              "payload": {
+                "default": {},
+                "type": "object",
+                "properties": {},
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "type",
+              "taskId",
+              "expectedRevision",
+              "scopeRevisionId",
+              "payload"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "const": "task.accept"
+              },
+              "taskId": {
+                "type": "string",
+                "format": "uuid",
+                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+              },
+              "expectedRevision": {
+                "type": "integer",
+                "exclusiveMinimum": 0,
+                "maximum": 9007199254740991
+              },
+              "scopeRevisionId": {
+                "type": "string",
+                "format": "uuid",
+                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+              },
+              "payload": {
+                "default": {},
+                "type": "object",
+                "properties": {},
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "type",
+              "taskId",
+              "expectedRevision",
+              "scopeRevisionId",
+              "payload"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "const": "task.prioritize"
+              },
+              "taskId": {
+                "type": "string",
+                "format": "uuid",
+                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+              },
+              "expectedRevision": {
+                "type": "integer",
+                "exclusiveMinimum": 0,
+                "maximum": 9007199254740991
+              },
+              "scopeRevisionId": {
+                "type": "string",
+                "format": "uuid",
+                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+              },
+              "payload": {
+                "type": "object",
+                "properties": {
+                  "priority": {
+                    "type": "integer",
+                    "minimum": -100,
+                    "maximum": 100
+                  },
+                  "dependencyIds": {
+                    "default": [],
+                    "maxItems": 100,
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "format": "uuid",
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                    }
+                  }
+                },
+                "required": [
+                  "priority",
+                  "dependencyIds"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "type",
+              "taskId",
+              "expectedRevision",
+              "scopeRevisionId",
+              "payload"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "const": "session.adopt"
+              },
+              "taskId": {
+                "type": "string",
+                "format": "uuid",
+                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+              },
+              "expectedRevision": {
+                "type": "integer",
+                "exclusiveMinimum": 0,
+                "maximum": 9007199254740991
+              },
+              "scopeRevisionId": {
+                "type": "string",
+                "format": "uuid",
+                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+              },
+              "payload": {
+                "type": "object",
+                "properties": {
+                  "sessionId": {
+                    "type": "string",
+                    "format": "uuid",
+                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                  },
+                  "handoffEvidenceId": {
+                    "type": "string",
+                    "format": "uuid",
+                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                  }
+                },
+                "required": [
+                  "sessionId",
+                  "handoffEvidenceId"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "type",
+              "taskId",
+              "expectedRevision",
+              "scopeRevisionId",
+              "payload"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "const": "action.approve"
+              },
+              "taskId": {
+                "type": "string",
+                "format": "uuid",
+                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+              },
+              "expectedRevision": {
+                "type": "integer",
+                "exclusiveMinimum": 0,
+                "maximum": 9007199254740991
+              },
+              "scopeRevisionId": {
+                "type": "string",
+                "format": "uuid",
+                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+              },
+              "payload": {
+                "type": "object",
+                "properties": {
+                  "approvalId": {
+                    "type": "string",
+                    "format": "uuid",
+                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                  },
+                  "revision": {
+                    "type": "integer",
+                    "exclusiveMinimum": 0,
+                    "maximum": 9007199254740991
+                  },
+                  "proposedHash": {
+                    "type": "string",
+                    "pattern": "^[a-f0-9]{64}$"
+                  }
+                },
+                "required": [
+                  "approvalId",
+                  "revision",
+                  "proposedHash"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "type",
+              "taskId",
+              "expectedRevision",
+              "scopeRevisionId",
+              "payload"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "const": "installation.pause"
+              },
+              "expectedRevision": {
+                "type": "integer",
+                "exclusiveMinimum": 0,
+                "maximum": 9007199254740991
+              },
+              "payload": {
+                "default": {},
+                "type": "object",
+                "properties": {},
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "type",
+              "expectedRevision",
+              "payload"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "const": "installation.resume"
+              },
+              "expectedRevision": {
+                "type": "integer",
+                "exclusiveMinimum": 0,
+                "maximum": 9007199254740991
+              },
+              "payload": {
+                "default": {},
+                "type": "object",
+                "properties": {},
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "type",
+              "expectedRevision",
+              "payload"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "const": "assistant.improve"
+              },
+              "payload": {
+                "type": "object",
+                "properties": {
+                  "description": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 32768
+                  },
+                  "acceptanceCriteria": {
+                    "minItems": 1,
+                    "maxItems": 20,
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 1000
+                    }
+                  },
+                  "applyLocally": {
+                    "type": "boolean"
+                  }
+                },
+                "required": [
+                  "description",
+                  "acceptanceCriteria",
+                  "applyLocally"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "type",
+              "payload"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "const": "update.rollback"
+              },
+              "expectedRevision": {
+                "type": "integer",
+                "exclusiveMinimum": 0,
+                "maximum": 9007199254740991
+              },
+              "payload": {
+                "type": "object",
+                "properties": {
+                  "updateId": {
+                    "type": "string",
+                    "format": "uuid",
+                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                  },
+                  "targetRelease": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 100
+                  }
+                },
+                "required": [
+                  "updateId",
+                  "targetRelease"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "type",
+              "expectedRevision",
+              "payload"
+            ],
+            "additionalProperties": false
+          }
+        ]
+      },
+      "Conversation": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "messageId": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          "text": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 32768
+          },
+          "taskId": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          "expectedRevision": {
+            "type": "integer",
+            "exclusiveMinimum": 0,
+            "maximum": 9007199254740991
+          },
+          "scopeRevisionId": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          "decisionId": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          "decisionRevision": {
+            "type": "integer",
+            "exclusiveMinimum": 0,
+            "maximum": 9007199254740991
+          }
+        },
+        "required": [
+          "messageId",
+          "text"
+        ],
+        "additionalProperties": false
+      },
+      "Pairing": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "invitation": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100
+          },
+          "deviceName": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 80
+          }
+        },
+        "required": [
+          "invitation",
+          "deviceName"
+        ],
+        "additionalProperties": false
+      },
+      "TextIntake": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "projectId": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          "mime": {
+            "type": "string",
+            "enum": [
+              "text/plain",
+              "text/markdown",
+              "text/uri-list"
+            ]
+          },
+          "text": {
+            "type": "string",
+            "maxLength": 10485760
+          }
+        },
+        "required": [
+          "projectId",
+          "mime",
+          "text"
+        ],
+        "additionalProperties": false
+      }
+    }
+  }
+}

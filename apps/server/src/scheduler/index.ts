@@ -65,6 +65,7 @@ export class Scheduler {
   private async run(request: WorkRequest, phase: PhasePlan) {
     let release = false;
     try {
+      this.verifier.captureBaseline({ ...request, phase });
       this.store.db.prepare("UPDATE runs SET state='running' WHERE id=?").run(request.runId);
       const completion = await this.worker.execute(request);
       if (['pausing', 'paused', 'cancelled'].includes(this.store.taskRow(request.taskId).state)) { this.finalizeStop(request); release = true; return; }

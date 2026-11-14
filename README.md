@@ -2,7 +2,7 @@
 
 cestOn is a self-hosted assistant in development for coordinating coding and operational agents from a desktop or phone. It brings tasks, decisions, progress, voice interaction, and requested improvements to cestOn itself into one workspace.
 
-**Current state:** the TypeScript workspace, loopback development shell, fixture provider, build, and isolated verification infrastructure are implemented. Managed task execution and authenticated device access are under construction. No persistent pilot or application package release is active.
+**Current state:** durable tasks, bounded scheduling, separate broker, authenticated device access, desktop/phone interface and fixture-backed execution are implemented. Native provider certification, mobile installation and update operations remain under verification. No persistent pilot or application package release is active.
 
 ## Start here
 
@@ -30,7 +30,7 @@ The original requirements, exploration, and first mockup have been moved unchang
 
 ## Development
 
-Use Node 24 LTS and npm 11. Run `npm ci`, then `npx playwright install chromium` once for browser verification. `npm run dev` starts the loopback web shell at `http://127.0.0.1:4317` and API at port 4318. It does not install persistence or connect a provider.
+Use Node 24 LTS and npm 11. Run `npm ci`, then `npx playwright install chromium` once for browser verification. `npm run dev` starts the loopback UI at `http://127.0.0.1:4317` and API at port 4318 in a marked temporary synthetic installation. Use the one-use pairing code printed in its console. It runs a separate fixture broker and registered synthetic artifact check, without connecting a native provider. Stop the process to clean up its owned test data; it does not install persistence.
 
 Run `npm run verify` for typecheck, lint, unit, integration, Chromium E2E, build, and documentation checks. Security and update checks are separate: `npm run test:security` and `npm run test:updates`. All tests use synthetic data. `npm run doctor` reports local runtime readiness without executing provider work.
 

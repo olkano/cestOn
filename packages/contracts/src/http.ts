@@ -1,0 +1,10 @@
+import { z } from 'zod';
+const text = z.string().trim().min(1).max(32768).refine(v => new TextEncoder().encode(v).length <= 32768);
+export const pairingSchema = z.strictObject({ invitation: z.string().min(1).max(100), deviceName: z.string().trim().min(1).max(80) });
+export const conversationSchema = z.strictObject({ messageId: z.uuid(), text, taskId: z.uuid().optional(), expectedRevision: z.number().int().positive().optional(), scopeRevisionId: z.uuid().optional(), decisionId: z.uuid().optional(), decisionRevision: z.number().int().positive().optional() });
+export const intakeSchema = z.strictObject({ projectId: z.uuid(), mime: z.enum(['text/plain', 'text/markdown', 'text/uri-list']), text: z.string().max(10485760) });
+export const pageSchema = z.strictObject({ after: z.coerce.number().int().min(0).default(0) });
+export const taskQuerySchema = pageSchema.extend({ state: z.string().max(32).optional(), project: z.uuid().optional(), search: z.string().max(160).optional(), attention: z.enum(['true', 'false']).optional() });
+export const idSchema = z.strictObject({ id: z.uuid() });
+export type ApiEnvelope<T> = { data: T; meta: { requestId: string } };
+export type ApiFailure = { error: { code: string; message: string; retryable: boolean }; meta: { requestId: string } };

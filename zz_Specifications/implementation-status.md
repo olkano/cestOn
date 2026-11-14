@@ -1,6 +1,6 @@
 # Implementation status
 
-Specification baseline: 2026-11-14. Current status: Phases 0-3 locally verified with live-provider gates blocked. Authenticated UI and remaining feature phases are in progress. No persistent pilot is activated.
+Specification baseline: 2026-11-14. Current status: Phases 0-4 locally fixture-verified with live-provider gates blocked. PWA/mobile services and remaining feature phases are in progress. No persistent pilot is activated.
 
 | Phase | Status | Verification | Blocker / next action |
 |---|---|---|---|
@@ -8,7 +8,7 @@ Specification baseline: 2026-11-14. Current status: Phases 0-3 locally verified 
 | 1 Durable domain and commands | local verified | `npm run verify`; security/update baselines; 9 unit and 14 integration checks, including actual process kills at commit boundaries, lost-ack reconciliation, WAL backup and pruning. [Checkpoint](implementation-run.md). | Process ownership and live-provider controls are phase 2. |
 | 2 Providers and ownership | local verified; live blocked | Full verify; 14 unit and 19 integration tests; owner-only Windows pipe ACL, separate-process forgery rejection, broker reconnect, exact transport targeting, interruption, scope policy, discovery and handoff fixtures. [Checkpoint](implementation-run.md). | Isolated native probes report unauthenticated managed homes. Live start/resume/interrupt, effective denial and real-provider certification remain blocked. Optional cestDone disabled. |
 | 3 Scheduler and assistant | local fixture verified; native recipes pending | Full verify, 16 unit and 27 integration tests, including separate broker workflow, independent artifact/recipe proof, bounded retries, pause acknowledgement, exact decisions, PDF/source isolation and uncertain external-action reconciliation. [Checkpoint](implementation-run.md). | Native recipe certification and real workspace ownership enforcement precede enabling managed native writes. |
-| 4 Authenticated UI | pending | Not run | Phases 1-3. |
+| 4 Authenticated UI | local fixture verified | Full verify, 16 unit, 28 integration, 6 Chromium, 4 security and 1 update-baseline tests. Five viewport sizes in both themes, system switching, keyboard, offline draft, source selection, exact phone decision, revoked SSE and device logout. Screenshots independently inspected. [Checkpoint](implementation-run.md). | Native stopped-owner proof remains unavailable; observe-only and new-session continuation are explicit. Physical device checks remain separate. |
 | 5 PWA, voice, notifications | pending | Not run | Phase 4; device/provider gates tracked separately. |
 | 6 Operations and supervisor | pending | Not run | Phases 1-4. |
 | 7 Self-improvement | pending | Not run | Phases 3-6. |
