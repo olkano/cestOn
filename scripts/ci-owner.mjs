@@ -5,6 +5,12 @@ const ownership = execFileSync('powershell.exe', ['-NoProfile', '-NonInteractive
 if (ownership !== 'owner') throw new Error('Owner token read-back failed');
 console.log(JSON.stringify({ stage: 'restricted-owner-token', ownerMatchesUser: true, administrator: false }));
 execFileSync('git', ['config', '--global', '--add', 'safe.directory', process.cwd()], { windowsHide: true });
+console.log(JSON.stringify({ stage: 'restricted-owner-browser', state: 'starting' }));
+const { chromium } = await import('@playwright/test');
+const browser = await chromium.launch({ timeout: 30000 });
+try { const page = await browser.newPage(); await page.setContent('<h1>Synthetic CI browser check</h1>'); if (await page.locator('h1').textContent() !== 'Synthetic CI browser check') throw new Error('Browser read-back failed'); }
+finally { await browser.close(); }
+console.log(JSON.stringify({ stage: 'restricted-owner-browser', state: 'ready' }));
 const npm = join(dirname(process.execPath), 'node_modules/npm/bin/npm-cli.js');
 for (const args of [[resolve('node_modules/tsx/dist/cli.mjs'), 'scripts/check-windows-host.ts'], [npm, 'run', 'package:local']]) {
   const child = spawn(process.execPath, args, { env: process.env, stdio: 'inherit', shell: false, windowsHide: true });

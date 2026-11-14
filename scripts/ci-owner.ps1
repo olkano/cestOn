@@ -59,7 +59,7 @@ public static class CestonCiOwner {
       var disabled=new SidAttributes { Sid=admin,Attributes=0 }; Check(CreateRestrictedToken(original,1,1,ref disabled,0,IntPtr.Zero,0,IntPtr.Zero,out restricted));
       user=Sid(WindowsIdentity.GetCurrent().User); TokenData(restricted,4,user,0,true);
       // A private desktop avoids the administrator-only service desktop and GUI message crossing.
-      uint descriptorSize; Check(ConvertStringSecurityDescriptorToSecurityDescriptor("O:"+WindowsIdentity.GetCurrent().User.Value+"D:P(A;;GA;;;"+WindowsIdentity.GetCurrent().User.Value+")",1,out descriptor,out descriptorSize));
+      uint descriptorSize; Check(ConvertStringSecurityDescriptorToSecurityDescriptor("O:"+WindowsIdentity.GetCurrent().User.Value+"D:P(A;;GA;;;SY)(A;;GA;;;"+WindowsIdentity.GetCurrent().User.Value+")",1,out descriptor,out descriptorSize));
       bool present,defaulted; IntPtr acl; Check(GetSecurityDescriptorDacl(descriptor,out present,out acl,out defaulted)); Check(present && acl!=IntPtr.Zero); TokenData(restricted,6,acl,0,true);
       var security=new Security { length=Marshal.SizeOf(typeof(Security)),descriptor=descriptor,inherit=false }; string stationName="ceston-ci-"+Guid.NewGuid().ToString("N");
       station=CreateWindowStation(stationName,0,0xF037F,ref security); Check(station!=IntPtr.Zero); priorStation=GetProcessWindowStation(); Check(SetProcessWindowStation(station));
