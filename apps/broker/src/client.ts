@@ -14,12 +14,12 @@ import type { BrokerReceipt } from '../../server/src/commands/outbox.js';
 export class BrokerClient {
   constructor(readonly endpoint: string, private installationId: string, private token: string) {}
   private async request<T>(method: string, payload: unknown): Promise<T> {
-    const requestId = randomUUID(); const response = await ipcRequest(this.endpoint, { protocol: 1, installationId: this.installationId, token: this.token, requestId, method, payload });
+    const requestId = randomUUID(); const response = await ipcRequest(this.endpoint, { protocol: 1, installationId: this.installationId, token: this.token, requestId, method, payload }, method === 'recipe' ? 610000 : method === 'infer' ? 65000 : method === 'start' ? 35000 : 12000);
     if (response.error) throw new DomainError(response.error.code, 503);
     if (response.requestId !== requestId || response.protocol !== 1) throw new DomainError('ipc_wrong_response', 503);
     return response.data as T;
   }
-  start(execution: Execution) { return this.request<{ sequence: number; ref: RunRef; providerId: string }>('start', execution); }
+  start(execution: Execution) { return this.request<{ sequence: number; ref: RunRef; providerId: string; capabilities: unknown }>('start', execution); }
   lookup(commandId: string) { return this.request<BrokerReceipt>('receipt', { commandId }); }
   events(runId: string, after: number) { return this.request<BrokerEvent[]>('events', { runId, after }); }
   reconcile(runId: string) { return this.request<{ state: string }>('reconcile', { runId }); }
@@ -27,6 +27,8 @@ export class BrokerClient {
   steer(runId: string, turnId: string, text: string) { return this.request<{ state: string }>('steer', { runId, turnId, text }); }
   sessions() { return this.request<{ sessionId: string; runId: string; providerId: string; taskId: string; state: string; ownership: string }[]>('sessions', {}); }
   probes() { return this.request<Record<string, unknown>[]>('probe', {}); }
+  infer(providerId: string, kind: 'plan' | 'intent', prompt: string) { return this.request<unknown>('infer', { providerId, kind, prompt }); }
+  recipe(runId: string, recipeId: string) { return this.request<{ exitCode: number; outputHash: string }>('recipe', { runId, recipeId }); }
   discover(providerId: string, cursor?: string) { return this.request<{ sessions: { id: string; provider: string; providerSessionId: string; homeId: string; projectId: string; title: string; ownership: string; state: string; observedAt: string }[]; cursor?: string }>('discover', { providerId, ...(cursor ? { cursor } : {}) }); }
   history(providerId: string, id: string, after = 0) { return this.request<{ text: string; cursor?: number }>('history', { providerId, id, after }); }
 }

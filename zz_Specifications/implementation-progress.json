@@ -2,8 +2,8 @@
   "formatVersion": 1,
   "objective": "Implement phases 0-9, independently verify relevant steps, commit and push verified milestones",
   "status": "in_progress",
-  "currentPhase": 3,
-  "nextAction": "Write failing planner, scheduling, verification, intent, source-injection, pause and external-approval tests; implement bounded scheduler with broker client and fixture-backed model",
+  "currentPhase": 4,
+  "nextAction": "Implement authenticated API, pairing, device revocation, CSRF, consistent snapshot and SSE before UI; enforce isolated real workspace ownership before enabling native writes",
   "tracking": "zz_Specifications/implementation-run.md",
   "ledger": "zz_Specifications/implementation-status.md",
   "authorized": [
@@ -34,11 +34,11 @@
     },
     {
       "id": 3,
-      "status": "in_progress"
+      "status": "local_fixture_verified_native_pending"
     },
     {
       "id": 4,
-      "status": "pending"
+      "status": "in_progress"
     },
     {
       "id": 5,

@@ -27,6 +27,7 @@ export async function startIpcServer(options: IpcOptions, handler: (method: stri
   if (process.platform === 'win32') {
     const host = spawn('powershell.exe', ['-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-File', resolve('scripts/windows-pipe-host.ps1'), '-PipeName', name], { stdio: ['pipe', 'pipe', 'pipe'], windowsHide: true });
     let stderr = ''; host.stderr.on('data', b => { stderr += String(b).slice(0, 4000); });
+    host.stdin.on('error', () => { /* Lost host leaves client operations unresolved; no write is retried. */ });
     const lines = createInterface({ input: host.stdout });
     try {
       await new Promise<void>((ready, reject) => {
@@ -34,10 +35,10 @@ export async function startIpcServer(options: IpcOptions, handler: (method: stri
         host.once('error', error => { clearTimeout(timeout); reject(error); });
         host.once('exit', () => { clearTimeout(timeout); reject(new Error(`IPC ACL host exited: ${stderr}`)); });
         lines.on('line', (line: string) => {
-          let message: { type: string; ownerOnly?: boolean; body?: string };
+          let message: { type: string; ownerOnly?: boolean; body?: string; bridgeId?: string };
           try { message = JSON.parse(line) as typeof message; } catch { clearTimeout(timeout); reject(new DomainError('ipc_host_protocol')); return; }
           if (message.type === 'ready') { clearTimeout(timeout); if (message.ownerOnly !== true) reject(new DomainError('ipc_acl_denied')); else ready(); }
-          else if (message.type === 'request' && message.body) void respond(message.body).then(response => { if (!host.killed) host.stdin.write(`${JSON.stringify(response)}\n`); });
+          else if (message.type === 'request' && message.body && message.bridgeId) void respond(message.body).then(response => { if (!host.killed && !host.stdin.destroyed) host.stdin.write(`${JSON.stringify({ bridgeId: message.bridgeId, body: JSON.stringify(response) })}\n`); });
         });
       });
     } catch (error) { host.kill(); lines.close(); throw error; }
@@ -59,10 +60,10 @@ export async function startIpcServer(options: IpcOptions, handler: (method: stri
   chmodSync(endpoint, 0o600);
   return { endpoint, ownerOnly: true, async close() { for (const socket of sockets) socket.destroy(); await new Promise<void>((done, reject) => server.close(error => error ? reject(error) : done())); if (existsSync(endpoint)) unlinkSync(endpoint); } };
 }
-async function connectRequest(endpoint: string, packet: unknown): Promise<Reply> {
+async function connectRequest(endpoint: string, packet: unknown, timeoutMs: number): Promise<Reply> {
   return new Promise((done, reject) => {
     const socket = createConnection(endpoint); let raw = ''; let connected = false;
-    socket.setEncoding('utf8'); socket.setTimeout(5000, () => socket.destroy(new Error('ipc_timeout')));
+    socket.setEncoding('utf8'); socket.setTimeout(timeoutMs, () => socket.destroy(new Error('ipc_timeout')));
     socket.once('error', error => reject(Object.assign(error, { beforeConnect: !connected }))); socket.once('connect', () => { connected = true; socket.write(`${JSON.stringify(packet)}\n`); });
     socket.on('data', (chunk: string) => {
       raw += chunk;
@@ -72,9 +73,9 @@ async function connectRequest(endpoint: string, packet: unknown): Promise<Reply>
     socket.once('end', () => { if (!raw.includes('\n')) reject(new Error('ipc_disconnected')); });
   });
 }
-export async function ipcRequest(endpoint: string, packet: unknown): Promise<Reply> {
+export async function ipcRequest(endpoint: string, packet: unknown, timeoutMs = 5000): Promise<Reply> {
   for (let attempt = 0; ; attempt++) {
-    try { return await connectRequest(endpoint, packet); }
+    try { return await connectRequest(endpoint, packet, timeoutMs); }
     catch (error) {
       const e = error as NodeJS.ErrnoException & { beforeConnect?: boolean };
       if (!e.beforeConnect || !['ENOENT', 'EBUSY'].includes(e.code ?? '') || attempt >= 40) throw error;

@@ -11,7 +11,7 @@ const target = { taskId: z.uuid(), expectedRevision: revision, scopeRevisionId: 
 const empty = z.strictObject({}).default({});
 const command = <T extends string, S extends z.ZodType>(type: T, payload: S) => z.strictObject({ type: z.literal(type), ...target, payload });
 export const commandSchema = z.discriminatedUnion('type', [
-  z.strictObject({ type: z.literal('task.create'), payload: z.strictObject({ projectId: z.uuid(), title: z.string().min(1).max(160), goal: text, requestedScope: scopeSchema }) }),
+  z.strictObject({ type: z.literal('task.create'), payload: z.strictObject({ projectId: z.uuid(), title: z.string().min(1).max(160), goal: text, requestedScope: scopeSchema, sourceIds: z.array(z.uuid()).max(20).default([]) }) }),
   command('task.instruct', z.strictObject({ text, deliveryMode: z.enum(['queue', 'steer']).default('queue') })),
   command('decision.answer', z.strictObject({ decisionId: z.uuid(), decisionRevision: revision, optionId: z.string().min(1).max(80) })),
   command('task.pause', empty), command('task.resume', empty), command('task.cancel', empty), command('task.accept', empty),

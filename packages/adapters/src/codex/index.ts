@@ -67,7 +67,7 @@ export class CodexAdapter implements Adapter {
     const thread = await rpc.request<{ thread: { id: string } }>(sessionId ? 'thread/resume' : 'thread/start', { ...(sessionId ? { threadId: sessionId, excludeTurns: true } : {}), cwd: request.workspace, approvalPolicy: 'untrusted', ...(this.options.model ? { model: this.options.model } : {}), config: permissionConfig(request.workspace, readOnly === true) });
     const ref = { runId: randomUUID(), sessionId: thread.thread.id, turnId: '' }; const run: ManagedRun = { ref, queue: new AsyncQueue(), state: 'starting', sequence: 0, pending: [] };
     this.runs.set(ref.runId, run); this.commandKeys.set(request.commandId, ref);
-    const response = await rpc.request<{ turn: { id: string } }>('turn/start', { threadId: ref.sessionId, input: [{ type: 'text', text: request.prompt, text_elements: [] }], approvalPolicy: 'untrusted' });
+    const response = await rpc.request<{ turn: { id: string } }>('turn/start', { threadId: ref.sessionId, input: [{ type: 'text', text: request.prompt, text_elements: [] }], approvalPolicy: 'untrusted', ...(request.outputSchema ? { outputSchema: request.outputSchema } : {}) });
     ref.turnId = response.turn.id; if (run.state !== 'reconciling') run.state = 'running';
     run.queue.push({ key: `${ref.runId}:${++run.sequence}`, sequence: run.sequence, type: 'session.created', data: { sessionId: ref.sessionId } });
     run.queue.push({ key: `${ref.runId}:${++run.sequence}`, sequence: run.sequence, type: 'turn.started', data: { turnId: ref.turnId } });

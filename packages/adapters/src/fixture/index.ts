@@ -9,7 +9,7 @@ export class FixtureAdapter implements Adapter {
   private runs = new Map<string, { ref: RunRef; request: RunRequest; state: string }>();
   private keys = new Map<string, RunRef>();
   private queued = new Map<string, string[]>();
-  constructor(private options: { duplicateEvents?: boolean; loseTerminal?: boolean; delayMs?: number; fail?: boolean; acknowledgeDelayMs?: number } = {}) {}
+  constructor(private options: { duplicateEvents?: boolean; loseTerminal?: boolean; delayMs?: number; fail?: boolean; acknowledgeDelayMs?: number; artifactWriter?: (request: RunRequest, path: string) => { path: string; sha256: string } } = {}) {}
   async probe() { return { version: '1', transport: 'in-memory-fixture', capabilities: { discover: true, readHistory: true, start: true, resumeExact: true, steerActive: false, interruptOwned: true, toolApproval: true, usage: true, structuredResult: true, sandbox: true, reattachOwned: true, billingMode: 'fixture' } satisfies Capabilities, authenticated: true, verifiedAt: new Date().toISOString() }; }
   async listSessions() { return { sessions: [...this.runs.values()].map(r => ({ id: r.ref.sessionId, title: 'Synthetic session', state: r.state })) }; }
   async readHistory(sessionId: string) { if (![...this.runs.values()].some(r => r.ref.sessionId === sessionId)) throw new CapabilityError('Unknown session'); return { events: [] }; }
@@ -31,7 +31,13 @@ export class FixtureAdapter implements Adapter {
     for (const type of types) {
       await delay(this.options.delayMs ?? 0);
       if (r.state === 'interrupted') return;
-      const event = { key: `${runId}:${++sequence}`, sequence, type, data: type === 'message.delta' ? { text: 'Synthetic worker result. Verification is required.' } : { runId, sessionId: r.ref.sessionId } };
+      let result: unknown;
+      if (type === 'turn.completed' && r.request.workerContext) {
+        const context = r.request.workerContext;
+        const artifactRefs = context.artifacts.map(path => this.options.artifactWriter?.(r.request, path) ?? { path });
+        result = { runId: context.runId, phaseId: context.phaseId, status: 'succeeded', summary: 'Fixture output. The coordinator must independently verify these bytes.', artifactRefs, claimedChecks: [], nextAction: 'Verify the artifacts.' };
+      }
+      const event = { key: `${runId}:${++sequence}`, sequence, type, data: type === 'message.delta' ? { text: 'Synthetic worker result. Verification is required.' } : { runId, sessionId: r.ref.sessionId, ...(result ? { result } : {}) } };
       yield event; if (this.options.duplicateEvents) yield event;
     }
     r.state = this.options.loseTerminal ? 'reconciling' : this.options.fail ? 'failed' : 'succeeded';

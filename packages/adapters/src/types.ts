@@ -1,5 +1,5 @@
 export type ProviderEvent = { key: string; sequence: number; type: 'session.created' | 'turn.started' | 'message.delta' | 'tool.requested' | 'tool.started' | 'tool.completed' | 'usage.updated' | 'turn.completed' | 'provider.error'; data: Record<string, unknown> };
-export type RunRequest = { commandId: string; taskId: string; prompt: string; workspace: string; operations?: string[]; limits?: { turns: number; runMinutes: number; spendUsd?: number | undefined } };
+export type RunRequest = { commandId: string; taskId: string; prompt: string; workspace: string; operations?: string[]; limits?: { turns: number; runMinutes: number; spendUsd?: number | undefined }; outputSchema?: Record<string, unknown>; workerContext?: { runId: string; phaseId: string; artifacts: string[] } };
 export type RunRef = { runId: string; sessionId: string; turnId: string };
 export type Capabilities = { discover: boolean; readHistory: boolean; start: boolean; resumeExact: boolean; steerActive: boolean; interruptOwned: boolean; toolApproval: boolean; usage: boolean; structuredResult: boolean; sandbox: boolean; reattachOwned: boolean; billingMode: 'subscription' | 'metered' | 'unknown' | 'fixture' };
 export class CapabilityError extends Error { code = 'unsupported_capability'; }

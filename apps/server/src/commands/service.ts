@@ -28,6 +28,13 @@ export class CommandService {
           return this.store.command(priorDecision.command_id!);
         }
       }
+      if (command.type === 'action.approve') {
+        const previous = db.prepare('SELECT * FROM action_approvals WHERE id=?').get(command.payload.approvalId) as { task_id: string; revision: number; proposed_hash: string; scope_revision_id: string; approved_command_id: string | null } | undefined;
+        if (previous?.approved_command_id) {
+          if (previous.task_id !== command.taskId || previous.revision !== command.payload.revision || previous.proposed_hash !== command.payload.proposedHash || previous.scope_revision_id !== command.scopeRevisionId) throw new DomainError('action_conflict');
+          return this.store.command(previous.approved_command_id);
+        }
+      }
       const task = 'taskId' in command ? this.store.taskRow(command.taskId) : null;
       if (task && 'expectedRevision' in command && (task.revision !== command.expectedRevision || !('scopeRevisionId' in command) || task.scope_revision_id !== command.scopeRevisionId)) throw new DomainError('stale_revision');
       if (command.type.startsWith('installation.') && 'expectedRevision' in command && command.expectedRevision !== this.store.installation().revision) throw new DomainError('stale_revision');
@@ -50,11 +57,14 @@ export class CommandService {
         if (!option) throw new DomainError('unknown_option', 400);
         db.prepare("UPDATE decisions SET state='answered',chosen_option_id=?,command_id=? WHERE id=?").run(option.id, id, decision.id);
         this.store.changeTask(task.id, 'queued', 'Decision recorded. Waiting for an eligible worker.');
+        db.prepare("UPDATE phases SET state='eligible' WHERE task_id=? AND state='waiting_input'").run(task.id);
         this.store.event(task.id, this.store.taskRow(task.id).revision, 'decision.changed', { decisionId: decision.id, revision: decision.revision, optionId: option.id, meaning: option.meaning });
         dispatch = true;
       } else if (command.type === 'task.instruct' && task) {
         if (['completed', 'cancelled'].includes(task.state)) throw new DomainError('task_terminal');
-        this.store.event(task.id, task.revision + 1, 'task.instruction', { text: redactText(command.payload.text), deliveryMode: command.payload.deliveryMode });
+        if (task.state === 'review_ready') this.store.changeTask(task.id, 'queued', 'An adjustment is queued within the existing scope.');
+        const revision = this.store.taskRow(task.id).revision;
+        this.store.event(task.id, revision + 1, 'task.instruction', { text: redactText(command.payload.text), deliveryMode: command.payload.deliveryMode });
         db.prepare('UPDATE tasks SET revision=revision+1,updated_at=? WHERE id=?').run(this.store.now(), task.id); dispatch = true;
       } else if ((command.type === 'task.pause' || command.type === 'task.cancel') && task) {
         const active = db.prepare("SELECT id FROM runs WHERE task_id=? AND state IN ('created','starting','running','verifying','interrupting','reconciling','needs_attention') LIMIT 1").get(task.id);
@@ -66,6 +76,8 @@ export class CommandService {
       } else if (command.type === 'task.resume' && task) {
         if (!['paused', 'blocked'].includes(task.state)) throw new DomainError('task_not_resumable');
         if (db.prepare("SELECT 1 FROM runs WHERE task_id=? AND state IN ('reconciling','needs_attention','interrupting')").get(task.id)) throw new DomainError('reconciliation_required');
+        if (db.prepare("SELECT 1 FROM phases WHERE task_id=? AND state='blocked' AND attempt_count>=max_attempts").get(task.id)) throw new DomainError('attempt_budget_exhausted');
+        db.prepare("UPDATE phases SET state='eligible' WHERE task_id=? AND state IN ('blocked','waiting_input')").run(task.id);
         this.store.changeTask(task.id, 'queued', 'Waiting for an eligible worker.'); dispatch = true;
       } else if (command.type === 'task.prioritize' && task) {
         this.store.setDependencies(task.id, command.payload.dependencyIds);
@@ -90,6 +102,7 @@ export class CommandService {
   private createTask(command: Extract<Command, { type: 'task.create' }>, deviceId: string, requestHash: string) {
     const project = this.store.project(command.payload.projectId);
     const profile = JSON.parse(project.config_json) as ProjectConfig;
+    for (const sourceId of command.payload.sourceIds) if (!this.store.db.prepare('SELECT 1 FROM sources WHERE id=? AND project_id=?').get(sourceId, project.id)) throw new DomainError('source_not_found', 404);
     const scope: Scope = command.payload.requestedScope;
     if (scope.operations.some(op => !profile.operations.includes(op))) throw new DomainError('scope_denied', 403);
     for (const cap of ['concurrency', 'phaseAttempts', 'runMinutes', 'taskPhases', 'turns'] as const) if (scope.budgets[cap] > this.config.limits[cap]) throw new DomainError('budget_denied', 403);
@@ -99,6 +112,7 @@ export class CommandService {
     this.store.db.prepare('INSERT INTO scope_revisions(id,task_id,revision,allowed_operations_json,roots_json,resources_json,budgets_json,completion_boundary,authority_source,created_at,request_hash) VALUES(?,?,1,?,?,?,?,?,?,?,?)').run(scopeId, id, JSON.stringify(scope.operations), JSON.stringify([project.canonical_root]), JSON.stringify([`workspace:${project.id}`]), JSON.stringify(scope.budgets), scope.completionBoundary, `device:${deviceId}`, now, requestHash);
     const cursor = this.store.event(id, 1, 'task.changed', { state: 'queued', title: command.payload.title });
     this.store.db.prepare('UPDATE tasks SET summary_cursor=? WHERE id=?').run(cursor, id);
+    if (command.payload.sourceIds.length) this.store.event(id, 1, 'task.sources', { sourceIds: command.payload.sourceIds, authority: 'untrusted_source' });
     return id;
   }
 }

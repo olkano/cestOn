@@ -12,6 +12,7 @@ export type ClaudeOptions = {
   executable: string; version: string; workspace: string; env: NodeJS.ProcessEnv; model?: string;
   certified: boolean; billingMode: 'subscription' | 'metered' | 'unknown'; check: PermissionCheck;
   queryFactory?: (params: { prompt: string; options: Options }) => Query;
+  tools?: string[];
 };
 export class ClaudeAdapter implements Adapter {
   private runs = new Map<string, ManagedRun>(); private keys = new Map<string, Promise<RunRef>>();
@@ -53,13 +54,14 @@ export class ClaudeAdapter implements Adapter {
     const abort = new AbortController();
     const options: Options = {
       cwd: request.workspace, pathToClaudeCodeExecutable: this.options.executable, env: this.options.env,
-      settingSources: [], skills: [], plugins: [], mcpServers: {}, tools: ['Read', 'Edit', 'Write', 'Glob', 'Grep'],
+      settingSources: [], skills: [], plugins: [], mcpServers: {}, tools: this.options.tools ?? ['Read', 'Edit', 'Write', 'Glob', 'Grep'],
       permissionMode: 'default', allowedTools: [], disallowedTools: ['Bash', 'Agent', 'Task', 'WebFetch', 'WebSearch', 'NotebookEdit'],
       canUseTool: async (name, input) => { const permission = this.options.check(name, input); return permission.allowed ? { behavior: 'allow', updatedInput: input } : { behavior: 'deny', message: permission.reason }; },
       hooks: { PreToolUse: [{ matcher: '.*', hooks: [hook], onFailure: 'block', timeout: 5 }] },
       maxTurns: request.limits?.turns ?? 32, abortController: abort,
       ...(sessionId ? { resume: sessionId } : {}), ...(this.options.model ? { model: this.options.model } : {}),
       ...(request.limits?.spendUsd ? { maxBudgetUsd: request.limits.spendUsd } : {}),
+      ...(request.outputSchema ? { outputFormat: { type: 'json_schema' as const, schema: request.outputSchema } } : {}),
     };
     const q = (this.options.queryFactory ?? query)({ prompt: request.prompt, options });
     const timer = setTimeout(() => { abort.abort(); q.close(); }, (request.limits?.runMinutes ?? 45) * 60000);

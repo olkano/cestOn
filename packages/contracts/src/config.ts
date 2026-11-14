@@ -32,6 +32,8 @@ export const configSchema = z.strictObject({
   }, 'A dedicated valid HTTPS origin is required').optional(),
   projects: z.array(projectSchema).max(100).default([]), providers: z.array(providerSchema).max(20).default([]),
   limits: limitsSchema.prefault({}),
+  assistant: z.strictObject({ providerId: z.string().optional() }).prefault({}),
+  executionHost: z.strictObject({ codexExecutable: z.string().optional(), version: z.string().optional() }).prefault({}),
   voice: z.strictObject({ enabled: z.boolean().default(false), endpoint: z.url().optional(), credentialEnv: z.string().optional(), model: z.string().optional() }).prefault({}),
   push: z.strictObject({ enabled: z.boolean().default(false), subject: z.string().optional(), publicKey: z.string().optional(), privateKeyEnv: z.string().optional() }).prefault({}),
   updates: z.strictObject({ requestedLocalApply: z.boolean().default(false), retainVerifiedReleases: z.number().int().min(3).max(10).default(3) }).prefault({}),

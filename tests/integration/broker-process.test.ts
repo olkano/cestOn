@@ -15,7 +15,7 @@ it('T29 an independent broker survives a coordinator client disconnect and clean
   try {
     const run = await process.client.start({ commandId: randomUUID(), taskId: randomUUID(), projectId, scopeRevisionId: randomUUID(), providerId: 'fixture', root: join(t.root, 'project'), operations: ['read'], prompt: 'Long synthetic work', limits: { turns: 4, runMinutes: 1 } });
     const reconnected = new BrokerClient(process.client.endpoint, t.installationId, installationSecrets(t.root).broker);
-    await new Promise(resolve => setTimeout(resolve, 650));
+    await expect.poll(async () => (await reconnected.events(run.ref.runId, 0)).some(e => e.event.type === 'turn.completed'), { timeout: 3000 }).toBe(true);
     const events = await reconnected.events(run.ref.runId, 0);
     expect(events.filter(e => e.event.type === 'turn.completed')).toHaveLength(1);
     expect((await reconnected.reconcile(run.ref.runId)).state).toBe('succeeded');

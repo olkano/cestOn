@@ -15,7 +15,7 @@ it('T09/T29 broker owns a long fixture run across client reconnect and deduplica
     const a = await broker.start(request); const b = await broker.start(request);
     expect(a).toEqual(b);
     await expect(broker.start({ ...request, commandId: randomUUID(), taskId: randomUUID() })).rejects.toThrow('resource_busy');
-    await new Promise(resolve => setTimeout(resolve, 180));
+    await expect.poll(() => broker.events(a.ref.runId, 0).some(e => e.event.type === 'turn.completed'), { timeout: 3000 }).toBe(true);
     const events = broker.events(a.ref.runId, 0);
     expect(events.some(e => e.event.type === 'turn.completed')).toBe(true);
     expect(broker.lookup(request.commandId).status).toBe('accepted');
