@@ -17,6 +17,7 @@ export interface SupervisorHost {
 type Attestation = { updateId: string; requestHash: string; candidateHash: string; baseReleaseId: string; candidateId: string; policyHash: string; evidenceHashes: string[]; createdAt: number; activationClass: string; explicitBrokerUpdate: boolean };
 export class Supervisor {
   readonly journal: ActivationJournal; private busy = false;
+  onProgress?: (id: string, phase: string) => void;
   constructor(readonly root: string, private key: string, private host: SupervisorHost, private options: { testMode?: boolean; crash?: (stage: string) => void } = {}) {
     if (options.testMode) assertTestRoot(root); if (options.crash && !options.testMode) throw new DomainError('test_crash_hook_denied'); mkdirSync(join(root, 'supervisor'), { recursive: true }); this.journal = new ActivationJournal(join(root, 'supervisor', 'activation.jsonl'), key);
   }
@@ -59,7 +60,7 @@ export class Supervisor {
       if (candidate.manifest.schemaWriteVersion !== verifyRelease(this.path(prior.current)).manifest.schemaWriteVersion) throw new DomainError('migration_compatibility_proof_required', 422);
       if ((authority.activationClass === 'broker' || authority.explicitBrokerUpdate) && await this.host.activeRuns() > 0) return { state: 'waiting_for_safe_point', releaseId: prior.current };
       await this.host.freeze(true); await this.host.backup(); let checkpoint = await this.host.capture();
-      const record = (phase: string, error?: string) => { this.journal.append({ updateId, phase, current: prior.current, previous: prior.previous, candidate: authority.candidateId, candidateHash: authority.candidateHash, requestHash, checkpoint, occurredAt: Date.now(), ...(error ? { error } : {}) }); this.options.crash?.(phase); };
+      const record = (phase: string, error?: string) => { this.journal.append({ updateId, phase, current: prior.current, previous: prior.previous, candidate: authority.candidateId, candidateHash: authority.candidateHash, requestHash, checkpoint, occurredAt: Date.now(), ...(error ? { error } : {}) }); this.onProgress?.(updateId, phase); this.options.crash?.(phase); };
       record('preparing'); await this.host.stopCoordinator(); checkpoint = await this.host.capture(); record('before_switch');
       this.setPointer({ current: authority.candidateId, previous: prior.current, updateId, phase: 'checking' }); record('switched');
       try {

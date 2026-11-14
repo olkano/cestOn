@@ -1,0 +1,11 @@
+# Requested local improvements
+
+Open Improve cestOn from Settings or the assistant. Describe the expected behavior, enter acceptance checks, and choose whether the verified change should apply locally. The request records exact local authority once, separately from project commands. It does not grant Git push, publication, account changes, paid services or another repository.
+
+The supervisor copies the verified installed source into a separate marked candidate. The coding worker first adds only its assigned browser regression. A real assertion must fail against the baseline; setup failure is not a reproduction. The test bytes are then frozen while the worker implements the change. The supervisor runs the regression again, all verification/security/update gates, builds an immutable bundle, rebuilds independently, and checks source, runtime and static hashes before staging.
+
+The timeline distinguishes requested, reproducing, implementing, verifying, staged, waiting, activating, checking, applied, rolled back and failed states. A recorded request is not a completed fix. Activation keeps the coordinator and broker separate, preserves acknowledged commands, observes health for 120 seconds and rolls back a failed candidate using the same database. Saved device drafts survive refresh and remain unsent.
+
+Automatic application requires both the request's local-apply choice and the operator's enabled policy, plus actual native/provider/verification-host certification. Provider adapters, broker, authentication, authority, supervisor, dependencies, scripts and existing mandatory tests are protected. A prepared protected change stops for separate reviewed authority; the worker cannot change that policy. Missing certification stays visible rather than falling back to a fixture. A coordinator stop reports an active improvement instead of claiming it stopped its worker.
+
+`npm run test:self-update:fixture` exercises the complete flow in disposable installations, with a deliberately broken filter and a clearly named synthetic coding worker. It is separate from routine verification to avoid recursive update rehearsals. Fixture evidence does not certify real Codex/Claude execution or authorize installation persistence. Native certification and physical phone checks remain separate gates in the implementation ledger.

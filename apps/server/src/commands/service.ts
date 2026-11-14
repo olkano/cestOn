@@ -36,6 +36,7 @@ export class CommandService {
         }
       }
       const task = 'taskId' in command ? this.store.taskRow(command.taskId) : null;
+      if (task && command.type.startsWith('task.') && db.prepare('SELECT 1 FROM updates WHERE task_id=?').get(task.id)) throw new DomainError('improvement_uses_update_controls', 422);
       if (task && 'expectedRevision' in command && (task.revision !== command.expectedRevision || !('scopeRevisionId' in command) || task.scope_revision_id !== command.scopeRevisionId)) throw new DomainError('stale_revision');
       if (command.type.startsWith('installation.') && 'expectedRevision' in command && command.expectedRevision !== this.store.installation().revision) throw new DomainError('stale_revision');
       const id = randomUUID(); let taskId = task?.id ?? null; let dispatch = false;
@@ -99,9 +100,10 @@ export class CommandService {
       this.store.event(taskId ?? this.store.installation().id, taskId ? this.store.taskRow(taskId).revision : this.store.installation().revision, 'command.changed', { commandId: id, state: dispatch ? 'queued' : 'succeeded', type: command.type });
       this.crash?.('before_commit');
       return this.store.command(id);
-    })();
+    }).immediate();
   }
   private createTask(command: Extract<Command, { type: 'task.create' }>, deviceId: string, requestHash: string) {
+    if (command.payload.projectId === this.store.installation().id) throw new DomainError('use_improvement_route', 422);
     const project = this.store.project(command.payload.projectId);
     const profile = JSON.parse(project.config_json) as ProjectConfig;
     for (const sourceId of command.payload.sourceIds) if (!this.store.db.prepare('SELECT 1 FROM sources WHERE id=? AND project_id=?').get(sourceId, project.id)) throw new DomainError('source_not_found', 404);

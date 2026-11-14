@@ -19,7 +19,7 @@ export async function executeSandboxedRecipe(dataRoot: string, config: Config, r
   if (!executable || !existsSync(executable) || config.executionHost.version !== '0.160.0') throw new DomainError('recipe_host_unconfigured', 422);
   const home = config.executionHost.home ?? join(dataRoot, 'staging', 'recipe-home'); mkdirSync(home, { recursive: true });
   if (config.providers.some(provider => provider.home && canonicalPath(provider.home) === canonicalPath(home))) throw new DomainError('verification_home_must_be_separate', 403);
-  const env = childEnvironment(validation?.environment ?? process.env, validation ? ['npm_execpath', 'PLAYWRIGHT_BROWSERS_PATH'] : []); env.CODEX_HOME = home;
+  const env = childEnvironment(validation?.environment ?? process.env, validation ? ['npm_execpath', 'PLAYWRIGHT_BROWSERS_PATH', 'PLAYWRIGHT_JSON_OUTPUT_FILE'] : []); env.CODEX_HOME = home;
   const policy = permissionConfig(workspace, false);
   if (validation) { if (!within(workspace, validation.temporaryRoot)) throw new DomainError('validation_temp_denied', 403); Object.assign(policy.permissions.ceston.filesystem, { ':tmpdir': 'write', [validation.temporaryRoot]: { '.': 'write' }, ...Object.fromEntries(validation.readOnlyRoots.map(root => [canonicalPath(root), { '.': 'read' }])) }); }
   if (recipe.network) throw new DomainError('network_recipe_requires_separate_certification', 422);

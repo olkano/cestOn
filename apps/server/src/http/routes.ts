@@ -20,8 +20,9 @@ import { openapi } from '../../../../packages/contracts/src/openapi.js';
 import { redactText } from '../../../../packages/contracts/src/logging.js';
 import type { SpeechService } from '../voice/index.js';
 import type { NotificationService } from '../notifications/index.js';
+import type { ImprovementService } from '../updates/service.js';
 
-export type ApiServices = { commands?: CommandService; assistant?: Assistant; actions?: ActionService; broker?: BrokerClient; speech?: SpeechService; notifications?: NotificationService; staticBundle?: string };
+export type ApiServices = { commands?: CommandService; assistant?: Assistant; actions?: ActionService; broker?: BrokerClient; speech?: SpeechService; notifications?: NotificationService; improvements?: ImprovementService; staticBundle?: string };
 export async function registerApi(app: FastifyInstance, config: Config, input: ApiServices & { store?: Store; origin?: string }) {
   const store = input.store; const auth = store ? new AuthService(store) : null;
   const commands = input.commands ?? (store ? new CommandService(store, config) : null);
@@ -62,6 +63,8 @@ export async function registerApi(app: FastifyInstance, config: Config, input: A
     return data({ installationId: store!.installation().id, deviceId: device.id, displayName: device.display_name, csrf: auth!.csrf(request.cookies.ceston!), protocol: 1, capabilities: { voice: input.speech?.available ?? false, push: config.push.enabled && Boolean(input.notifications?.pushAvailable), pushPublicKey: config.push.enabled && input.notifications?.pushAvailable ? config.push.publicKey ?? null : null, providers: config.providers.map(p => ({ id: p.id, kind: p.kind, profile: p.profile })) } }, request.id);
   });
   app.get('/api/v1/openapi.json', async () => openapi);
+  app.get('/api/v1/updates', async request => data(input.improvements?.list() ?? [], request.id));
+  app.get('/api/v1/updates/:id', async request => { const { id } = idSchema.parse(request.params); if (!input.improvements) throw new DomainError('updates_unavailable', 422); return data(input.improvements.view(id), request.id); });
   app.get('/api/v1/health/ready', async request => data({ ready: true, protocol: 1, database: 'ready', release: store!.installation().active_release ?? 'development', staticBundle: input.staticBundle ?? null }, request.id));
   app.get('/api/v1/snapshot', async request => { const query = pageSchema.extend({ expectedCursor: z.coerce.number().int().min(0).optional() }).parse(request.query); return data(store!.snapshot(query.after, query.expectedCursor), request.id); });
   app.get('/api/v1/sources', async request => { const query = z.strictObject({ projectId: z.uuid() }).parse(request.query); store!.project(query.projectId); return data(store!.db.prepare('SELECT id,kind,created_at AS createdAt FROM sources WHERE project_id=? ORDER BY created_at DESC LIMIT 100').all(query.projectId), request.id); });

@@ -21,5 +21,5 @@ export function migrate(db: Database.Database, now: number) {
   }
   const installation = db.prepare('SELECT schema_version FROM installations').get() as { schema_version: number } | undefined;
   if (installation && installation.schema_version !== applied.length) throw new DomainError('schema_incompatible');
-  db.prepare('UPDATE installations SET schema_version=?').run(currentSchemaVersion);
+  if (installation && installation.schema_version !== currentSchemaVersion) db.prepare('UPDATE installations SET schema_version=?').run(currentSchemaVersion);
 }

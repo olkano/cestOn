@@ -192,6 +192,89 @@
         }
       }
     },
+    "/api/v1/updates": {
+      "get": {
+        "operationId": "get__api_v1_updates",
+        "security": [
+          {
+            "deviceSession": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response. JSON uses data and meta.requestId; evidence uses attachment bytes."
+          },
+          "400": {
+            "description": "Malformed request."
+          },
+          "401": {
+            "description": "Device pairing is required."
+          },
+          "403": {
+            "description": "Authority, origin, host or CSRF rejected."
+          },
+          "409": {
+            "description": "Stale revision, identity conflict or snapshot changed."
+          },
+          "422": {
+            "description": "Unsupported capability."
+          },
+          "429": {
+            "description": "Rate limit."
+          },
+          "503": {
+            "description": "Dependency unavailable."
+          }
+        }
+      }
+    },
+    "/api/v1/updates/{id}": {
+      "get": {
+        "operationId": "get__api_v1_updates__id_",
+        "security": [
+          {
+            "deviceSession": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response. JSON uses data and meta.requestId; evidence uses attachment bytes."
+          },
+          "400": {
+            "description": "Malformed request."
+          },
+          "401": {
+            "description": "Device pairing is required."
+          },
+          "403": {
+            "description": "Authority, origin, host or CSRF rejected."
+          },
+          "409": {
+            "description": "Stale revision, identity conflict or snapshot changed."
+          },
+          "422": {
+            "description": "Unsupported capability."
+          },
+          "429": {
+            "description": "Rate limit."
+          },
+          "503": {
+            "description": "Dependency unavailable."
+          }
+        }
+      }
+    },
     "/api/v1/tasks": {
       "get": {
         "operationId": "get__api_v1_tasks",

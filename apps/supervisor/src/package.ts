@@ -8,7 +8,7 @@ import { DomainError } from '../../../packages/contracts/src/commands.js';
 import type { ReleaseManifest } from '../../../packages/contracts/src/release.js';
 import { inventory, verifyRelease } from './releases.js';
 const directories = new Set(['apps', 'packages', 'scripts', 'tests', 'assets', 'docs', 'design', 'zz_Specifications', 'zz_Tickets', '.github']);
-const rootFiles = new Set(['README.md', 'AGENTS.md', 'LICENSE', 'NOTICE', 'THIRD_PARTY_NOTICES.md', 'package.json', 'package-lock.json', '.npmrc', '.node-version', '.gitignore', 'tsconfig.json', 'tsconfig.build.json', 'vitest.config.ts', 'playwright.config.ts', 'eslint.config.js']);
+const rootFiles = new Set(['README.md', 'AGENTS.md', 'LICENSE', 'NOTICE', 'THIRD_PARTY_NOTICES.md', 'package.json', 'package-lock.json', '.npmrc', '.node-version', '.gitignore', 'tsconfig.json', 'tsconfig.build.json', 'vitest.config.ts', 'playwright.config.ts', 'eslint.config.mjs']);
 const excluded = new Set(['node_modules', '.git', 'dist', 'reference-private', 'evidence-private', 'test-results', 'coverage', '.ceston']);
 export function publicSourceFiles(root: string) {
   const files: string[] = [];
