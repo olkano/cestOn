@@ -33,3 +33,17 @@ it('T12/T13 continues verified phases and blocks a convincing false worker compl
     expect(store.getTask(taskId).evidence).toHaveLength(1);
   } finally { store.close(); cleanupTestRoot(t.root, t.runId); }
 });
+it('T04/T07 a delayed workspace response cannot dispatch a phase another tick already completed', async () => {
+  const t = createTestRoot(); const store = new Store(t.root, { testMode: true }); const root = join(t.root, 'project'); mkdirSync(root); const projectId = randomUUID(); const device = randomUUID();
+  try {
+    store.registerProject({ id: projectId, displayName: 'Synthetic', root, kind: 'documents', providerId: 'fixture', allowedChildRoots: [], operations: ['read', 'edit'], recipes: [] });
+    store.db.prepare('INSERT INTO devices(id,display_name,token_hash,created_at,last_seen_at,expires_at) VALUES(?,?,?,?,?,?)').run(device, 'Synthetic', randomUUID(), Date.now(), Date.now(), Date.now() + 600000);
+    const config = parseConfig({}); const id = new CommandService(store, config).receive(device, randomUUID(), { type: 'task.create', payload: { projectId, title: 'Concurrent preparation', goal: 'Three ordered effects', requestedScope: { operations: ['read', 'edit'] } } }).taskId!;
+    let ready!: () => void; let release!: () => void; const prepared = new Promise<void>(done => { ready = done; }); const gate = new Promise<void>(done => { release = done; }); let preparations = 0; const effects: string[] = [];
+    const worker = { async prepareWorkspace() { if (++preparations === 2) { ready(); await gate; } return root; }, async execute(request: { runId: string; phaseId: string; artifacts: { path: string }[] }) { effects.push(request.phaseId); const path = request.artifacts[0]!.path; writeFileSync(join(root, path), request.phaseId); return { runId: request.runId, phaseId: request.phaseId, status: 'succeeded', summary: 'Synthetic effect', artifactRefs: [{ path }], claimedChecks: [], nextAction: 'Continue' }; } };
+    const scheduler = new Scheduler(store, config, worker, new ArtifactVerifier(store, async () => ({ exitCode: 0, outputHash: 'synthetic' })));
+    scheduler.savePlan(id, { goal: 'Three ordered effects', completionBoundary: 'user_review', phases: [1, 2, 3].map(ordinal => ({ id: `step${ordinal}`, ordinal, goal: 'One synthetic effect', dependsOn: ordinal > 1 ? [`step${ordinal - 1}`] : [], allowedRecipeIds: [], expectedArtifacts: [{ path: `${ordinal}.txt` }], verificationRecipeIds: [], decisionBoundary: false })) });
+    await scheduler.tick(); const stale = scheduler.tick(); await prepared; await scheduler.tick(); release(); await stale;
+    expect(effects).toHaveLength(2); expect(new Set(effects).size).toBe(2); expect(store.getTask(id).phases.filter(phase => phase.state === 'done')).toHaveLength(2);
+  } finally { store.close(); cleanupTestRoot(t.root, t.runId); }
+});

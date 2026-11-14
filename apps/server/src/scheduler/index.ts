@@ -54,6 +54,8 @@ export class Scheduler {
       if (this.store.taskRow(task.id).revision !== task.revision || this.active.size >= Math.min(this.config.limits.concurrency, task.scope.budgets.concurrency)) continue;
       try {
         this.store.db.transaction(() => {
+          const current = this.store.db.prepare('SELECT state,revision FROM phases WHERE id=? AND task_id=?').get(phase.id, task.id) as { state: string; revision: number } | undefined;
+          if (!current || current.revision !== phase.revision || !['pending', 'eligible'].includes(current.state)) throw new DomainError('phase_changed');
           this.store.acquireLease(request.root, task.id, request.runId, request.runId);
           if (phase.state === 'pending') this.store.db.prepare("UPDATE phases SET state='eligible' WHERE id=?").run(phase.id);
           this.store.db.prepare("UPDATE phases SET state='running',revision=revision+1 WHERE id=?").run(phase.id);
@@ -63,7 +65,7 @@ export class Scheduler {
           this.store.db.prepare('INSERT INTO outbox(command_id,next_attempt_at) VALUES(?,?)').run(request.commandId, this.store.now());
           if (task.state === 'queued') this.store.changeTask(task.id, 'running', phase.ordinal === 1 ? 'Working on the first phase.' : `Working on phase ${phase.ordinal}.`);
         })();
-      } catch (error) { if (error instanceof DomainError && error.code === 'resource_busy') continue; throw error; }
+      } catch (error) { if (error instanceof DomainError && ['resource_busy', 'phase_changed'].includes(error.code)) continue; throw error; }
       this.requests.set(request.runId, request);
       const job = Promise.resolve().then(() => this.run(request, JSON.parse(phase.plan_json) as PhasePlan)); this.active.set(request.runId, job); jobs.push(job);
     }

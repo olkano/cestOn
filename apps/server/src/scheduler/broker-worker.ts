@@ -47,6 +47,7 @@ export class BrokerWorker implements Worker {
       this.store.event(request.taskId, this.store.taskRow(request.taskId).revision, 'command.changed', { commandId: request.commandId, state: 'accepted' });
     })();
     const deadline = Date.now() + request.limits.runMinutes * 60000;
+    let successObserved = false;
     while (Date.now() < deadline) {
       if (this.detached) throw new CoordinatorDetached();
       const events = await this.broker.events(ref.runId, metadata.cursor ?? 0);
@@ -64,6 +65,8 @@ export class BrokerWorker implements Worker {
       if (events.length === 100) continue;
       const state = (await this.broker.reconcile(ref.runId)).state;
       if (state === 'succeeded') {
+        // The terminal status may arrive after the preceding event read. Drain once more.
+        if (!successObserved) { successObserved = true; continue; }
         this.store.db.prepare("UPDATE sessions SET observed_state='stopped',observed_at=? WHERE id=(SELECT session_id FROM runs WHERE id=?)").run(this.store.now(), request.runId);
         let result = metadata.completion ?? metadata.text;
         if (typeof result === 'string') { try { result = JSON.parse(result.replace(/^```(?:json)?\s*|\s*```$/g, '')); } catch { throw new DomainError('worker_envelope_invalid'); } }

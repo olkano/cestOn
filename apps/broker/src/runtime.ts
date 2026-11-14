@@ -148,7 +148,7 @@ export class Broker {
     return { status: 'accepted' as const, sequence: receipt.sequence, result: receipt.result! };
   }
   events(runId: string, after: number) { return this.log.read(runId, after); }
-  async reconcile(runId: string) { const run = this.runs.get(runId); if (run) return { state: run.state === 'reconciling' ? 'reconciling' : (await run.adapter.reconcile(runId)).state }; const receipt = this.journal.list().findLast(record => (record.result?.ref as RunRef | undefined)?.runId === runId); return { state: receipt?.state === 'resolved' && typeof receipt.result?.state === 'string' ? receipt.result.state : 'needs_attention' }; }
+  async reconcile(runId: string) { const run = this.runs.get(runId); if (run) { if (run.state === 'reconciling') return { state: 'reconciling' }; const observed = await run.adapter.reconcile(runId); return { state: observed.state === 'succeeded' ? run.state : observed.state }; } const receipt = this.journal.list().findLast(record => (record.result?.ref as RunRef | undefined)?.runId === runId); return { state: receipt?.state === 'resolved' && typeof receipt.result?.state === 'string' ? receipt.result.state : 'needs_attention' }; }
   async steer(runId: string, text: string, turnId: string) { const run = this.runs.get(runId); if (!run || run.ref.turnId !== turnId) throw new DomainError('stale_run'); return run.adapter.enqueue(run.ref, text); }
   async interrupt(runId: string) {
     const run = this.runs.get(runId); if (!run) throw new DomainError('unmanaged_run');
