@@ -7,7 +7,7 @@ import { timingSafeEqual } from 'node:crypto';
 import { z } from 'zod';
 import { setTimeout as delay } from 'node:timers/promises';
 import { DomainError } from '../../../packages/contracts/src/commands.js';
-import { childEnvironment } from './policy/index.js';
+import { windowsHelperEnvironment } from './windows-environment.js';
 
 const packetSchema = z.strictObject({ protocol: z.literal(1), requestId: z.uuid(), installationId: z.uuid(), token: z.string().max(128), method: z.string().min(1).max(80), payload: z.unknown() });
 type Reply = { protocol: 1; requestId: string; data?: unknown; error?: { code: string } };
@@ -26,7 +26,7 @@ export async function startIpcServer(options: IpcOptions, handler: (method: stri
     catch (error) { return { protocol: 1, requestId: parsed.data.requestId, error: { code: error instanceof DomainError ? error.code : 'ipc_operation_failed' } }; }
   }
   if (process.platform === 'win32') {
-    const host = spawn('powershell.exe', ['-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-File', resolve('scripts/windows-pipe-host.ps1'), '-PipeName', name], { stdio: ['pipe', 'pipe', 'pipe'], windowsHide: true, env: childEnvironment(process.env) });
+    const host = spawn('powershell.exe', ['-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-File', resolve('scripts/windows-pipe-host.ps1'), '-PipeName', name], { stdio: ['pipe', 'pipe', 'pipe'], windowsHide: true, env: windowsHelperEnvironment() });
     let stderr = ''; host.stderr.on('data', b => { stderr += String(b).slice(0, 4000); });
     host.stdin.on('error', () => { /* Lost host leaves client operations unresolved; no write is retried. */ });
     const lines = createInterface({ input: host.stdout });

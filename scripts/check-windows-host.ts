@@ -1,10 +1,10 @@
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
-import { childEnvironment } from '../apps/broker/src/policy/index.js';
+import { windowsHelperEnvironment } from '../apps/broker/src/windows-environment.js';
 import { createTestRoot, cleanupTestRoot } from '../packages/test-support/src/index.js';
 if (process.platform !== 'win32') console.log(JSON.stringify({ result: 'not_applicable', capability: 'Windows helper startup' }));
 else {
-  const environment = childEnvironment(process.env); if (!environment.SYSTEMROOT || !environment.PATH) throw new Error('required_windows_environment_missing');
+  const environment = windowsHelperEnvironment(); if (!environment.SYSTEMROOT || !environment.PATH) throw new Error('required_windows_environment_missing');
   const t = createTestRoot();
   try {
     for (const [name, args] of [

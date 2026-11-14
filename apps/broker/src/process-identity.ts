@@ -1,14 +1,14 @@
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { readFileSync } from 'node:fs';
-import { childEnvironment } from './policy/index.js';
+import { windowsHelperEnvironment } from './windows-environment.js';
 
 export type ProcessIdentity = { pid: number; startedAt: string };
 export async function processIdentity(pid: number): Promise<ProcessIdentity | null> {
   if (!Number.isSafeInteger(pid) || pid <= 0) return null;
   try {
     if (process.platform === 'win32') {
-      const result = await promisify(execFile)('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', '$targetProcess = Get-Process -Id ([int]$env:CESTON_PROCESS_ID) -ErrorAction Stop; [Console]::Write($targetProcess.StartTime.ToUniversalTime().Ticks.ToString())'], { env: { ...childEnvironment(process.env), CESTON_PROCESS_ID: String(pid) }, timeout: 5000, windowsHide: true });
+      const result = await promisify(execFile)('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', '$targetProcess = Get-Process -Id ([int]$env:CESTON_PROCESS_ID) -ErrorAction Stop; [Console]::Write($targetProcess.StartTime.ToUniversalTime().Ticks.ToString())'], { env: { ...windowsHelperEnvironment(), CESTON_PROCESS_ID: String(pid) }, timeout: 5000, windowsHide: true });
       return { pid, startedAt: result.stdout.trim() };
     }
     const stat = readFileSync(`/proc/${pid}/stat`, 'utf8');

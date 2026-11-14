@@ -2,7 +2,7 @@ import { createCipheriv, createDecipheriv, randomBytes } from 'node:crypto';
 import { spawn } from 'node:child_process';
 import { resolve } from 'node:path';
 import { assertTestRoot } from '../../../../packages/test-support/src/index.js';
-import { childEnvironment } from '../../../broker/src/policy/index.js';
+import { windowsHelperEnvironment } from '../../../broker/src/windows-environment.js';
 import { DomainError } from '../../../../packages/contracts/src/commands.js';
 export interface Protector { seal(value: string, purpose: string): Promise<string>; open(value: string, purpose: string): Promise<string>; }
 export class TestProtector implements Protector {
@@ -16,7 +16,7 @@ export class OsProtector implements Protector {
   private async transform(value: string, purpose: string, mode: 'Protect' | 'Unprotect') {
     if (process.platform !== 'win32') throw new DomainError('os_protection_unavailable', 503);
     if (Buffer.byteLength(value) > 65536) throw new DomainError('protected_value_too_large', 413);
-    const child = spawn('powershell.exe', ['-NoProfile', '-NonInteractive', '-File', resolve('scripts/os-protect.ps1'), '-Mode', mode], { shell: false, windowsHide: true, stdio: ['pipe', 'pipe', 'pipe'], env: childEnvironment(process.env) });
+    const child = spawn('powershell.exe', ['-NoProfile', '-NonInteractive', '-File', resolve('scripts/os-protect.ps1'), '-Mode', mode], { shell: false, windowsHide: true, stdio: ['pipe', 'pipe', 'pipe'], env: windowsHelperEnvironment() });
     return new Promise<string>((resolve, reject) => { let output = ''; const timer = setTimeout(() => { child.kill(); reject(new DomainError('os_protection_timeout', 503)); }, 5000);
       child.stdout.on('data', data => { output += String(data); if (output.length > 200000) child.kill(); }); child.stderr.on('data', () => {}); child.stdin.on('error', () => {});
       child.once('error', () => { clearTimeout(timer); reject(new DomainError('os_protection_unavailable', 503)); }); child.once('exit', code => { clearTimeout(timer); if (code !== 0) reject(new DomainError('os_protection_failed', 503)); else resolve(output.trim()); });
