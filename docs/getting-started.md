@@ -1,5 +1,7 @@
 # Start using cestOn
 
+Prefer a visual introduction? Open the [HTML quick guide](quick-guide.html) for plain-language concepts, project-folder registration and PC/phone installation.
+
 Start with the desktop demo to learn the workflow. It uses simulated workers and disposable projects. Real Codex/Claude work requires the provider setup described below.
 
 ## Start the demo

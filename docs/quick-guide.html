@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>cestOn | From the demo to your own work</title>
+<style>
+:root{--bg:#f3f5f9;--paper:#fff;--ink:#17283b;--muted:#506277;--line:#d7e0ea;--blue:#075eb5;--bluewash:#edf5ff;--green:#146654;--greenwash:#eaf7f0;--amber:#815014;--amberwash:#fff5df;--navy:#132b46;--shadow:0 12px 40px #142b4410}
+*{box-sizing:border-box}html{scroll-behavior:smooth;scroll-padding-top:90px}body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif}a{color:var(--blue);text-underline-offset:3px}button,input{font:inherit}button{cursor:pointer}button,a,summary{touch-action:manipulation}button:focus-visible,a:focus-visible,summary:focus-visible{outline:3px solid #e59622;outline-offset:4px}h1,h2,h3,p{margin:0}h1,h2,h3{line-height:1.2;letter-spacing:-.035em}h1{font-size:clamp(2.1rem,4vw,3.45rem);max-width:740px}h2{font-size:clamp(1.5rem,2.7vw,2rem)}h3{font-size:1.08rem;letter-spacing:-.015em}p+p{margin-top:10px}.muted,.small{color:var(--muted)}.small{font-size:.86rem}strong{font-weight:650}.wrap{max-width:1080px;margin:auto;padding:0 24px}.mast{border-bottom:1px solid var(--line);background:var(--paper)}.mast .wrap{display:flex;align-items:center;justify-content:space-between;gap:16px;min-height:76px}.brand{display:flex;gap:10px;align-items:center;font-size:1.22rem;font-weight:700}.brand svg{width:34px;height:34px}.tag{font-size:.75rem;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}.button{border:1px solid var(--line);border-radius:9px;padding:8px 14px;background:var(--paper);color:var(--ink);font-weight:600;font-size:.88rem}.button:hover{background:var(--bluewash)}.hero{padding:48px 0 30px}.eyebrow{color:var(--blue);font-size:.75rem;font-weight:750;letter-spacing:.13em;text-transform:uppercase;margin-bottom:13px}.lead{font-size:1.12rem;color:var(--muted);max-width:750px;margin-top:16px}.status{display:flex;gap:12px;align-items:flex-start;margin-top:24px;padding:16px 18px;background:var(--amberwash);border:1px solid #c995443d;border-radius:12px}.dot{width:9px;height:9px;flex:none;background:var(--amber);border-radius:50%;margin-top:8px}.status p{font-size:.93rem}.jump{display:flex;flex-wrap:wrap;gap:8px;margin-top:22px}.jump a{border:1px solid var(--line);background:var(--paper);padding:7px 12px;border-radius:30px;font-size:.86rem;text-decoration:none}.jump a:hover{border-color:var(--blue)}
+main{padding-bottom:48px}section{scroll-margin-top:24px}.section{background:var(--paper);border:1px solid var(--line);border-radius:18px;box-shadow:var(--shadow);padding:28px;margin-bottom:20px}.section-head{display:flex;align-items:flex-start;gap:14px;margin-bottom:23px}.number{flex:none;width:36px;height:36px;display:grid;place-items:center;border-radius:10px;background:var(--bluewash);color:var(--blue);font-weight:750}.section-head p{color:var(--muted);margin-top:6px}.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px}.card{border:1px solid var(--line);border-radius:13px;padding:21px;min-width:0}.card h3{margin-bottom:9px}.pill{display:inline-block;font-size:.69rem;font-weight:750;text-transform:uppercase;letter-spacing:.08em;border-radius:20px;padding:3px 9px;margin-bottom:10px;color:var(--blue);background:var(--bluewash)}.pill.amber{color:var(--amber);background:var(--amberwash)}.pill.green{color:var(--green);background:var(--greenwash)}.card p{font-size:.94rem}.diagram{display:grid;grid-template-columns:1.15fr .65fr 1fr;gap:12px;align-items:center;margin:22px 0 0;padding:24px;background:var(--navy);color:#fff;border-radius:13px}.machine{border:1px solid #ffffff3a;border-radius:12px;padding:16px}.machine svg{width:34px;height:34px;stroke:#7bd8ff;fill:none;stroke-width:1.6;margin-bottom:6px}.machine h3{color:#fff}.machine p{font-size:.83rem;color:#d2dfec;margin-top:8px}.connection{text-align:center;font-size:.76rem;color:#b7d8f4}.connection b{display:block;font-size:1.6rem;font-weight:400;color:#7bd8ff}.note{border-left:3px solid var(--blue);padding:10px 14px;background:var(--bluewash);border-radius:0 8px 8px 0;font-size:.91rem;margin-top:18px}.note.amber{border-color:#ba791e;background:var(--amberwash)}.steps{list-style:none;padding:0;margin:0;counter-reset:step}.steps li{position:relative;padding:0 0 17px 34px;counter-increment:step}.steps li:last-child{padding-bottom:0}.steps li:before{content:counter(step);position:absolute;left:0;top:2px;display:grid;place-items:center;width:23px;height:23px;background:var(--bluewash);border-radius:50%;font-size:.76rem;font-weight:700;color:var(--blue)}.steps p{font-size:.91rem;color:var(--muted);margin-top:3px}.steps li>strong{display:block;font-size:.96rem}code{font: .86em/1.5 ui-monospace,SFMono-Regular,Consolas,monospace;background:var(--bluewash);padding:2px 5px;border-radius:4px;overflow-wrap:anywhere}pre{margin:12px 0 0;padding:17px;background:#102339;border-radius:10px;color:#e7f2ff;white-space:pre-wrap;overflow-wrap:anywhere;font: .81rem/1.7 ui-monospace,SFMono-Regular,Consolas,monospace}pre code{font:inherit;background:none;color:inherit;padding:0}.hl{color:#8ae5ce}.code-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:12px;font-size:.79rem;color:var(--muted)}.copy{border:1px solid var(--line);background:var(--paper);color:var(--blue);border-radius:7px;padding:4px 10px;font-size:.78rem}.copy-status{min-height:1.1em;font-size:.78rem;color:var(--green);margin-top:4px}details{margin-top:16px;border-top:1px solid var(--line);padding-top:14px}summary{cursor:pointer;font-weight:650;font-size:.94rem;color:var(--blue)}details[open] summary{margin-bottom:12px}details p{font-size:.91rem}.folder-map{display:grid;grid-template-columns:1fr 36px 1fr;gap:6px;align-items:center;margin:18px 0}.folder-map .card{background:var(--bg);padding:16px}.folder-map .arrow{text-align:center;color:var(--blue);font-size:1.6rem}.folder-map .card p{font-size:.84rem}.tabs{display:flex;gap:6px;flex-wrap:wrap;border-bottom:1px solid var(--line);padding-bottom:12px;margin-bottom:20px}.tabs button{border:1px solid transparent;color:var(--muted);background:transparent;border-radius:8px;padding:8px 14px;font-weight:650;font-size:.9rem}.tabs button[aria-pressed=true]{color:var(--blue);background:var(--bluewash);border-color:#9fbfdf}.device-panel{max-width:850px}.device-panel h3{margin-bottom:14px}.requirements{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0 20px}.requirements span{font-size:.77rem;padding:4px 9px;border-radius:6px;background:var(--bg);border:1px solid var(--line)}[hidden]{display:none!important}.brief{background:var(--bg);border:1px solid var(--line);padding:19px;border-radius:12px;line-height:1.7;font-size:.93rem;margin-top:15px}.route{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:17px 0 0;font-size:.87rem}.route b{border:1px solid var(--line);border-radius:7px;padding:5px 9px;font-weight:600}.route span{color:var(--muted)}.bottom{display:flex;gap:20px;align-items:center;justify-content:space-between;background:var(--navy);color:white;padding:24px 28px;border-radius:16px}.bottom h2{font-size:1.28rem}.bottom p{font-size:.91rem;color:#d2dfec;margin-top:7px;max-width:740px}.bottom a{color:#a3dcff}.foot{padding:23px 0 0;font-size:.79rem;color:var(--muted)}.foot a{white-space:nowrap}.skip{position:absolute;left:12px;top:-60px;background:var(--paper);padding:10px;z-index:20}.skip:focus{top:8px}
+@media(max-width:700px){.wrap{padding:0 16px}.mast .tag{display:none}.mast .wrap{min-height:66px}.hero{padding:30px 0 24px}.lead{font-size:1rem}.section{padding:21px 18px;border-radius:14px}.section-head{gap:10px}.number{width:30px;height:30px;border-radius:8px}.grid{grid-template-columns:1fr;gap:12px}.diagram{grid-template-columns:1fr;gap:9px;padding:18px}.connection b{transform:rotate(90deg);font-size:1.5rem;line-height:1.3}.machine{display:grid;grid-template-columns:40px 1fr;column-gap:12px}.machine svg{grid-row:span 2}.machine p{margin-top:4px}.connection{display:flex;justify-content:center;align-items:center;gap:14px}.folder-map{grid-template-columns:1fr}.folder-map .arrow{transform:rotate(90deg);line-height:1}.bottom{padding:22px}.tabs button{padding:8px 10px}.card{padding:18px}pre{font-size:.76rem}.jump a{font-size:.8rem;padding:6px 10px}}
+@media(prefers-color-scheme:dark){:root{--bg:#101b29;--paper:#172536;--ink:#e5edf6;--muted:#b0c1d3;--line:#36485d;--blue:#91caff;--bluewash:#1c3550;--green:#a2dfca;--greenwash:#183c34;--amber:#f2ca84;--amberwash:#3b3020;--navy:#0c1b2e;--shadow:none}.tabs button[aria-pressed=true]{border-color:#547596}.status{border-color:#b391514d}}
+@media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
+@media print{:root{--bg:#fff;--paper:#fff;--ink:#17283b;--muted:#44576b;--line:#b5c4d3;--blue:#075eb5;--bluewash:#edf5ff;--amber:#815014;--amberwash:#fff5df;--navy:#132b46}body{font-size:10pt}.wrap{max-width:none;padding:0}.mast .button,.jump,.tabs,.copy,.copy-status{display:none}.hero{padding:20px 0}.section{box-shadow:none;padding:18px;break-inside:avoid}.device-panel[hidden]{display:block!important;margin-top:22px;border-top:1px solid var(--line);padding-top:18px}.diagram,.bottom{print-color-adjust:exact;-webkit-print-color-adjust:exact}.foot{font-size:8pt}h1{font-size:28pt}h2{font-size:18pt}a{color:#075eb5}}
+</style>
+</head>
+<body>
+<a class="skip" href="#basics">Skip to the guide</a>
+<header class="mast"><div class="wrap">
+<div class="brand"><svg viewBox="0 0 1254 1254" aria-hidden="true"><defs><linearGradient id="g" x1="0" y1="1" x2="1" y2="0"><stop stop-color="#00e7ed"/><stop offset="1" stop-color="#087af5"/></linearGradient></defs><path fill="url(#g)" d="M135 506C151 447 202 398 268 369L817 134C872 109 906 109 947 137C977 155 1035 218 1071 255C1101 289 1118 322 1118 374L1118 830C1118 916 1084 961 1015 997L657 1150C607 1171 554 1170 480 1169C424 1168 386 1150 349 1119L170 941C130 902 118 857 118 810L118 600C118 560 122 532 135 506Z"/><path fill="#071f65" d="M177 567C193 525 230 501 286 478L813 276C858 258 884 259 906 267C936 280 959 315 959 360L959 852C959 896 944 920 899 941L648 1043C627 1053 614 1052 597 1052L496 1052C444 1052 409 1032 386 987Z"/><rect x="548" y="452" width="335" height="279" rx="61" fill="#0a9eff"/><rect x="450" y="529" width="364" height="279" rx="60" fill="#65d2fb"/><rect x="356" y="605" width="389" height="270" rx="61" fill="#c5f6ff"/></svg>cestOn <span class="tag">Quick guide</span></div>
+<button class="button" id="print" type="button">Print / save PDF</button>
+</div></header>
+<div class="wrap">
+<div class="hero">
+<p class="eyebrow">From the demo to your own work</p>
+<h1>Start using cestOn<br>on your PC and phone.</h1>
+<p class="lead">Here is what you opened, where your repository belongs, and how a saved PC installation connects to a phone.</p>
+<div class="status"><span class="dot" aria-hidden="true"></span><p><strong>You are currently trying the practice version.</strong> Running <code>npm run dev</code> creates temporary demo folders and simulated workers. Saved installation, real-worker access and a phone address still need setup.</p></div>
+<nav class="jump" aria-label="Guide sections"><a href="#basics">1 · The basics</a><a href="#folders">2 · Your folder</a><a href="#install">3 · PC and phone</a><a href="#work">4 · Your current work</a></nav>
+</div>
+<main>
+<section class="section" id="basics">
+<div class="section-head"><span class="number" aria-hidden="true">1</span><div><h2>What is a “synthetic workspace”?</h2><p>A practice folder, with simulated results.</p></div></div>
+<div class="grid">
+<article class="card"><span class="pill amber">What you see now</span><h3>Synthetic workspace = demo project</h3><p>It is a temporary folder created for trying the app. A fake worker produces a predefined result. It is <strong>not your repository</strong>, and stopping the demo removes its task data.</p></article>
+<article class="card"><span class="pill green">For your actual work</span><h3>Project = a folder you register</h3><p>For example, <code>C:\Projects\my-repo</code>. A repository is a folder with Git history; an ordinary documents folder can also be a project. A <strong>worker</strong> is the configured Codex or Claude connection that does the work.</p></article>
+</div>
+<div class="diagram" role="img" aria-label="The Windows PC holds the application, project folders and workers. A browser or phone controls it over a configured HTTPS address. The PC must stay awake.">
+<div class="machine"><svg viewBox="0 0 32 32" aria-hidden="true"><rect x="3" y="4" width="26" height="18" rx="2"/><path d="M16 22v5M9 28h14"/></svg><h3>Your Windows PC</h3><p>Runs cestOn, keeps task data<br>and accesses registered folders.</p></div>
+<div class="connection"><b aria-hidden="true">↔</b><span>Configured<br>HTTPS address</span></div>
+<div class="machine"><svg viewBox="0 0 32 32" aria-hidden="true"><rect x="8" y="2" width="16" height="28" rx="3"/><path d="M13 6h6M14 26h4"/></svg><h3>Browser or phone</h3><p>Creates tasks, answers questions<br>and reviews results.</p></div>
+</div>
+<p class="small" style="margin-top:12px">The PC stays awake and reachable while work runs. Closing the browser does not stop acknowledged work on a running host.</p>
+</section>
+<section class="section" id="folders">
+<div class="section-head"><span class="number" aria-hidden="true">2</span><div><h2>Where do I select my repository?</h2><p>Register the folder on the PC first. Then select its name in a task.</p></div></div>
+<div class="note amber" style="margin-top:0"><strong>You have not missed a button.</strong> There is currently no “Add project” screen or folder picker. Settings lists projects, but registration is still a configuration-file step.</div>
+<div class="folder-map"><div class="card"><h3>On the PC</h3><p>Register the full local path.<br><code>C:\Projects\my-repo</code></p></div><div class="arrow" aria-hidden="true">→</div><div class="card"><h3>In cestOn</h3><p><strong>Work → New task → Project</strong><br>Select the registered display name.</p></div></div>
+<ol class="steps">
+<li><strong>Use a saved installation, not the disposable demo.</strong><p>Its data folder stores tasks and configuration separately from your repositories.</p></li>
+<li><strong>Stop that installation and back up its configuration file.</strong><p>Edit <code>DATA\state\config.json</code> on the PC. DATA is the saved installation's data folder, for example <code>%LOCALAPPDATA%\ceston</code>.</p></li>
+<li><strong>Add your folder to the <code>projects</code> list, then restart.</strong><p>Use an existing local folder, a unique project ID and a configured worker. A GitHub URL alone does not tell cestOn which folder on your PC to use.</p></li>
+</ol>
+<details><summary>Show the project fields that identify a folder</summary>
+<p>This is an illustrative entry inside the <code>projects</code> array, not a complete installation configuration. Replace the path and worker ID, and register the project's actual verification commands before enabling real work.</p>
+<pre><code>{
+  "id": "6c9f11bf-b973-4ad8-91f4-35f1b313cad6",
+  "displayName": "My current project",
+  <span class="hl">"root": "C:\\Projects\\my-repo",</span>
+  "kind": "git",
+  "providerId": "codex-main",
+  "operations": ["read", "edit", "test", "build"],
+  "recipes": []
+}</code></pre>
+<p style="margin-top:12px">Use <code>"kind": "documents"</code> for a non-Git folder. <code>codex-main</code> must match a real configured provider. The <code>root</code> folder is separate from DATA; changing a project's folder or authority requires a new project ID. <a href="setup.md">Full setup instructions</a>.</p>
+</details>
+</section>
+<section class="section" id="install">
+<div class="section-head"><span class="number" aria-hidden="true">3</span><div><h2>Install once. Open it like an app.</h2><p>There are two parts: the Windows host and the app icon you use to reach it.</p></div></div>
+<div class="tabs" role="group" aria-label="Choose installation instructions">
+<button type="button" aria-pressed="true" aria-controls="pc" data-panel="pc">Windows PC</button><button type="button" aria-pressed="false" aria-controls="android" data-panel="android">Android phone</button><button type="button" aria-pressed="false" aria-controls="iphone" data-panel="iphone">iPhone</button>
+</div>
+<article class="device-panel" id="pc">
+<h3>Windows: saved host first, app icon second</h3>
+<ol class="steps">
+<li><strong>Prepare a verified bundle and a saved data folder.</strong><p>Use a verified <code>artifacts\ceston-…</code> bundle, or build one with <code>npm run package:local</code>. The current release uses Node 24 and a local setup procedure; there is no one-click EXE installer. <a href="setup.md">Owner installation setup</a>.</p></li>
+<li><strong>Configure your folders and real workers.</strong><p>The empty configuration has no projects or workers. Dedicated provider login and sandbox checks must pass before real Codex/Claude tasks can run. <a href="provider-compatibility.md">Provider setup and certification</a>.</p></li>
+<li><strong>Start the saved host, then open its address.</strong><p>The default PC-only address is <code>http://127.0.0.1:4318</code>. Generate a pairing code in a private terminal and connect the browser. This starts the installed app without the development server.</p></li>
+<li><strong>Add an app icon in Chrome.</strong><p>Open the running app, then use <strong>⋮ → Cast, save, and share → Install page as app</strong>, or the address-bar install icon when offered. Pin the installed app to your taskbar if you wish. <a href="https://support.google.com/chrome/answer/9658361?hl=en&amp;co=GENIE.Platform%3DDesktop">Chrome instructions</a>.</p></li>
+</ol>
+<details><summary>Show the one-time initialization and daily launcher</summary>
+<p>Example paths below must be replaced with your actual unpacked bundle and prepared configuration. Run PowerShell as your normal Windows user. Initialization requires an empty data folder; skip it for an existing installation.</p>
+<div class="code-head"><span>One time · after configuration is ready</span><button class="copy" type="button" data-copy="initialize">Copy</button></div>
+<pre id="initialize"><code>$Bundle = "C:\Apps\cestOn"
+$Data = Join-Path $env:LOCALAPPDATA "ceston"
+node "$Bundle\dist\apps\supervisor\src\cli.js" init --bundle "$Bundle" --config "C:\Setup\ceston-config.json" --root "$Data"
+node "$Bundle\dist\apps\supervisor\src\cli.js" start --root "$Data"
+node "$Bundle\dist\apps\supervisor\src\cli.js" pair --root "$Data"</code></pre>
+<p style="margin-top:14px">For daily use, save the following as <code>Start-cestOn.cmd</code> and double-click it. Adjust the bundle path. This example uses the default PC-only address; use your configured HTTPS address if one is set.</p>
+<div class="code-head"><span>Daily · after initialization</span><button class="copy" type="button" data-copy="launcher">Copy</button></div>
+<pre id="launcher"><code>@echo off
+node "C:\Apps\cestOn\dist\apps\supervisor\src\cli.js" start --root "%LOCALAPPDATA%\ceston"
+if errorlevel 1 (
+  pause
+  exit /b 1
+)
+start "" "http://127.0.0.1:4318"</code></pre>
+<p style="margin-top:12px">A browser app icon opens the interface; the launcher starts the host. Automatic sign-in startup is a separate setup step and is not enabled by a normal start. <a href="operations.md">Start, stop, startup and backup commands</a>.</p>
+</details>
+<div class="note"><strong>An app icon does not start a stopped Windows host.</strong> Keep the host running, use the launcher, or deliberately configure automatic startup. Persistent sign-in/reboot acceptance is still pending.</div>
+</article>
+<article class="device-panel" id="android" hidden>
+<h3>Android: open your host's HTTPS address</h3>
+<div class="requirements"><span>Windows host running</span><span>Reachable HTTPS address</span><span>Chrome</span></div>
+<ol class="steps"><li><strong>Set up phone access to the saved host.</strong><p>A dedicated HTTPS address and reverse proxy must be configured first. The demo does not create this address. <a href="setup.md">Phone-access prerequisites</a>.</p></li><li><strong>Open that HTTPS address in Chrome on your phone.</strong><p>Connect using a fresh one-use pairing code generated on the PC. Give the phone its own device name.</p></li><li><strong>Install the icon.</strong><p>In Chrome, use <strong>⋮ → Install and create shortcut → Install</strong>. On versions with different wording, look for <strong>Install app</strong> or <strong>Add to Home screen</strong>, then follow the prompts. <a href="https://support.google.com/chrome/answer/9658361?hl=en&amp;co=GENIE.Platform%3DAndroid">Chrome instructions</a>.</p></li><li><strong>Launch from the new icon.</strong><p>If the installed window asks to connect again, pair that window with a new code. The Windows PC still does the work.</p></li></ol>
+<div class="note amber"><strong>Do not type 127.0.0.1 on the phone.</strong> That means “this phone,” not your PC. Physical Android installation, microphone and push delivery still require device checks.</div>
+</article>
+<article class="device-panel" id="iphone" hidden>
+<h3>iPhone: add the host's web app to Home Screen</h3>
+<div class="requirements"><span>Windows host running</span><span>Reachable HTTPS address</span><span>Safari</span></div>
+<ol class="steps"><li><strong>Set up phone access to the saved host.</strong><p>A dedicated HTTPS address and reverse proxy must be configured first. The demo does not create this address. <a href="setup.md">Phone-access prerequisites</a>.</p></li><li><strong>Open that HTTPS address in Safari.</strong><p>Use a fresh one-use pairing code generated on the PC. Give the phone its own device name.</p></li><li><strong>Use Share → Add to Home Screen.</strong><p>Turn on <strong>Open as Web App</strong> if shown, then tap <strong>Add</strong>. <a href="https://support.apple.com/guide/iphone/open-as-web-app-iphea86e5236/ios">Apple instructions</a>.</p></li><li><strong>Open the new cestOn icon.</strong><p>If the installed app asks to connect again, pair it with a new code. Keep the Windows host awake and reachable.</p></li></ol>
+<div class="note amber"><strong>The icon is the web app, not an App Store download.</strong> Physical iPhone installation, microphone and push delivery still require device checks. <code>127.0.0.1</code> on the phone cannot reach your PC.</div>
+</article>
+</section>
+<section class="section" id="work">
+<div class="section-head"><span class="number" aria-hidden="true">4</span><div><h2>Tell it what you are working on</h2><p>The folder identifies the project. A brief tells the worker what to do next.</p></div></div>
+<div class="grid">
+<article class="card"><span class="pill">An ordinary project</span><h3>Create one clear task</h3><p>After registration and real-worker setup, choose your project in <strong>Work → New task</strong>. Paste a short brief into <strong>Desired outcome</strong>. Keep <strong>Ask me to review the verified result</strong> for your first tasks.</p><div class="code-head"><span>Copy and adapt this brief</span><button class="copy" type="button" data-copy="brief">Copy</button></div><div class="brief" id="brief">I am working on: [feature or problem].<br>Current state: [what already works and what is unfinished].<br>Next outcome: [one concrete result].<br>Check it by: [test or observable behavior].<br>Keep within: [folders and allowed changes].<br>Ask before: committing, pushing or deploying.</div></article>
+<article class="card"><span class="pill">cestOn itself</span><h3>Use “Improve cestOn”</h3><p>For changes to this application, open <strong>Settings → Improve cestOn</strong> (also linked from Assistant). Describe the change and give acceptance checks, one per line.</p><div class="brief"><strong>Request</strong><br>Add a screen where I can register a project by choosing its local folder.<br><br><strong>Acceptance checks</strong><br>The project appears in the New task list.<br>Invalid or conflicting paths are refused.</div><p class="small" style="margin-top:12px">This needs the installed supervisor and certified coding profiles. The ordinary demo can record the request but cannot apply the update.</p></article>
+</div>
+<div class="note"><strong>This chat is not automatically shared with cestOn.</strong> Paste the relevant summary into the brief. Existing agent sessions are not automatically adopted or controlled; available session history can be read and used to start a new managed continuation task.</div>
+<div class="route" aria-label="Daily work flow"><b>Today: overview</b><span>→</span><b>Work: tasks and evidence</b><span>→</span><b>Needs me: decisions and review</b></div>
+<p class="small" style="margin-top:13px">A successful command receipt means the command was handled. Inspect the result's evidence before accepting the task. Offline drafts stay unsent until you reconnect and send them.</p>
+</section>
+<aside class="bottom"><div><h2>Your next practical step</h2><p>Set up a saved Windows installation with your real project folder and a working, certified provider. Then configure HTTPS access and add the phone icon. The current demo alone cannot do your real project work.</p></div></aside>
+<footer class="foot"><p>This guide explains the current setup; it does not install or configure anything. <a href="setup.md">Full setup</a> · <a href="operations.md">Operation and recovery</a> · <a href="support-matrix.md">Current support limits</a> · <a href="../zz_Specifications/implementation-status.md">Acceptance status</a></p><p style="margin-top:8px">Browser menu wording follows the linked Google and Apple instructions; it can vary by version. This HTML works locally without a server or external assets.</p></footer>
+</main>
+</div>
+<script>
+document.querySelectorAll('[data-panel]').forEach(function(button){
+  button.addEventListener('click',function(){
+    document.querySelectorAll('[data-panel]').forEach(function(item){item.setAttribute('aria-pressed',String(item===button));});
+    document.querySelectorAll('.device-panel').forEach(function(panel){panel.hidden=panel.id!==button.dataset.panel;});
+  });
+});
+document.querySelectorAll('[data-copy]').forEach(function(button){
+  button.addEventListener('click',async function(){
+    var text=document.getElementById(button.dataset.copy).innerText;
+    try{
+      if(navigator.clipboard&&window.isSecureContext){await navigator.clipboard.writeText(text);}
+      else{var field=document.createElement('textarea');field.value=text;field.style.position='fixed';field.style.opacity='0';document.body.appendChild(field);field.select();var copied=document.execCommand('copy');field.remove();button.focus();if(!copied)throw new Error('copy unavailable');}
+      button.textContent='Copied';
+      feedback.textContent='Copied. Replace the example paths and bracketed text before using it.';
+    }catch(error){feedback.textContent='Copy is unavailable here. Select the example text and copy it manually.';}
+  });
+});
+var feedback=document.createElement('p');feedback.className='copy-status';feedback.setAttribute('role','status');document.querySelector('.foot').prepend(feedback);
+document.getElementById('print').addEventListener('click',function(){window.print();});
+var printDetails=[];
+window.addEventListener('beforeprint',function(){printDetails=Array.from(document.querySelectorAll('details')).map(function(item){return {item:item,open:item.open};});printDetails.forEach(function(value){value.item.open=true;});});
+window.addEventListener('afterprint',function(){printDetails.forEach(function(value){value.item.open=value.open;});});
+</script>
+</body>
+</html>
