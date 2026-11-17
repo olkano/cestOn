@@ -1,9 +1,10 @@
 // Explicit, read-only research probe. Never invoked by tests, builds or the app.
 // Run: node --import tsx design/inspect-local-history.mjs --inspect-local-history
-import { existsSync, readdirSync, openSync, readSync, closeSync, statSync, lstatSync, mkdirSync, writeFileSync, readFileSync } from 'node:fs';
+import { existsSync, readdirSync, openSync, readSync, closeSync, statSync, lstatSync, mkdirSync, writeFileSync } from 'node:fs';
 import { join, resolve, dirname, basename } from 'node:path';
 import { homedir } from 'node:os';
 import { listSessions } from '@anthropic-ai/claude-agent-sdk';
+import { renderSnapshot } from './render-daily-work.mjs';
 import { SessionDiscovery } from '../packages/adapters/src/discovery.ts';
 
 if (!process.argv.includes('--inspect-local-history')) throw new Error('Explicit --inspect-local-history required. Reads local provider history metadata; writes private evidence only.');
@@ -84,10 +85,5 @@ for (const s of rows.values()) {
 const ordered = [...projects.values()].map(p => ({ ...p, sessions: p.sessions.sort((a,b) => b.last - a.last), last: Math.max(...p.sessions.map(s => s.last)) })).sort((a,b) => b.last - a.last);
 const data = { private: true, capturedAt: new Date().toISOString(), coverage, projects: ordered };
 writeFileSync(join(output, 'discovery.json'), JSON.stringify(data, null, 2));
-const template = readFileSync(join(root, 'design', 'cestOn-session-first.html'), 'utf8');
-const marker = /<script id="discovery-data" type="application\/json">[\s\S]*?<\/script>/;
-if (marker.test(template)) {
-  const json = JSON.stringify(data).replaceAll('<', '\\u003c').replaceAll('&', '\\u0026');
-  writeFileSync(join(output, 'cestOn-your-daily-work.html'), template.replace(marker, () => `<script id="discovery-data" type="application/json">${json}</script>`).replaceAll('href="../zz_Specifications/', 'href="../../zz_Specifications/'));
-}
+renderSnapshot(data, output);
 console.log(JSON.stringify({ output, coverage, projects: ordered.length, sessions: [...rows.values()].length, examples: ordered.slice(0, 8).map(p => ({ name: p.name, providers: [...new Set(p.sessions.map(s => s.provider))], sessions: p.sessions.length, exists: p.exists })), documentFolders: ordered.filter(p => /^g:/i.test(p.path)).map(p => ({ name: p.name, sessions: p.sessions.length, exists: p.exists })) }, null, 2));

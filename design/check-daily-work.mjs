@@ -2,7 +2,7 @@
 // node design/check-daily-work.mjs <private-html>
 import { chromium, expect } from '@playwright/test';
 import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'node:fs';
-import { resolve, join } from 'node:path';
+import { resolve, join, dirname } from 'node:path';
 import { pathToFileURL, fileURLToPath } from 'node:url';
 import assert from 'node:assert/strict';
 const target = resolve(process.argv[2] || 'design/cestOn-session-first.html');
@@ -79,6 +79,28 @@ try {
  const synthetic=join(out,'escaped-fixture.html');
  writeFileSync(synthetic,html.replace(marker,()=>'<script id="discovery-data" type="application/json">'+JSON.stringify(malicious).replaceAll('<','\\u003c')+'</script>'));
  await page.goto(pathToFileURL(synthetic).href); await expect(page.locator('#projects img')).toHaveCount(0); await expect(page.locator('#projects')).toContainText('<img');
+ const guide = pathToFileURL(join(dirname(target), 'cestOn-how-it-works.html')).href;
+ for (const width of [1440,390,320]) for (const colorScheme of ['light','dark']) {
+  await page.setViewportSize({width,height:950}); await page.emulateMedia({colorScheme}); await page.goto(guide);
+  for (const name of ['architecture','start','send','connection']) {
+   await page.locator('#tab-'+name).click(); await expect(page.locator('#'+name)).toBeVisible();
+   if(name==='architecture') for(const node of ['phone','host','agent','model']) await page.locator('[data-node="'+node+'"]').click();
+   assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'Guide overflow '+width+' '+name);
+   if(width!==320) await page.screenshot({path:join(out,'guide-'+name+'-'+width+'-'+colorScheme+'.png'),fullPage:true});
+  }
+ }
+ await page.goto(guide+'#architecture');
+ for(const name of ['phone','host','agent','model']) { await page.locator('[data-node="'+name+'"]').click(); await expect(page.locator('[data-node="'+name+'"]').getAttribute('aria-pressed')).resolves.toBe('true'); await expect(page.locator('#node-explanation p')).not.toBeEmpty(); }
+ await page.locator('#tab-architecture').focus(); await page.keyboard.press('ArrowRight'); await expect(page.locator('#tab-start')).toBeFocused(); await expect(page.locator('#start')).toBeVisible();
+ for(const name of ['general','find','files']) { await page.locator('[data-start="'+name+'"]').click(); await expect(page.locator('#start-example')).toContainText('Proposed'); }
+ await page.goto(guide+'#send'); await expect(page.locator('#send')).toBeVisible();
+ for(let n=0;n<5;n++) await page.locator('#next-step').click();
+ await expect(page.locator('#delivery')).toHaveText('Response complete'); await expect(page.locator('#next-step')).toBeDisabled();
+ await expect(page.locator('#response-text')).toContainText('Use Back'); await page.locator('#reset').click(); await expect(page.locator('#delivery')).toHaveText('Nothing has been sent.');
+ await page.locator('#tab-connection').click(); await page.locator('[data-state="host"]').click(); await expect(page.locator('#connection-explanation')).toContainText('unsent draft');
+ await page.locator('[data-state="session"]').click(); await expect(page.locator('#connection-explanation')).toContainText('Other sessions may still be usable');
+ await context.setOffline(true); await page.reload(); await expect(page.locator('#connection')).toBeVisible(); await context.setOffline(false);
+ for(const href of await page.locator('a[href]').evaluateAll(nodes=>nodes.map(n=>n.href))) if(href.startsWith('file:')) assert(existsSync(fileURLToPath(href)),'Broken guide link '+href);
  assert.deepEqual(errors,[]); assert.deepEqual(requests,[]);
  writeFileSync(join(out,'result.json'),JSON.stringify({status:'passed',target,projects:ordered.length,sessions:ordered.reduce((n,p)=>n+p.sessions.length,0),viewports:[1440,390,320],themes:['light','dark'],checks:['all folder counts and session ordering','provider filtering','search and empty results','stable order after selection','phone navigation and back','keyboard dialog and Escape','reply gating','escaped display input','offline static reload','local links','no external requests'],errors,requests},null,2));
  console.log(JSON.stringify({status:'passed',out,projects:ordered.length,sessions:ordered.reduce((n,p)=>n+p.sessions.length,0)}));
