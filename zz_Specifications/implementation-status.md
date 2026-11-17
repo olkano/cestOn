@@ -17,16 +17,16 @@ Specification baseline: 2026-11-14. Phases 0-9 are locally implemented and verif
 
 ## Project-memory requirement added 2026-11-17
 
-[U19 and M01-M09](13-project-memory.md) are mandatory for the first usable revised daily workflow and remain unimplemented/unverified. Memory accepts free-form notes and optional structure in the existing SQLite architecture. Source review confirmed an execution journal, task priorities and task dependencies, but no maintained cross-project knowledge lifecycle. The original 106 tests remain baseline evidence only. Follow the local implementation sequence in the [resume checkpoint](implementation-run.md); external provider/device gates do not block independent memory work.
+[U19](13-project-memory.md) has a local implementation with free-form notes, optional links to registered and discovered folders, corrections, deadlines, exclusions and forgetting. Explicit “Remember:” and accepted verified work are eligible sources. Scoped capture, restart, stale revisions, review dates, original backup refusal and both commit crash boundaries have targeted fixture evidence. A confirmed move of a discovered folder retains note and relationship identities. Remaining acceptance includes broader source inference and conflict review, and physical-device use. See the [resume checkpoint](implementation-run.md) for the current package and verification state.
 
 ## Acceptance dimensions
 
 | Dimension | Status |
 |---|---|
 | Implementation present for phases 0-9 | yes |
-| U19 project knowledge and memory present | no; required extension specified, M01-M09 pending |
-| Revised automatic discovery and daily conversation workflow accepted | no; research/prototypes only, application work and provider/device evidence pending |
-| Implementation complete against all required acceptance | no; U19 memory implementation is pending and mandatory native/device/operational evidence remains blocked |
+| U19 project knowledge and memory present | local implementation with targeted fixture evidence. Full M01-M09 acceptance remains open |
+| Revised automatic discovery and daily conversation workflow accepted | local reading, search and General implemented. Same-conversation native replies and phone acceptance remain open |
+| Implementation complete against all required acceptance | no. See the pending memory and native/device scenarios above |
 | Full local automated verification passed | yes; 26 unit, 56 integration, 13 Chromium, 4 security, 7 update tests |
 | Hosted CI passed | yes; same 106 tests and package verification on application revision f39a229 |
 | Codex live adapter certified | no |

@@ -13,13 +13,16 @@ import { EvidencePreview } from './evidence.js';
 import { Sessions } from './sessions.js';
 import { NewTask } from './new-task.js';
 import { Improve } from './improve.js';
+import { MemoryPanel } from './memory.js';
+import { Conversations } from './conversations.js';
+import { GeneralMessages, GeneralThreads } from './general.js';
 import { loadWorkFilters, saveWorkFilters } from './work-filters.js';
 import './styles/tokens.css';
 
 type Snapshot = ReturnType<Store['snapshot']>;
 type Me = { installationId: string; deviceId: string; displayName: string; csrf: string; protocol: number; capabilities: { voice: boolean; push: boolean; pushPublicKey: string | null; providers: { id: string; kind: string; profile: string }[] } };
 type History = { sequence: number; type: string; occurredAt: string; data: unknown }[];
-const nav = [['/today', 'Today'], ['/tasks', 'Work'], ['/needs-me', 'Needs me'], ['/assistant', 'Assistant'], ['/settings', 'Settings']] as const;
+const nav = [['/today', 'Today'], ['/conversations', 'Chats'], ['/tasks', 'Work'], ['/memory', 'Memory'], ['/needs-me', 'Needs me'], ['/assistant', 'Assistant'], ['/settings', 'Settings']] as const;
 const attention = (t: TaskView) => ['waiting_input', 'blocked', 'review_ready', 'pausing'].includes(t.state);
 const readable = (text: string) => text.replaceAll('_', ' ');
 function time(value: string) { return new Date(value).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' }); }
@@ -32,17 +35,19 @@ function DraftComposer({ owner, target, label, submit, disabled, voiceEnabled = 
 
 function App() {
   const [theme, updateTheme] = useState(localStorage.getItem('ceston.theme') ?? 'system');
-  const [route, setRoute] = useState(location.pathname === '/' ? '/today' : location.pathname);
+  const [route, setRoute] = useState(location.pathname === '/' ? '/conversations' : location.pathname);
   const [me, setMe] = useState<Me | null>(null); const [snapshot, setSnapshot] = useState<Snapshot | null>(null);
   const [connection, setConnection] = useState<'loading' | 'connected' | 'offline' | 'pairing' | 'setup' | 'refresh'>('loading');
   const [notice, setNotice] = useState(''); const [taskDetail, setTaskDetail] = useState<TaskView | null>(null); const [history, setHistory] = useState<History>([]);
   const [receipt, setReceipt] = useState<Receipt | null>(null); const [pending, setPending] = useState<{ key: string; command: Command } | null>(null);
   const [deliveryLoaded, setDeliveryLoaded] = useState(false);
   const [conversation, setConversation] = useState<AssistantResponse[]>([]); const [proposal, setProposal] = useState<Command | null>(null);
+  const [generalReceived, setGeneralReceived] = useState(0);
   const [pairCode, setPairCode] = useState(() => { const value = new URLSearchParams(location.hash.slice(1)).get('pair') ?? ''; if (location.hash) window.history.replaceState({}, '', location.pathname); return value; }); const [deviceName, setDeviceName] = useState('My device');
   const [search, setSearch] = useState(() => loadWorkFilters(localStorage.getItem('ceston.owner') ?? '').search); const [stateFilter, setStateFilter] = useState(() => loadWorkFilters(localStorage.getItem('ceston.owner') ?? '').state); const [projectFilter, setProjectFilter] = useState(() => loadWorkFilters(localStorage.getItem('ceston.owner') ?? '').project);
   const [devices, setDevices] = useState<{ id: string; displayName: string; lastSeenAt: number; revokedAt: number | null }[]>([]);
   const main = useRef<HTMLElement>(null); const selectedId = route.match(/^\/tasks\/([^/]+)$/)?.[1];
+  const generalId = route.match(/^\/general\/([a-f0-9-]{36})$/)?.[1];
   const refresh = useCallback(async () => { for (let attempt = 0; attempt < 3; attempt++) { try { const next = await api<Snapshot>('/snapshot'); let after = next.nextCursor; while (after !== null) { const page = await api<Snapshot>(`/snapshot?after=${after}&expectedCursor=${next.cursor}`); next.tasks.push(...page.tasks); after = page.nextCursor; } setSnapshot(next); return next; } catch (error) { if (!(error instanceof ApiError) || error.code !== 'snapshot_changed' || attempt === 2) throw error; } } throw new Error('Snapshot changed. Reconnect to refresh.'); }, []);
   const handleError = useCallback((error: unknown) => {
     if (error instanceof ApiError && error.status === 401) { sessionCsrf(''); localStorage.removeItem('ceston.owner'); localStorage.removeItem('ceston.push-subscription'); setMe(null); setSnapshot(null); setTaskDetail(null); setHistory([]); setConversation([]); setPending(null); setReceipt(null); setConnection('pairing'); void clearDrafts(); }
@@ -60,7 +65,7 @@ function App() {
       source = new EventSource(`/api/v1/events?after=${cursor}`);
       source.onopen = () => { heartbeat = Date.now(); retry = 1000; setConnection('connected'); };
       const change = (event: MessageEvent) => { heartbeat = Date.now(); if (event.lastEventId) cursor = Number(event.lastEventId); clearTimeout(delayed); delayed = setTimeout(() => { void refresh().catch(handleError); }, 150); };
-      for (const type of ['task.changed', 'task.plan', 'phase.verified', 'command.changed', 'decision.changed', 'action.changed', 'update.changed', 'device.revoked', 'conversation.assistant', 'notification.changed']) source.addEventListener(type, change as EventListener);
+      for (const type of ['task.changed', 'task.plan', 'phase.verified', 'command.changed', 'decision.changed', 'action.changed', 'update.changed', 'device.revoked', 'conversation.assistant', 'notification.changed', 'memory.changed']) source.addEventListener(type, change as EventListener);
       source.addEventListener('host.status', () => { heartbeat = Date.now(); });
       source.addEventListener('resync_required', () => { source?.close(); void connect(); });
       source.onerror = () => { source?.close(); if (closed) return; setConnection('offline'); timer = setTimeout(() => { void connect(); if (!closed) start(); }, retry + Math.random() * 250); retry = Math.min(30000, retry * 2); };
@@ -89,7 +94,7 @@ function App() {
   const card = (task: TaskView) => <article className="task-card" key={task.id}><div className="row spread"><small>{task.project}</small><span className={`badge status-${task.state}`}>{readable(task.state)}</span></div><h2>{link(`/tasks/${task.id}`, task.title)}</h2><p>{task.nextAction}</p><small>{task.phases.find(p => p.state === 'running')?.goal as string ?? `${task.phases.filter(p => p.state === 'done').length} verified phases`} · {task.freshness} evidence · {time(task.updatedAt)}</small></article>;
   const tasks = snapshot?.tasks ?? [];
   const visible = tasks.filter(t => (!search || `${t.title} ${t.goal}`.toLowerCase().includes(search.toLowerCase())) && (!stateFilter || t.state === stateFilter) && (!projectFilter || t.projectId === projectFilter));
-  const sectionTitle = route === '/today' ? 'Today' : route === '/tasks' ? 'Work' : route === '/needs-me' ? 'Needs me' : route === '/assistant' ? 'Assistant' : route === '/settings' ? 'Settings' : route === '/improve' ? 'Improve cestOn' : taskDetail?.title ?? 'Workspace';
+  const sectionTitle = generalId ? 'General' : route === '/conversations' ? 'Conversations' : nav.find(([path]) => path === route)?.[1] ?? (route === '/improve' ? 'Improve cestOn' : taskDetail?.title ?? 'Workspace');
   return <div className="shell"><a className="skip-link" href="#main">Skip to content</a><header><div className="row">{link('/today', <><img src="/cestOn-icon.svg" alt=""/>cestOn</>, 'brand')}<span className="desktop-only muted">Your work, connected</span></div><label>Appearance <select aria-label="Appearance" value={theme} onChange={event => { updateTheme(event.target.value); setTheme(event.target.value); }}><option value="system">System</option><option value="dark">Dark</option><option value="light">Light</option></select></label></header>
     <div className="workspace">{me && <nav aria-label="Main navigation">{nav.map(([path, name]) => <a href={path} key={path} aria-current={route === path ? 'page' : undefined} onClick={event => { event.preventDefault(); go(path); }}>{name}{path === '/needs-me' && attentionCount(tasks) > 0 ? <span className="badge">{attentionCount(tasks)}</span> : null}</a>)}<div className="nav-note">The host needs to stay awake and connected.</div></nav>}
     <main id="main" ref={main} tabIndex={-1}><UpdateBanner owner={owner}/>{!me && connection === 'offline' && localStorage.getItem('ceston.owner') && <OfflineDraft owner={localStorage.getItem('ceston.owner')!} target={selectedId ?? (route === '/assistant' ? 'assistant' : 'offline')}/>}
@@ -113,7 +118,27 @@ function App() {
       {route === '/settings' && <><section className="card"><h2>Installation</h2><p>Host release: {snapshot.installation.active_release}. The host needs to stay awake and connected.</p><button disabled={!writable} onClick={() => { void sendCommand({ type: snapshot.installation.dispatch_paused ? 'installation.resume' : 'installation.pause', expectedRevision: snapshot.installation.revision, payload: {} }).catch(handleError); }}>{snapshot.installation.dispatch_paused ? 'Resume dispatch' : 'Pause all dispatch'}</button><p className="muted">Resuming dispatch leaves individually paused tasks paused.</p></section><section className="card"><h2>Projects and providers</h2>{snapshot.projects.map(project => <p key={project.id}>{project.displayName} · {project.kind}</p>)}{me.capabilities.providers.map(provider => <p key={provider.id}>{provider.kind} · {readable(provider.profile)} · Runtime certification required for native work</p>)}<p className="muted">Register paths, known test recipes, and provider profiles from the local console.</p></section><section className="card"><h2>Devices</h2>{devices.filter(device => !device.revokedAt).map(device => <div className="row spread" key={device.id}><p>{device.displayName}{device.id === me.deviceId ? ' (this device)' : ''}<br/><small>Last seen {new Date(device.lastSeenAt).toLocaleString()}</small></p><button disabled={!writable} onClick={() => { void api(`/devices/${device.id}`, { method: 'DELETE' }).then(async () => { if (device.id === me.deviceId) await connect(); else await refresh(); }).catch(handleError); }}>Revoke {device.displayName}</button></div>)}</section><section className="card"><h2>Voice and notifications</h2><p>{me.capabilities.voice ? 'Speech adapter configured.' : 'Speech adapter unavailable. Text remains available.'}</p><p>{me.capabilities.push ? 'Push configured.' : 'Push is not configured. Decisions remain visible in Needs me.'}</p><PushSettings enabled={me.capabilities.push} publicKey={me.capabilities.pushPublicKey}/><p>{link('/install', 'Install on your phone')} · {link('/improve', 'Improve cestOn')}</p></section></>}
       {route === '/install' && <section className="card"><h2>Keep cestOn close</h2><InstallSupport/><p>Use a dedicated HTTPS origin on your phone. The host must be awake and reachable. Installation and real-device checks are tracked separately.</p><p>Android: open your browser menu and choose Install app when available. iPhone: use Safari, Share, then Add to Home Screen.</p></section>}
       {route === '/improve' && <Improve revision={snapshot.installation.revision} owner={owner} release={snapshot.installation.active_release} cursor={snapshot.cursor} disabled={!writable} voiceEnabled={me.capabilities.voice} submit={sendCommand}/>}
-      {!['/today', '/tasks', '/needs-me', '/assistant', '/settings', '/install', '/improve'].includes(route) && !selectedId && <p>This page is unavailable. {link('/today', 'Return to Today')}.</p>}
+      {route === '/memory' && <MemoryPanel projects={snapshot.projects} cursor={snapshot.cursor} online={transportReady}/>}
+      {route === '/conversations' && <>
+        <GeneralThreads online={transportReady} cursor={snapshot.cursor} open={id => go('/general/' + id)}/>
+        <Conversations online={transportReady} startGeneral={() => go('/general/' + crypto.randomUUID())}/>
+      </>}
+      {generalId && <section className="card">
+        <p>Ask for a work overview or write “Remember:” followed by a note. You can start here before choosing a folder.</p>
+        <p>{link('/conversations', 'Back to conversations')} · {link('/memory', 'Open Memory')}</p>
+        <GeneralMessages key={generalId} id={generalId} online={transportReady} cursor={snapshot.cursor} received={generalReceived}/>
+        <DraftComposer key={generalId} voiceEnabled={me.capabilities.voice} owner={owner} target={route} label="Message in General" disabled={!transportReady} submit={async text => {
+          const pendingKey = route + '/pending';
+          const stored = await loadDraft(owner, pendingKey);
+          const previous = stored ? JSON.parse(stored) as { messageId: string; text: string } : null;
+          const messageId = previous?.text === text ? previous.messageId : crypto.randomUUID();
+          await saveDraft(owner, pendingKey, JSON.stringify({ messageId, text }));
+          await api('/conversation', { method: 'POST', body: { messageId, text, threadId: generalId } });
+          await saveDraft(owner, pendingKey, '');
+          setGeneralReceived(value => value + 1);
+        }}/>
+      </section>}
+      {![...nav.map(([path]) => path), '/install', '/improve'].includes(route) && !selectedId && !generalId && <p>This page is unavailable. {link('/today', 'Return to Today')}.</p>}
       </>}
       {notice && <p className="notice" role="status">{notice}</p>}{receipt && <aside className="receipt" aria-live="polite"><strong>Command: {readable(receipt.state)}</strong><p>{receipt.errorCode ? readable(receipt.errorCode) : 'This receipt tracks delivery. Task evidence tracks verified results.'}</p><details><summary>Delivery details</summary><code>{receipt.id}</code></details></aside>}{pending && <div className="banner"><p>Request awaiting acknowledgement. Retrying retains the same identity.</p><button disabled={!transportReady} onClick={() => { void sendCommand(pending.command, pending).catch(handleError); }}>Check or retry this request</button></div>}
     </main></div><footer><span className={`connection ${connection}`}>● {readable(connection)}</span><span>Self-hosted · Text remains available</span>{snapshot && <span>Last snapshot {time(snapshot.capturedAt)}</span>}</footer></div>;

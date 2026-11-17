@@ -1,6 +1,6 @@
 # Project knowledge and memory
 
-Owner requirement added 2026-11-17, U19. This is mandatory from the first usable version of the revised daily workflow, not an optional later feature. Status: specified, not implemented or accepted. The original 106 tests do not establish this capability.
+Owner requirement U19 applies to the first usable revision of the daily workflow. The local implementation supports notes, project links, attention filters, explicit conversational capture and observations from accepted verified work. See the [implementation ledger](implementation-status.md) for tested and outstanding scenarios.
 
 ## Purpose and user experience
 
@@ -59,7 +59,7 @@ The first delivery includes capture, correction, recall, relationships, explaine
 
 ## Required acceptance evidence
 
-All tests below are pending. Use isolated synthetic projects and fixture evidence first; record native-provider and physical-device coverage separately. These gates supplement T01-T36.
+Use isolated synthetic projects and fixture evidence first. Record native-provider and physical-device coverage separately. These gates supplement T01-T36. The implementation ledger records partial evidence and outstanding assertions.
 
 | ID | Scenario | Required result |
 |---|---|---|

@@ -14,17 +14,46 @@ import { createTestRoot, cleanupTestRoot } from '../packages/test-support/src/in
 import { readOwner } from '../apps/broker/src/registry.js';
 import { installationSecrets } from '../apps/broker/src/certification.js';
 import { setTimeout as delay } from 'node:timers/promises';
+import { chromium, expect } from '@playwright/test';
 const bundle = resolve(process.argv[2]!); const t = createTestRoot(); const restoredRoot = createTestRoot(); const workspace = createTestRoot(); mkdirSync(join(workspace.root, 'project')); writeFileSync(join(workspace.root, 'project/untouched.txt'), 'Synthetic project stays unchanged'); let restoredStarted = false; let started = false; const checks: string[] = []; function checked(name: string) { checks.push(name); console.log(JSON.stringify({ stage: name })); }
 async function waitForStop(installationId: string) { const deadline = Date.now() + 10000; while (await readOwner(t.root, 'supervisor', installationId, installationSecrets(t.root).supervisor)) { if (Date.now() > deadline) throw new Error('Cleanup is waiting for the exact supervisor'); await delay(200); } }
 try {
   if (!await runCanary(bundle)) throw new Error('Packaged separate-process canary failed'); checked('packaged-api-broker-command-canary');
   const portOwner = createServer(); await new Promise<void>(done => portOwner.listen(0, '127.0.0.1', done)); const address = portOwner.address(); if (!address || typeof address === 'string') throw new Error('Port allocation failed'); const port = address.port; await new Promise<void>(done => portOwner.close(() => done()));
-  const configured = { listen: { port }, projects: [{ id: randomUUID(), displayName: 'Synthetic installation rehearsal', root: join(workspace.root, 'project'), kind: 'documents' }], providers: [] };
+  const codexHome = join(workspace.root, 'history');
+  mkdirSync(join(codexHome, 'sessions'), { recursive: true });
+  writeFileSync(join(codexHome, 'sessions', 'example.jsonl'), [
+    { type: 'session_meta', payload: { id: 'rehearsal-chat', cwd: join(workspace.root, 'project'), title: 'Rehearsal report' } },
+    { type: 'response_item', timestamp: '2026-11-17T12:00:00Z', payload: { type: 'message', role: 'assistant', content: [{ type: 'output_text', text: 'The rehearsal report is ready.' }] } },
+  ].map(row => JSON.stringify(row)).join('\n'));
+  const configured = { listen: { port }, history: { codexHome }, projects: [{ id: randomUUID(), displayName: 'Synthetic installation rehearsal', root: join(workspace.root, 'project'), kind: 'documents' }], providers: [] };
   const installed = await initializeInstallation(t.root, bundle, configured, false); const installationId = installed.installationId; checked('empty-root-owner-only-install');
   const planned = await startup(t.root, 'Install', true, false); if (planned.changesPersistence) throw new Error('Startup rehearsal mutated persistence'); checked('startup-plan-only');
   started = true; const status = await startInstallation(t.root, false) as { releaseId: string }; if (status.releaseId !== installed.releaseId) throw new Error('Wrong release started'); checked('stable-supervisor-start-release-readback');
   const authentication = new Store(t.root); let invitation: string; try { invitation = new AuthService(authentication).invite(); } finally { authentication.close(); } const origin = `http://127.0.0.1:${port}`; const paired = await fetch(`${origin}/api/v1/pairing/redeem`, { method: 'POST', headers: { Origin: origin, 'Content-Type': 'application/json' }, body: JSON.stringify({ invitation, deviceName: 'Synthetic package rehearsal' }) }); if (paired.status !== 200) throw new Error('Installed API pairing failed'); const cookie = paired.headers.get('set-cookie')?.split(';')[0]; if (!cookie) throw new Error('No installed API session'); const visible = await fetch(`${origin}/api/v1/snapshot`, { headers: { Cookie: cookie } }); if (visible.status !== 200 || (await visible.json() as { data: { projects: { id: string }[] } }).data.projects[0]?.id !== configured.projects[0]!.id) throw new Error('Installed authenticated API readback failed'); checked('installed-authenticated-pairing-and-project-readback');
   const health = await doctor(t.root, false); if (health.checks.some(check => check.status === 'blocked')) throw new Error('Installed doctor has a blocked capability'); checked('installed-doctor');
+  const browser = await chromium.launch();
+  try {
+    const pairing = new Store(t.root);
+    let code: string;
+    try { code = new AuthService(pairing).invite(); } finally { pairing.close(); }
+    const page = await browser.newPage({ viewport: { width: 390, height: 844 } });
+    await page.goto(origin);
+    await page.getByLabel('Pairing code').fill(code);
+    await page.getByRole('button', { name: 'Connect device' }).click();
+    await expect(page.getByRole('heading', { name: 'Conversations', exact: true })).toBeVisible();
+    await page.getByRole('button', { name: /Rehearsal report/ }).click();
+    await expect(page.getByText('The rehearsal report is ready.', { exact: true })).toBeVisible();
+    await page.getByRole('button', { name: 'New conversation', exact: true }).click();
+    await page.getByLabel('Message in General').fill('Remember: verify the installed memory flow.');
+    await page.getByRole('button', { name: 'Send', exact: true }).click();
+    await expect(page.getByText('Saved in Memory.', { exact: false })).toBeVisible();
+    await page.reload();
+    await expect(page.getByText('Saved in Memory.', { exact: false })).toBeVisible();
+    await page.getByRole('link', { name: 'Open Memory' }).click();
+    await expect(page.getByText('verify the installed memory flow.', { exact: true })).toBeVisible();
+    checked('installed-browser-first-use-history-general-memory');
+  } finally { await browser.close(); }
   await supervisorRequest(t.root, 'stop', { scope: 'all' }, false); const deadline = Date.now() + 10000; const key = installationSecrets(t.root).supervisor; while (await readOwner(t.root, 'supervisor', installationId, key)) { if (Date.now() > deadline) throw new Error('Supervisor did not stop'); await delay(200); } started = false; if ((await localStatus(t.root, false)).state !== 'stopped') throw new Error('Stop readback failed'); checked('exact-owned-stop-and-removal');
   const store = new Store(t.root, { testMode: false }); let backup: { name: string }; try { backup = await new BackupService(store, new OsProtector(installationId)).create(); } finally { store.close(); } await recoverBackup(join(t.root, 'backups', backup.name), restoredRoot.root, false); const reconciled = await reconcileRestore(restoredRoot.root, t.root, false); if (reconciled.state !== 'reconciled_paused') throw new Error('Packaged restore did not reconcile'); checked('encrypted-restore-verified-bootstrap-and-source-retirement'); restoredStarted = true; const replacement = await startInstallation(restoredRoot.root, false) as { releaseId: string }; if (replacement.releaseId !== installed.releaseId) throw new Error('Replacement release mismatch'); if ((await fetch(`${origin}/api/v1/snapshot`, { headers: { Cookie: cookie } })).status !== 200) throw new Error('Restored paired device could not authenticate'); checked('restored-paired-device-authentication'); const paused = new Store(restoredRoot.root, { testMode: false }); try { if (paused.installation().dispatch_paused !== 1) throw new Error('Restored installation dispatched before deliberate resume'); } finally { paused.close(); } await supervisorRequest(restoredRoot.root, 'stop', { scope: 'all' }, false); const replacementDeadline = Date.now() + 10000; while (await readOwner(restoredRoot.root, 'supervisor', installationId, installationSecrets(restoredRoot.root).supervisor)) { if (Date.now() > replacementDeadline) throw new Error('Replacement did not stop'); await delay(200); } restoredStarted = false; checked('restored-stable-supervisor-started-paused-and-stopped'); if (readFileSync(join(workspace.root, 'project/untouched.txt'), 'utf8') !== 'Synthetic project stays unchanged') throw new Error('Registered source project changed'); checked('registered-source-project-unchanged');
   console.log(JSON.stringify({ state: 'pass', checks, mode: 'isolated_empty_owner_installation_with_fixture_canary', persistentStartupInstalled: false, liveProviderTurns: 0 }, null, 2));

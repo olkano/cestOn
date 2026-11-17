@@ -9,7 +9,7 @@ test('T21 T24 the production worker caches static assets only and restores an un
   await pair(page); await createTask(page, 'Offline reload fixture');
   expect((await page.request.get('/sw.js')).status()).toBe(200);
   await expect.poll(() => page.evaluate(async () => { const registration = await navigator.serviceWorker.getRegistration(); return registration?.active?.state ?? registration?.installing?.state ?? 'missing'; }), { timeout: 5000 }).toBe('activated');
-  const manifest = await page.request.get('/manifest.webmanifest'); expect(await manifest.json()).toMatchObject({ id: '/', display: 'standalone', start_url: '/today' });
+  const manifest = await page.request.get('/manifest.webmanifest'); expect(await manifest.json()).toMatchObject({ id: '/', display: 'standalone', start_url: '/conversations' });
   const cached = await page.evaluate(async () => { const keys = await caches.keys(); return (await Promise.all(keys.filter(key => key.startsWith('ceston-static-')).map(async key => (await (await caches.open(key)).keys()).map(request => request.url)))).flat(); });
   expect(cached.some(url => url.includes('/assets/'))).toBe(true); expect(cached.some(url => url.includes('/api/'))).toBe(false);
   await page.getByRole('textbox', { name: 'Instruction for Offline reload fixture' }).fill('A private unsent offline draft.'); await page.getByRole('link', { name: 'Today', exact: true }).first().click(); await page.getByRole('link', { name: 'Offline reload fixture', exact: true }).click(); await expect(page.getByRole('textbox', { name: 'Instruction for Offline reload fixture' })).toHaveValue('A private unsent offline draft.');

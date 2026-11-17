@@ -3,6 +3,7 @@ import { commandSchema, DomainError, type Command, type Receipt, type Scope } fr
 import type { Config, ProjectConfig } from '../../../../packages/contracts/src/config.js';
 import { redactText } from '../../../../packages/contracts/src/logging.js';
 import { Store, type CommandRow, type DecisionRow, type TaskRow } from '../db/store.js';
+import { ProjectMemory } from '../db/memory.js';
 
 export type CommandHook = (command: Command, commandId: string, task: TaskRow | null) => { taskId?: string; dispatch?: boolean };
 export class CommandService {
@@ -90,6 +91,7 @@ export class CommandService {
         const incomplete = db.prepare("SELECT 1 FROM phases WHERE task_id=? AND state!='done' LIMIT 1").get(task.id);
         if (task.state !== 'review_ready' || incomplete || !db.prepare('SELECT 1 FROM phases WHERE task_id=?').get(task.id)) throw new DomainError('verification_required');
         this.store.changeTask(task.id, 'completed', 'Accepted.');
+        new ProjectMemory(this.store).learnAcceptedTask(task.id);
       } else {
         const result = this.hooks.get(command.type)!(command, id, task);
         if (result.taskId) { taskId = result.taskId; db.prepare('UPDATE commands SET task_id=?,scope_revision_id=? WHERE id=?').run(taskId, this.store.taskRow(taskId).scope_revision_id, id); }

@@ -33,6 +33,10 @@ export const configSchema = z.strictObject({
   projects: z.array(projectSchema).max(100).default([]), providers: z.array(providerSchema).max(20).default([]),
   limits: limitsSchema.prefault({}),
   assistant: z.strictObject({ providerId: z.string().optional() }).prefault({}),
+  history: z.strictObject({
+    codexHome: z.string().trim().min(1).optional(),
+    claudeHome: z.string().trim().min(1).optional(),
+  }).prefault({}),
   executionHost: z.strictObject({ codexExecutable: z.string().optional(), version: z.string().optional(), home: z.string().optional(), toolchainRoot: z.string().optional() }).prefault({}),
   voice: z.strictObject({ enabled: z.boolean().default(false), endpoint: z.url().refine(value => { const url = new URL(value); return url.protocol === 'https:' && !url.username && !url.password && !url.search && !url.hash; }).optional(), credentialEnv: z.string().regex(/^CESTON_SPEECH_[A-Z0-9_]+$/).optional(), model: z.string().optional() }).prefault({}),
   push: z.strictObject({ enabled: z.boolean().default(false), subject: z.string().optional(), publicKey: z.string().optional(), privateKeyEnv: z.string().regex(/^CESTON_PUSH_[A-Z0-9_]+$/).optional() }).prefault({}),

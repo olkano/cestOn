@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Start using cestOn</title>
+<style>
+:root{color-scheme:light dark;font:16px/1.55 system-ui,sans-serif}
+body{max-width:45rem;margin:3rem auto;padding:0 1.25rem}
+h1{font-size:clamp(2rem,6vw,3.5rem);line-height:1.1;margin-bottom:.5rem}
+h2{font-size:1.25rem;margin-top:1.8rem}
+li{padding:.3rem 0}code{overflow-wrap:anywhere}a{color:LinkText}
+</style>
+</head>
+<body>
+<main>
+<h1>Start using cestOn</h1>
+<p>See your recent conversations and keep the details you want to carry into tomorrow.</p>
+<h2>On your Windows PC</h2>
+<ol>
+<li>Install <a href="https://nodejs.org/en/download">Node.js 24 for Windows</a> if you need it.</li>
+<li>Extract the cestOn ZIP. Double-click <strong>Start-cestOn.cmd</strong> from the extracted folder.</li>
+<li>Choose whether to connect local Codex and Claude history. In your browser, paste the one-use code shown in the terminal and choose <strong>Connect device</strong>.</li>
+</ol>
+<p>Open the same launcher after a restart. You can open <a href="http://127.0.0.1:4318/">cestOn in your PC browser</a> while it is running.</p>
+<h2>Pick up your work</h2>
+<ul>
+<li><strong>Chats</strong> shows folders and conversations from connected local history. Search by folder, title or provider. Open a conversation to read its messages. When cestOn cannot reply to that conversation, continue in the provider app.</li>
+<li><strong>Memory</strong> is where you save something worth keeping. Start with any text. Add a project link, importance or date when it helps. Edit a note when things change or choose <strong>Forget note</strong> to remove it.</li>
+<li><strong>New conversation</strong> in Chats opens General. Try <code>Remember: check the deployment notes on Friday</code>. Find it again in Memory. You can reopen earlier General conversations from Chats.</li>
+</ul>
+<h2>Use another device</h2>
+<p>On this PC, open the browser’s install option or the install help in cestOn. On a phone, use your installation’s dedicated HTTPS address, then pair the phone with a fresh code from the PC. The printed loopback address works on the PC itself. The PC needs to stay awake and connected for the phone to reach it.</p>
+<p>To set up phone connectivity or configure a managed agent, see <a href="source/docs/setup.md">the host setup guide</a> in the extracted bundle.</p>
+<h2>If setup stops</h2>
+<p>Run the launcher from a regular Windows account. If the port is already in use, stop the app using it or follow the host setup guide to choose another port. If the browser opens but pairing fails, reopen the launcher to get a fresh code.</p>
+</main>
+</body>
+</html>

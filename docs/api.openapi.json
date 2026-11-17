@@ -192,6 +192,463 @@
         }
       }
     },
+    "/api/v1/memory": {
+      "get": {
+        "operationId": "get__api_v1_memory",
+        "security": [
+          {
+            "deviceSession": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response. JSON uses data and meta.requestId; evidence uses attachment bytes."
+          },
+          "400": {
+            "description": "Malformed request."
+          },
+          "401": {
+            "description": "Device pairing is required."
+          },
+          "403": {
+            "description": "Authority, origin, host or CSRF rejected."
+          },
+          "409": {
+            "description": "Stale revision, identity conflict or snapshot changed."
+          },
+          "422": {
+            "description": "Unsupported capability."
+          },
+          "429": {
+            "description": "Rate limit."
+          },
+          "503": {
+            "description": "Dependency unavailable."
+          }
+        }
+      },
+      "post": {
+        "operationId": "post__api_v1_memory",
+        "security": [
+          {
+            "deviceSession": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MemoryWrite"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful response. JSON uses data and meta.requestId; evidence uses attachment bytes."
+          },
+          "400": {
+            "description": "Malformed request."
+          },
+          "401": {
+            "description": "Device pairing is required."
+          },
+          "403": {
+            "description": "Authority, origin, host or CSRF rejected."
+          },
+          "409": {
+            "description": "Stale revision, identity conflict or snapshot changed."
+          },
+          "422": {
+            "description": "Unsupported capability."
+          },
+          "429": {
+            "description": "Rate limit."
+          },
+          "503": {
+            "description": "Dependency unavailable."
+          }
+        }
+      }
+    },
+    "/api/v1/memory/folders": {
+      "get": {
+        "operationId": "get__api_v1_memory_folders",
+        "security": [
+          {
+            "deviceSession": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response. JSON uses data and meta.requestId; evidence uses attachment bytes."
+          },
+          "400": {
+            "description": "Malformed request."
+          },
+          "401": {
+            "description": "Device pairing is required."
+          },
+          "403": {
+            "description": "Authority, origin, host or CSRF rejected."
+          },
+          "409": {
+            "description": "Stale revision, identity conflict or snapshot changed."
+          },
+          "422": {
+            "description": "Unsupported capability."
+          },
+          "429": {
+            "description": "Rate limit."
+          },
+          "503": {
+            "description": "Dependency unavailable."
+          }
+        }
+      }
+    },
+    "/api/v1/memory/folders/move": {
+      "post": {
+        "operationId": "post__api_v1_memory_folders_move",
+        "security": [
+          {
+            "deviceSession": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response. JSON uses data and meta.requestId; evidence uses attachment bytes."
+          },
+          "400": {
+            "description": "Malformed request."
+          },
+          "401": {
+            "description": "Device pairing is required."
+          },
+          "403": {
+            "description": "Authority, origin, host or CSRF rejected."
+          },
+          "409": {
+            "description": "Stale revision, identity conflict or snapshot changed."
+          },
+          "422": {
+            "description": "Unsupported capability."
+          },
+          "429": {
+            "description": "Rate limit."
+          },
+          "503": {
+            "description": "Dependency unavailable."
+          }
+        }
+      }
+    },
+    "/api/v1/memory/{id}/forget": {
+      "post": {
+        "operationId": "post__api_v1_memory__id__forget",
+        "security": [
+          {
+            "deviceSession": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response. JSON uses data and meta.requestId; evidence uses attachment bytes."
+          },
+          "400": {
+            "description": "Malformed request."
+          },
+          "401": {
+            "description": "Device pairing is required."
+          },
+          "403": {
+            "description": "Authority, origin, host or CSRF rejected."
+          },
+          "409": {
+            "description": "Stale revision, identity conflict or snapshot changed."
+          },
+          "422": {
+            "description": "Unsupported capability."
+          },
+          "429": {
+            "description": "Rate limit."
+          },
+          "503": {
+            "description": "Dependency unavailable."
+          }
+        }
+      }
+    },
+    "/api/v1/memory/projects/{id}": {
+      "get": {
+        "operationId": "get__api_v1_memory_projects__id_",
+        "security": [
+          {
+            "deviceSession": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response. JSON uses data and meta.requestId; evidence uses attachment bytes."
+          },
+          "400": {
+            "description": "Malformed request."
+          },
+          "401": {
+            "description": "Device pairing is required."
+          },
+          "403": {
+            "description": "Authority, origin, host or CSRF rejected."
+          },
+          "409": {
+            "description": "Stale revision, identity conflict or snapshot changed."
+          },
+          "422": {
+            "description": "Unsupported capability."
+          },
+          "429": {
+            "description": "Rate limit."
+          },
+          "503": {
+            "description": "Dependency unavailable."
+          }
+        }
+      },
+      "post": {
+        "operationId": "post__api_v1_memory_projects__id_",
+        "security": [
+          {
+            "deviceSession": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response. JSON uses data and meta.requestId; evidence uses attachment bytes."
+          },
+          "400": {
+            "description": "Malformed request."
+          },
+          "401": {
+            "description": "Device pairing is required."
+          },
+          "403": {
+            "description": "Authority, origin, host or CSRF rejected."
+          },
+          "409": {
+            "description": "Stale revision, identity conflict or snapshot changed."
+          },
+          "422": {
+            "description": "Unsupported capability."
+          },
+          "429": {
+            "description": "Rate limit."
+          },
+          "503": {
+            "description": "Dependency unavailable."
+          }
+        }
+      }
+    },
+    "/api/v1/history": {
+      "get": {
+        "operationId": "get__api_v1_history",
+        "security": [
+          {
+            "deviceSession": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response. JSON uses data and meta.requestId; evidence uses attachment bytes."
+          },
+          "400": {
+            "description": "Malformed request."
+          },
+          "401": {
+            "description": "Device pairing is required."
+          },
+          "403": {
+            "description": "Authority, origin, host or CSRF rejected."
+          },
+          "409": {
+            "description": "Stale revision, identity conflict or snapshot changed."
+          },
+          "422": {
+            "description": "Unsupported capability."
+          },
+          "429": {
+            "description": "Rate limit."
+          },
+          "503": {
+            "description": "Dependency unavailable."
+          }
+        }
+      }
+    },
+    "/api/v1/history/{id}": {
+      "get": {
+        "operationId": "get__api_v1_history__id_",
+        "security": [
+          {
+            "deviceSession": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response. JSON uses data and meta.requestId; evidence uses attachment bytes."
+          },
+          "400": {
+            "description": "Malformed request."
+          },
+          "401": {
+            "description": "Device pairing is required."
+          },
+          "403": {
+            "description": "Authority, origin, host or CSRF rejected."
+          },
+          "409": {
+            "description": "Stale revision, identity conflict or snapshot changed."
+          },
+          "422": {
+            "description": "Unsupported capability."
+          },
+          "429": {
+            "description": "Rate limit."
+          },
+          "503": {
+            "description": "Dependency unavailable."
+          }
+        }
+      }
+    },
+    "/api/v1/general": {
+      "get": {
+        "operationId": "get__api_v1_general",
+        "security": [
+          {
+            "deviceSession": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response. JSON uses data and meta.requestId; evidence uses attachment bytes."
+          },
+          "400": {
+            "description": "Malformed request."
+          },
+          "401": {
+            "description": "Device pairing is required."
+          },
+          "403": {
+            "description": "Authority, origin, host or CSRF rejected."
+          },
+          "409": {
+            "description": "Stale revision, identity conflict or snapshot changed."
+          },
+          "422": {
+            "description": "Unsupported capability."
+          },
+          "429": {
+            "description": "Rate limit."
+          },
+          "503": {
+            "description": "Dependency unavailable."
+          }
+        }
+      }
+    },
+    "/api/v1/general/{id}": {
+      "get": {
+        "operationId": "get__api_v1_general__id_",
+        "security": [
+          {
+            "deviceSession": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response. JSON uses data and meta.requestId; evidence uses attachment bytes."
+          },
+          "400": {
+            "description": "Malformed request."
+          },
+          "401": {
+            "description": "Device pairing is required."
+          },
+          "403": {
+            "description": "Authority, origin, host or CSRF rejected."
+          },
+          "409": {
+            "description": "Stale revision, identity conflict or snapshot changed."
+          },
+          "422": {
+            "description": "Unsupported capability."
+          },
+          "429": {
+            "description": "Rate limit."
+          },
+          "503": {
+            "description": "Dependency unavailable."
+          }
+        }
+      }
+    },
     "/api/v1/updates": {
       "get": {
         "operationId": "get__api_v1_updates",
@@ -1418,6 +1875,101 @@
       }
     },
     "schemas": {
+      "MemoryWrite": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "text": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 4000
+          },
+          "projectId": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid",
+                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "relatedProjectId": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid",
+                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "importance": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "high",
+                  "normal",
+                  "low"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "dueAt": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "reviewAt": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          "revision": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          }
+        },
+        "required": [
+          "text",
+          "projectId",
+          "relatedProjectId",
+          "importance",
+          "dueAt",
+          "reviewAt",
+          "id",
+          "revision"
+        ],
+        "additionalProperties": false
+      },
       "Command": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
         "oneOf": [
@@ -2143,6 +2695,11 @@
             "type": "string",
             "minLength": 1,
             "maxLength": 32768
+          },
+          "threadId": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
           },
           "taskId": {
             "type": "string",

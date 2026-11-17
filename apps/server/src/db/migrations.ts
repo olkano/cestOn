@@ -2,13 +2,24 @@ import type Database from 'better-sqlite3';
 import { createHash } from 'node:crypto';
 import { schemaSql } from './schema.js';
 import { DomainError } from '../../../../packages/contracts/src/commands.js';
-export const currentSchemaVersion = 3;
+export const currentSchemaVersion = 4;
 export const migrations = [schemaSql, `
 CREATE TABLE service_checkpoints(name TEXT PRIMARY KEY, cursor INTEGER NOT NULL, state_json TEXT NOT NULL DEFAULT '{}');
 CREATE TABLE notification_deliveries(notification_id TEXT NOT NULL REFERENCES notifications(id),subscription_id TEXT NOT NULL REFERENCES push_subscriptions(id),status TEXT NOT NULL,attempts INTEGER NOT NULL DEFAULT 0,next_attempt_at INTEGER NOT NULL,last_error TEXT,PRIMARY KEY(notification_id,subscription_id));
 `, `
 CREATE TABLE scope_profiles(scope_revision_id TEXT PRIMARY KEY REFERENCES scope_revisions(id),project_json TEXT NOT NULL,provider_json TEXT NOT NULL,profile_hash TEXT NOT NULL);
 CREATE TRIGGER immutable_scope_profile BEFORE UPDATE ON scope_profiles BEGIN SELECT RAISE(ABORT,'immutable_scope_profile'); END;
+`, `
+CREATE TABLE memory_notes(
+  id TEXT PRIMARY KEY, revision INTEGER NOT NULL, note_json TEXT,
+  project_id TEXT, related_project_id TEXT,
+  source TEXT NOT NULL, recorded_at INTEGER NOT NULL, updated_at INTEGER NOT NULL, request_hash TEXT, source_task_id TEXT
+);
+CREATE INDEX memory_notes_recent ON memory_notes(updated_at DESC,id) WHERE note_json IS NOT NULL;
+CREATE TABLE memory_revisions(note_id TEXT NOT NULL REFERENCES memory_notes(id), revision INTEGER NOT NULL, note_json TEXT NOT NULL, PRIMARY KEY(note_id,revision));
+CREATE TABLE memory_exclusions(project_id TEXT PRIMARY KEY);
+CREATE TABLE memory_folders(id TEXT PRIMARY KEY, display_name TEXT NOT NULL);
+CREATE TABLE memory_folder_aliases(discovered_id TEXT PRIMARY KEY, folder_id TEXT NOT NULL REFERENCES memory_folders(id));
 `];
 export function migrate(db: Database.Database, now: number) {
   db.exec('CREATE TABLE IF NOT EXISTS migrations(version INTEGER PRIMARY KEY,applied_at INTEGER NOT NULL,hash TEXT NOT NULL)');

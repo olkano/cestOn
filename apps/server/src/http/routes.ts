@@ -21,6 +21,9 @@ import { redactText } from '../../../../packages/contracts/src/logging.js';
 import type { SpeechService } from '../voice/index.js';
 import type { NotificationService } from '../notifications/index.js';
 import type { ImprovementService } from '../updates/service.js';
+import { ProjectMemory } from '../db/memory.js';
+import { memoryQuery, memoryWrite } from '../../../../packages/contracts/src/memory.js';
+import { LocalHistory } from '../projects/history.js';
 
 export type ApiServices = { commands?: CommandService; assistant?: Assistant; actions?: ActionService; broker?: BrokerClient; speech?: SpeechService; notifications?: NotificationService; improvements?: ImprovementService; staticBundle?: string };
 export async function registerApi(app: FastifyInstance, config: Config, input: ApiServices & { store?: Store; origin?: string }) {
@@ -28,6 +31,8 @@ export async function registerApi(app: FastifyInstance, config: Config, input: A
   const commands = input.commands ?? (store ? new CommandService(store, config) : null);
   const assistant = input.assistant ?? (store && commands ? new Assistant(store, commands, null) : null);
   const intake = store ? new SourceIntake(store) : null;
+  const memory = store ? new ProjectMemory(store) : null;
+  const history = new LocalHistory(config.history, store?.testMode ? store.dataRoot : undefined);
   const originUrl = new URL(input.origin ?? config.publicOrigin ?? `http://127.0.0.1:${config.listen.port}`); const secure = originUrl.protocol === 'https:';
   if (!secure && !['127.0.0.1', 'localhost', '[::1]'].includes(originUrl.hostname)) throw new DomainError('https_required');
   await app.register(cookie); await app.register(multipart, { limits: { fileSize: 10485760, files: 1, fields: 2, parts: 3 } });
@@ -67,6 +72,53 @@ export async function registerApi(app: FastifyInstance, config: Config, input: A
   app.get('/api/v1/updates/:id', async request => { const { id } = idSchema.parse(request.params); if (!input.improvements) throw new DomainError('updates_unavailable', 422); return data(input.improvements.view(id), request.id); });
   app.get('/api/v1/health/ready', async request => data({ ready: true, protocol: 1, database: 'ready', release: store!.installation().active_release ?? 'development', staticBundle: input.staticBundle ?? null }, request.id));
   app.get('/api/v1/snapshot', async request => { const query = pageSchema.extend({ expectedCursor: z.coerce.number().int().min(0).optional() }).parse(request.query); return data(store!.snapshot(query.after, query.expectedCursor), request.id); });
+  app.get('/api/v1/memory', async request => {
+    const query = memoryQuery.parse(request.query);
+    return data(memory!.list(query.search, query.projectId, query.offset, query.focus), request.id);
+  });
+  app.get('/api/v1/memory/folders', async request => {
+    const inventory = await history.list('', undefined, 0);
+    memory!.rememberFolders(inventory.folders);
+    return data(memory!.folders(), request.id);
+  });
+  app.post('/api/v1/memory/folders/move', async request => {
+    auth!.commandLimit(auth!.authenticate(request.cookies.ceston).id);
+    const { from, to } = z.strictObject({ from: z.uuid(), to: z.uuid() }).parse(request.body);
+    memory!.confirmFolderMove(from, to);
+    return data({ moved: true }, request.id);
+  });
+  app.get('/api/v1/history', async request => {
+    const query = z.strictObject({
+      search: z.string().trim().max(200).default(''), folderId: z.uuid().optional(),
+      offset: z.coerce.number().int().min(0).max(8000).default(0),
+    }).parse(request.query);
+    return data(await history.list(query.search, query.folderId, query.offset), request.id);
+  });
+  app.get('/api/v1/history/:id', async request => {
+    const { id } = z.strictObject({ id: z.string().regex(/^[a-f0-9]{32}$/) }).parse(request.params);
+    const { before } = z.strictObject({ before: z.coerce.number().int().min(0).max(Number.MAX_SAFE_INTEGER).optional() }).parse(request.query);
+    return data(await history.read(id, before), request.id);
+  });
+  app.post('/api/v1/memory', async request => {
+    auth!.commandLimit(auth!.authenticate(request.cookies.ceston).id);
+    return data(memory!.save(memoryWrite.parse(request.body)), request.id);
+  });
+  app.post('/api/v1/memory/:id/forget', async request => {
+    auth!.commandLimit(auth!.authenticate(request.cookies.ceston).id);
+    const { id } = idSchema.parse(request.params);
+    const { revision } = z.strictObject({ revision: z.number().int().positive() }).parse(request.body);
+    memory!.forget(id, revision);
+    return data({ forgotten: true }, request.id);
+  });
+  app.get('/api/v1/memory/projects/:id', async request => {
+    return data({ excluded: memory!.excluded(idSchema.parse(request.params).id) }, request.id);
+  });
+  app.post('/api/v1/memory/projects/:id', async request => {
+    auth!.commandLimit(auth!.authenticate(request.cookies.ceston).id);
+    const { excluded } = z.strictObject({ excluded: z.boolean() }).parse(request.body);
+    memory!.setExcluded(idSchema.parse(request.params).id, excluded);
+    return data({ excluded }, request.id);
+  });
   app.get('/api/v1/sources', async request => { const query = z.strictObject({ projectId: z.uuid() }).parse(request.query); store!.project(query.projectId); return data(store!.db.prepare('SELECT id,kind,created_at AS createdAt FROM sources WHERE project_id=? ORDER BY created_at DESC LIMIT 100').all(query.projectId), request.id); });
   app.get('/api/v1/limits', async request => data(config.limits, request.id));
   app.get('/api/v1/notifications', async request => data(input.notifications?.list() ?? [], request.id));
@@ -90,6 +142,8 @@ export async function registerApi(app: FastifyInstance, config: Config, input: A
   });
   app.get('/api/v1/commands/:id', async request => data(store!.command(idSchema.parse(request.params).id), request.id));
   app.post('/api/v1/conversation', async request => { const device = auth!.authenticate(request.cookies.ceston); auth!.commandLimit(device.id); return data(await assistant!.respond({ ...conversationSchema.parse(request.body), deviceId: device.id }), request.id); });
+  app.get('/api/v1/general', async request => data(assistant!.generalThreads(), request.id));
+  app.get('/api/v1/general/:id', async request => data(assistant!.generalMessages(idSchema.parse(request.params).id), request.id));
   app.post('/api/v1/intake', async request => {
     auth!.commandLimit(auth!.authenticate(request.cookies.ceston).id);
     if (request.isMultipart()) {

@@ -1,6 +1,10 @@
 # Data, commands, and HTTP contracts
 
-The baseline schema below is not sufficient for U19. [Project memory](13-project-memory.md) requires additional versioned notes, optional relationships, provenance and deletion handling. Specify and test the minimal migration/API contract for each implementation increment; a complete ontology or new storage service is unnecessary. No memory endpoints are claimed here as implemented.
+Schema v4 adds [project memory](13-project-memory.md). `memory_notes` stores the current revision and optional project links, importance and dates. `memory_revisions` keeps up to ten prior note revisions until explicit forgetting. A forgotten ID retains its tombstone without note text. `memory_folders` stores discovered names and opaque IDs separately from execution projects. `memory_exclusions` suppresses notes on either side of a project relationship. A restored archive stays unavailable to memory retrieval until existing recovery reconciliation verifies it against the intact source.
+
+`GET /api/v1/memory` reads bounded pages with optional search, project filter and attention view. `POST /api/v1/memory` takes the client-generated note ID, expected revision and note fields. Revision zero creates; retrying the same payload returns the same current revision. `POST /api/v1/memory/:id/forget` takes the expected revision. The authenticated folder and project-memory settings routes expose eligible folders and exclusions. Memory events carry identifiers and revisions without note text.
+
+`GET /api/v1/history` lists metadata from configured history homes with search, folder filter and offset. `GET /api/v1/history/:id` reads a bounded page of selected user and assistant messages. These endpoints expose no transcript path, execution controls or provider credential. General conversations use an optional `threadId` in `POST /api/v1/conversation` and read back through `GET /api/v1/general` and `/api/v1/general/:id`. Explicit “Remember:” saves a note without copying its text into the conversation journal.
 
 ## Schema conventions
 
