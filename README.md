@@ -9,7 +9,7 @@ cestOn is a self-hosted assistant in development for coordinating coding and ope
 - [Visual quick guide](docs/quick-guide.html): understand the demo, register your folder, and set up PC and phone access. [Text version](docs/getting-started.md).
 - [Implementation entry point](zz_Specifications/00-start-here.md): reading order, scope, authority, and completion rules.
 - [Product contract](zz_Specifications/01-product.md): what cestOn must do.
-- [Interactive experience](design/cestOn-experience.html): desktop and mobile examples, dark and light themes, and self-improvement.
+- [Revised daily-work preview](design/cestOn-session-first.html) and [how it works](design/cestOn-how-it-works.html): illustrative proposals, not implemented application behavior. The [earlier task-oriented preview](design/cestOn-experience.html) illustrates the original baseline.
 - [Implementation phases](zz_Specifications/08-implementation-phases.md) and [acceptance tests](zz_Specifications/09-acceptance-tests.md).
 - [Implementation ledger](zz_Specifications/implementation-status.md) and [resume checkpoint](zz_Specifications/implementation-run.md): verified work, remaining gates, and next steps.
 

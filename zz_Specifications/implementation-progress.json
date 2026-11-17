@@ -1,9 +1,9 @@
 {
   "formatVersion": 1,
-  "objective": "Implement phases 0-9, independently verify relevant steps, commit and push verified milestones",
-  "status": "local_verified_external_gates_blocked",
-  "currentPhase": 9,
-  "nextAction": "Read 13-project-memory.md and daily-work-review-2026-11-17.md before revising the application. U19 is a mandatory foundation, not covered by the original 106 tests. Specify migrations and source/retention rules, then implement and verify M01-M09. Resume from implementation-run.md and the acceptance matrix when an external prerequisite becomes available. Local phases 0-9, all 106 tests, independent clean export, package verification and authenticated install/DPAPI restore/bootstrap have passed. Native Windows confinement setup and dedicated authenticated Codex/Claude homes are required before bounded live certification; no real model turns or native certificates exist. Physical Android/iOS and real audio/push, persistent sign-in/lock/reboot acceptance and owner-selected license remain open. Persistent pilot, infrastructure/account changes, paid provisioning and artifact publication require their separate authorization. Preserve the old policy-quarantined test folder; no owned processes remain there. Inspect Git status and remote read-back before further edits.",
+  "objective": "Continue the revised daily workflow with flexible project memory, verify meaningful increments, and commit/push under recorded authority",
+  "status": "revised_workflow_pending_baseline_verified_external_gates_blocked",
+  "currentPhase": "revised_workflow_memory_foundation",
+  "nextAction": "Read implementation-run.md for the next implementation sequence, then 13-project-memory.md and daily-work-review-2026-11-17.md. Start the smallest SQLite memory slice with free-form notes, optional structure, correction, recall and forgetting; specify/test its migration and API in the same increment. Continue relationships, importance/urgency, authorized learning, discovery and revised UI in the recorded order. Do not restart baseline phases or wait for external gates to complete independent local work. Preserve baseline evidence, pending provider/device acceptance and operation limits. Update tracking and verify the remote after each authorized commit/push.",
   "tracking": "zz_Specifications/implementation-run.md",
   "ledger": "zz_Specifications/implementation-status.md",
   "authorized": [
@@ -115,7 +115,15 @@
       "status": "specified_not_implemented",
       "contract": "zz_Specifications/13-project-memory.md",
       "acceptance": "M01-M09 pending",
-      "delivery": "Required from first usable revised daily workflow"
+      "delivery": "Required from first usable revised daily workflow",
+      "implementationConstraint": "Existing SQLite and service architecture; free-form notes, optional metadata and extensible labels; no mandatory new infrastructure"
+    },
+    {
+      "id": "revised_daily_workflow",
+      "status": "research_and_prototypes_only",
+      "contract": "zz_Specifications/daily-work-review-2026-11-17.md",
+      "acceptance": "Automatic discovery, recency, same-conversation delivery and real-phone journey remain pending; General/search needs scoped contracts"
     }
-  ]
+  ],
+  "baselineCompletedPhase": 9
 }

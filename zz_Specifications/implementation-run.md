@@ -8,17 +8,30 @@ Read AGENTS, README, this file, `implementation-status.md` and `implementation-p
 
 ## Current state
 
-The owner added mandatory project knowledge and memory on 2026-11-17. Read [13-project-memory.md](13-project-memory.md) before continuing the revised workflow: durable facts, explicit relationships, importance distinct from urgency, corrections, staleness and forgetting must be present from its first usable delivery. This turn records the contract and pending M01-M09 gates only; it does not implement memory or alter baseline acceptance.
+The revised daily workflow is pending implementation. [13-project-memory.md](13-project-memory.md) requires flexible, maintained project knowledge from its first usable delivery. Free-form notes and incomplete metadata are valid; use the existing SQLite/service architecture and avoid a compulsory taxonomy or review process. M01-M09 are pending. The latest owner request reviews and clarifies documentation; no memory implementation is included in that review.
 
-The owner is refining the daily workflow before an application redesign. Read [daily-work-review-2026-11-17.md](daily-work-review-2026-11-17.md) first for the latest direction, real discovery probe, private HTML location and remaining control tests. The session-first prototype is illustrative; this review does not change phase acceptance.
+Read [daily-work-review-2026-11-17.md](daily-work-review-2026-11-17.md) for the required discovery, recency and same-conversation experience, plus proposed General/search behavior and unresolved provider feasibility. The session-first prototype and architecture guide are illustrative. Their recorded private snapshot is dated evidence, not today's live inventory; an agent in a clean checkout must use synthetic examples rather than depend on ignored artifacts.
 
 Local phases 0-9 are implemented and verified. Application revision `f39a2290b3d2ed50f1e97338e212ebd82beb8634` passes all 106 tests locally and in hosted Windows CI, including regressions for completion-event ordering and stale-phase dispatch. The verified local package includes these corrections, native certification tooling, the strict runtime helper allowlist and portable instructions. There is no persistent installation, real model execution or application artifact publication.
 
 The owner CLI supports initialization, temporary start, explicit stop scope, status/version, private pairing, doctor, backup, frozen recovery, startup planning/registration and native certification. Requested updates use isolated source, a broker-owned coding worker, frozen regression bytes, independent verification/rebuild, immutable manifests, atomic activation, 120-second observation and explicit/automatic rollback. Native activation remains disabled without actual current evidence for both providers. Starting native re-certification suspends earlier eligibility; interrupted or failed attempts cannot silently retain it.
 
-Project-memory contract verification: `npm run test:docs` and `npm run check:export` passed on 2026-11-17, with no broken documentation links or reported export issues. Source inspection and contract review establish the baseline gap only. No runtime changes or memory tests were performed; M01-M09 remain pending.
+Documentation review: the flexibility requirement removes compulsory metadata/state categories and unnecessary infrastructure; the handoff replaces stale phase/gate instructions and reconciles UX precedence. The continuation sequence belongs here because this is the existing resume entry point, not a new competing plan. `npm run test:docs` and `npm run check:export` passed on 2026-11-17 with no reported issues. No runtime changes or memory tests were performed; M01-M09 remain pending.
 
-## Verified evidence
+## Next implementation handoff
+
+Start here after AGENTS, README and `00-start-here.md`; read `implementation-status.md`, `13-project-memory.md` and the daily-work review together. Its owner decisions supersede older task-first navigation/manual-registration UX as stated in the entry contract; numbered execution/authority contracts remain binding. Update the relevant schema/API/UI contract with each implementation increment. Do not restart completed baseline phases or wait for native/device gates before doing independent local work.
+
+1. Implement the smallest memory slice: free-form capture, list/recall, correction and forgetting in the existing server/database, shared contracts and a simple user-facing view. Start at `apps/server/src/db/`, `apps/server/src/intents/assistant.ts`, `packages/contracts/src/` and `apps/web/src/`. Write the minimal schema/migration/API additions in `03-data-and-api.md` alongside the change. Test M01, M04, M06-M08, including crash/revision behavior, before adding automated extraction.
+2. Extend that slice with optional project links, plain-language relationships, importance/urgency explanations and source-based learning/staleness. Test M02-M05 and the relevant M09 interactions. Use existing retrieval facilities or bounded SQLite text queries first. Optional fields, link labels and ranking refinements are routine implementation choices, not reasons to stop for owner approval.
+3. Implement automatic folder/session discovery and honest recency using `packages/adapters/src/discovery.ts` and the daily-work review's bounded probe as evidence, not production code. Add contract/fixture coverage for identities, pagination, exclusions and missing sources. Clarify General/search and provider ownership contracts before implementing those proposed flows. Test supported continuation separately for each provider; no silent fork or second writer.
+4. Integrate the simplified daily interface, remembered context and delivery/response states. Complete M09 and the daily-work review's acceptance list. Use desktop/phone browser checks in both themes, keyboard, offline and reconnect tests. Keep real-provider continuation and physical-device acceptance open until directly demonstrated.
+
+For each coherent increment: run focused tests, relevant type/lint/build checks and `npm run test:docs`; broaden to `npm run verify`, `npm run test:security` and `npm run test:updates` when the changed paths warrant them. Update this checkpoint, the ledger and `implementation-progress.json` with commands, evidence and pending gates; commit/push meaningful verified phases under the recorded authorization and read back the remote SHA. Documentation-only changes use docs/export checks. Keep detailed new execution evidence under `evidence-private/` and mark existing results as historical to their tested revision.
+
+No product clarification is needed to start the local memory increments. Remaining external prerequisites are listed below; they block their own acceptance claims, not this work. Advanced relationship inference, rich maps and ranking algorithms remain deferred. This checkpoint is the continuation entry point; avoid creating a competing handoff document.
+
+## Verified baseline evidence
 
 | Check | Result / private evidence |
 |---|---|
@@ -36,7 +49,7 @@ Project-memory contract verification: `npm run test:docs` and `npm run check:exp
 
 Earlier failed CI runs exposed cold PowerShell discovery, an elevated default-owner mismatch, a completion event/status race and stale workspace replies redispatching completed phases. Direct .NET helpers preserve the security checks; failed-before/passed-after regressions cover both application races. The temporary CI worktree was removed through Git after absolute-path and clean-status validation. A local unelevated CI-factory probe returned Access denied and cleaned up; only the successful hosted run establishes that launcher's positive evidence.
 
-Resume with the external gates below. The local application, clean export, package installation and restore have passed. Follow the owner runbooks for each newly available prerequisite, update this checkpoint/ledger with observed results, and retain the distinction between source, activation and publication. Do not rerun native work or enable updates merely because fixtures pass.
+The results above establish the original baseline at the recorded revisions. Continue the pending local work in the handoff sequence; address external gates separately when their prerequisites become available. Update this checkpoint/ledger with observed results and retain the distinction between source, activation and publication. Do not enable native execution or updates merely because fixtures pass.
 
 ## External gates and operation limits
 

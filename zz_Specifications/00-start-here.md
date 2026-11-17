@@ -10,7 +10,7 @@ The numbered specifications are normative. The prototype illustrates interaction
 
 ## Additional foundation required on 2026-11-17
 
-Read [13-project-memory.md](13-project-memory.md) before revising the daily workflow. U19 requires maintained project knowledge, relationships, separate importance and urgency, corrections, staleness handling and forgetting from its first usable delivery. This is pending work; baseline phase verification does not cover M01-M09.
+Read [13-project-memory.md](13-project-memory.md) and the [daily-work review](daily-work-review-2026-11-17.md) before revising the daily workflow. U19 requires flexible maintained knowledge from its first usable delivery; baseline tests do not cover M01-M09. The review's owner decisions supersede older task-first navigation and manual-registration UX; items explicitly labelled proposed remain design work. Existing execution and authority contracts still apply. The [resume checkpoint](implementation-run.md) owns the next-work sequence; carry each revised behavior into its owning contract as it is implemented.
 
 ## Implementation authority and limits
 
@@ -31,7 +31,7 @@ Do not invent missing credentials or silently replace real acceptance tests with
 ## Autonomous implementation procedure
 
 1. Inspect Git state and the ledger. Create the implementation report before edits. Preserve unrelated files and any existing operator settings.
-2. Follow phases 0 through 9 in order. Within a phase, write meaningful failing tests for core behavior, implement, run focused tests, then the required phase suite.
+2. Use phases 0 through 9 for the original baseline. For continuation, follow pending work in [implementation-run.md](implementation-run.md); do not restart completed phases or overlook later owner requirements. Within an increment, write meaningful failing tests for core behavior, implement, run focused tests, then the relevant phase suite.
 3. Independently inspect outputs, UI, and state transitions; a worker's completion statement is not evidence. Use separate agent review only if the execution environment and current task authorize delegation. Otherwise perform a fresh review pass yourself.
 4. Correct failures within scope, rerun affected checks, update the ledger, and proceed automatically. Three unsuccessful attempts at the same root problem create a blocker with evidence; continue independent work rather than looping.
 5. Do not add placeholder success responses, bypass verification, or weaken a test to progress. A fixture adapter is clearly marked and cannot be enabled in a non-test install by default.

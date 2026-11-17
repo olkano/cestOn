@@ -1,6 +1,6 @@
 # Data, commands, and HTTP contracts
 
-The baseline schema below is not sufficient for U19. [Project memory](13-project-memory.md) requires additional versioned knowledge, relationships, provenance and deletion handling. Their migrations and API contracts must be specified and tested before implementing the revised daily workflow; no such endpoints are claimed here as implemented.
+The baseline schema below is not sufficient for U19. [Project memory](13-project-memory.md) requires additional versioned notes, optional relationships, provenance and deletion handling. Specify and test the minimal migration/API contract for each implementation increment; a complete ontology or new storage service is unnecessary. No memory endpoints are claimed here as implemented.
 
 ## Schema conventions
 

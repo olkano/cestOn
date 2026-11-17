@@ -10,7 +10,7 @@ Status: UX proposal updated after owner feedback; production redesign has not st
 - Show original provider messages in the selected conversation. Use the provider's title when available. Do not generate an unsolicited summary. The research snapshot deliberately omits titles and messages and uses neutral provider labels.
 - The intended away-from-PC workflow is to continue the same conversation inside cestOn. Read-only discovery is an intermediate implementation milestone, not acceptance of the complete product. Do not make switching to a vendor's remote-control app the ordinary cestOn flow.
 - Replace “Observe only” in product copy with “Can’t reply to this conversation,” explaining the specific connection limitation. Never silently fork, resume a second competing writer or create a different task when the user expects the original live conversation.
-- Defer related-session suggestions and automatic summaries. Keep agent diagnostics out of the main screen. Automation attribution/filtering still needs its own evidence.
+- Defer unsolicited related-session suggestions and conversation recaps. U19 still requires useful remembered context and answers to requested project briefings; this deferral does not prohibit their internal summaries. Keep agent diagnostics out of the main screen. Automation attribution/filtering still needs its own evidence.
 
 ## Architecture, starting without a folder and response delivery
 
@@ -102,4 +102,4 @@ Verified result: artifacts/daily-work-browser-1794933544468/result.json is passe
 
 The first snapshot contained 741 records; a subsequent run found one additional Codex record in Lead gen analysis mid-2026. Both are retained privately. The current deliverable uses the later 742-record snapshot, illustrating why refresh and clear capture times matter.
 
-Resume from this note and the latest browser result. Preserve the separation between the shareable template and private discovered data. The application ledger remains blocked on real-provider/device/operational gates. No app redesign, provider control, service activation or history migration has been performed.
+Resume from the next implementation sequence in [implementation-run.md](implementation-run.md), using this note for UX intent and dated discovery evidence. Preserve the separation between the shareable template and private discovered data. Local memory and revised-workflow work is pending and can proceed independently of real-provider/device/operational acceptance gates. No app redesign, provider control, service activation or history migration has been performed.
