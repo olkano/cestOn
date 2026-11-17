@@ -8,6 +8,8 @@ Read AGENTS, README, this file, `implementation-status.md` and `implementation-p
 
 ## Current state
 
+The owner is refining the daily workflow before an application redesign. Read [daily-work-review-2026-11-17.md](daily-work-review-2026-11-17.md) first for the latest direction, real discovery probe, private HTML location and remaining control tests. The session-first prototype is illustrative; this review does not change phase acceptance.
+
 Local phases 0-9 are implemented and verified. Application revision `f39a2290b3d2ed50f1e97338e212ebd82beb8634` passes all 106 tests locally and in hosted Windows CI, including regressions for completion-event ordering and stale-phase dispatch. The verified local package includes these corrections, native certification tooling, the strict runtime helper allowlist and portable instructions. There is no persistent installation, real model execution or application artifact publication.
 
 The owner CLI supports initialization, temporary start, explicit stop scope, status/version, private pairing, doctor, backup, frozen recovery, startup planning/registration and native certification. Requested updates use isolated source, a broker-owned coding worker, frozen regression bytes, independent verification/rebuild, immutable manifests, atomic activation, 120-second observation and explicit/automatic rollback. Native activation remains disabled without actual current evidence for both providers. Starting native re-certification suspends earlier eligibility; interrupted or failed attempts cannot silently retain it.

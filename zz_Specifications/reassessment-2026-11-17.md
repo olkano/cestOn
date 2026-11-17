@@ -1,6 +1,6 @@
 # Reassessment of the project and session workflow
 
-Research date: 2026-11-17. This is a proposal for discussion, not a replacement for the numbered specifications. No application redesign, provider-setting change, history migration or daemon restart is included. Open the [interactive proposal](../design/cestOn-session-first.html) to compare the current flow with the proposed experience.
+Research date: 2026-11-17. This is a proposal for discussion, not a replacement for the numbered specifications. The later [daily-work review](daily-work-review-2026-11-17.md) supersedes this document's daily-flow recommendations: automatic recent-folder discovery, simpler labels, deferred related-session suggestions and same-conversation replies as an acceptance requirement. The [interactive proposal](../design/cestOn-session-first.html) now illustrates that simpler flow. No application redesign, provider-setting change, history migration or daemon restart is included.
 
 ## Assessment
 
