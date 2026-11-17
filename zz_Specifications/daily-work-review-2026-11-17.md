@@ -1,6 +1,6 @@
 # Daily workflow revision and discovery evidence
 
-Status: UX proposal updated after owner feedback; production redesign has not started. This note supersedes the daily-flow recommendations in the earlier [reassessment](reassessment-2026-11-17.md). The [HTML preview](../design/cestOn-session-first.html) explains the experience for the owner; this document is for implementation and resumption.
+This note records the owner’s daily-work decisions and original discovery research. The Windows application now implements local history browsing, General conversations and project memory. The [implementation ledger](implementation-status.md) records evidence and outstanding acceptance. The [HTML preview](../design/cestOn-session-first.html) illustrates the proposed complete experience.
 
 ## Product decisions reflected in the preview
 
@@ -102,4 +102,4 @@ Verified result: artifacts/daily-work-browser-1794933544468/result.json is passe
 
 The first snapshot contained 741 records; a subsequent run found one additional Codex record in Lead gen analysis mid-2026. Both are retained privately. The current deliverable uses the later 742-record snapshot, illustrating why refresh and clear capture times matter.
 
-Resume from the next implementation sequence in [implementation-run.md](implementation-run.md), using this note for UX intent and dated discovery evidence. Preserve the separation between the shareable template and private discovered data. Local memory and revised-workflow work is pending and can proceed independently of real-provider/device/operational acceptance gates. No app redesign, provider control, service activation or history migration has been performed.
+Resume from [implementation-run.md](implementation-run.md). The discovery probe and HTML checks above remain dated predecessor evidence. Current runtime discovery, memory and General have their own tests and package evidence. Same-conversation control and physical-phone use still require direct evidence.

@@ -41,7 +41,7 @@ try {
     await page.goto(origin);
     await page.getByLabel('Pairing code').fill(code);
     await page.getByRole('button', { name: 'Connect device' }).click();
-    await expect(page.getByRole('heading', { name: 'Conversations', exact: true })).toBeVisible();
+    await expect(page.getByRole('heading', { level: 1, name: 'Conversations', exact: true })).toBeVisible();
     await page.getByRole('button', { name: /Rehearsal report/ }).click();
     await expect(page.getByText('The rehearsal report is ready.', { exact: true })).toBeVisible();
     await page.getByRole('button', { name: 'New conversation', exact: true }).click();

@@ -2,7 +2,7 @@
 
 cestOn is a self-hosted assistant in development for coordinating coding and operational agents from a desktop or phone. It brings tasks, decisions, progress, voice interaction, and requested improvements to cestOn itself into one workspace.
 
-**Current state:** durable tasks, bounded scheduling, separate broker and supervisor, authenticated device access, desktop/phone PWA, voice/notification contracts and requested local updates are implemented and locally fixture-tested. Native provider certification and physical-device/operational acceptance remain blocked. No persistent pilot or application package release is active.
+**Current state:** the Windows bundle includes recent Codex and Claude history, General conversations and project memory. It also includes durable tasks, authenticated devices and the desktop/phone web app. Local tests use isolated workspaces. Live agent execution needs certified profiles. Replies to conversations discovered from external history and the physical phone workflow remain open. See the implementation ledger for the verified bundle and scope.
 
 ## Start here
 

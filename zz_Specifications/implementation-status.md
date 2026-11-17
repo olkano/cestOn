@@ -19,6 +19,14 @@ Specification baseline: 2026-11-14. Phases 0-9 are locally implemented and verif
 
 [U19](13-project-memory.md) has a local implementation with free-form notes, optional links to registered and discovered folders, corrections, deadlines, exclusions and forgetting. Explicit “Remember:” and accepted verified work are eligible sources. Scoped capture, restart, stale revisions, review dates, original backup refusal and both commit crash boundaries have targeted fixture evidence. A confirmed move of a discovered folder retains note and relationship identities. Remaining acceptance includes broader source inference and conflict review, and physical-device use. See the [resume checkpoint](implementation-run.md) for the current package and verification state.
 
+## Revised Windows build
+
+Application revision `e317d24` passed 115 automated tests locally, in an independent clean export and in [Windows CI](https://github.com/olkano/cestOn/actions/runs/44155256722). Coverage includes both provider history formats, authenticated General conversations, notes and confirmed folder moves, revision conflicts, forgetting after restart, rejection of older unreconciled memory, process kills and phone-sized Chromium interactions. The 115 tests comprise 26 unit, 64 integration, 14 browser, 4 security and 7 update checks. The build and archive verification also passed. Complete acceptance still requires live provider and physical-device evidence.
+
+Bundle `artifacts/ceston-9c92b973-e237-49f3-8d6e-8c5b668c61ae.zip`, release `local-0eb5bed697b5-9c92b973`. SHA-256 `d7d50c7e8a7215246cb8c85e3f1849f501953265f38e757e993c6c1ad7905629`. Private evidence: `2026-11-17T19-07-53-778Z-2b26789e/record.json` and `clean-export-1794942501015/record.json`. The package includes `Start-cestOn.cmd` and `Start here.html`.
+
+The unpacked package passed a fresh installation in an isolated owner data folder, separate-process canary, pairing and Chromium first use. The browser read a discovered fixture conversation, created a General thread, reloaded it and recalled a saved note. Encrypted backup, exact restore reconciliation, restarted paired-device authentication, owned process shutdown, unchanged synthetic source project and cleanup passed. See `package-rehearsal-1794943084055.json`. The earlier attempt stopped at an ambiguous heading locator after successful startup and pairing. The corrected test reran the full rehearsal on the same package bytes.
+
 ## Acceptance dimensions
 
 | Dimension | Status |
@@ -27,14 +35,15 @@ Specification baseline: 2026-11-14. Phases 0-9 are locally implemented and verif
 | U19 project knowledge and memory present | local implementation with targeted fixture evidence. Full M01-M09 acceptance remains open |
 | Revised automatic discovery and daily conversation workflow accepted | local reading, search and General implemented. Same-conversation native replies and phone acceptance remain open |
 | Implementation complete against all required acceptance | no. See the pending memory and native/device scenarios above |
-| Full local automated verification passed | yes; 26 unit, 56 integration, 13 Chromium, 4 security, 7 update tests |
-| Hosted CI passed | yes; same 106 tests and package verification on application revision f39a229 |
+| Full local automated verification passed | yes, 115 tests on e317d24 and independent clean export |
+| Hosted CI passed | yes, 115 tests and package verification on e317d24 |
 | Codex live adapter certified | no |
 | Claude live adapter certified | no |
 | Android physical device accepted | no |
 | iOS physical device accepted | no |
 | Real-provider isolated self-update certified | no |
 | Local persistent pilot activated and verified | no |
+| Revised Windows ZIP and isolated install verified | yes, including first-use browser and restore |
 | Public release ready | no |
 | Authorized public source repository pushed | yes |
 | Public application package released | no |

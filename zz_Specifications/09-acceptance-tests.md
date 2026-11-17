@@ -10,7 +10,7 @@ Automated test results and screenshots are evidence, but physical installation, 
 
 ## Project-memory extension
 
-The revised daily workflow additionally requires [M01-M09](13-project-memory.md), covering durable knowledge, relationships, priorities, corrections, staleness, forgetting, recovery, scope and user interaction. All are pending; existing T01-T36 results do not cover them.
+The revised daily workflow additionally requires [M01-M09](13-project-memory.md), covering durable knowledge, relationships, priorities, corrections, staleness, forgetting, recovery, scope and user interaction. See [current implementation evidence](implementation-status.md) for the tested scenarios and remaining coverage.
 
 ## Required test inventory
 
