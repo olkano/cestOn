@@ -8,6 +8,10 @@ Fixture mode has no outbound network, provider credentials, mail, CRM, Git push,
 
 Automated test results and screenshots are evidence, but physical installation, microphone, push delivery, and actual provider controls require the manual/live checks below. A test may be `pass`, `fail`, `blocked`, or `not_applicable` with a reason. Use `not_applicable` only for an explicitly optional capability, never missing hardware for a required platform claim.
 
+## Project-memory extension
+
+The revised daily workflow additionally requires [M01-M09](13-project-memory.md), covering durable knowledge, relationships, priorities, corrections, staleness, forgetting, recovery, scope and user interaction. All are pending; existing T01-T36 results do not cover them.
+
 ## Required test inventory
 
 | ID | Setup/action | Required result |

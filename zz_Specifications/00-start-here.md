@@ -8,6 +8,10 @@ Read the root README and AGENTS, then this file, `01-product.md`, `02-architectu
 
 The numbered specifications are normative. The prototype illustrates interaction, not implementation. Historical material in `reference-private/` is optional background and must not override these decisions. Resolve conflicting wording in favor of explicit user requirements and the most specific contract; record a proposed clarification only when behavior cannot be determined safely. Do not reopen the architecture selection as a phase-0 deliverable.
 
+## Additional foundation required on 2026-11-17
+
+Read [13-project-memory.md](13-project-memory.md) before revising the daily workflow. U19 requires maintained project knowledge, relationships, separate importance and urgency, corrections, staleness handling and forgetting from its first usable delivery. This is pending work; baseline phase verification does not cover M01-M09.
+
 ## Implementation authority and limits
 
 The original specification delivery established documentation, design and a local repository. An instruction to “implement these specifications” authorizes the local steps below without repeated phase-by-phase confirmation. The implementation ledger records the resulting capabilities; implementation does not itself authorize persistent activation or application publication.

@@ -22,6 +22,7 @@
 | U16 external-action approval | 06 authority | 3 | T06, T15, T27 |
 | U17 blocked/failure recovery | 03 state; 04 errors | 2, 3 | T05, T12, T13 |
 | U18 self-improve, build, apply locally | 07 self-improvement | 6, 7 | T29-T35 |
+| U19 maintained project knowledge, relationships, importance/urgency, corrections and forgetting | 13 project memory | Revised daily-work foundation, pending | M01-M09 |
 | VS Code-style dark and light | 05 theme | 4 | T17, T20, manual A/B |
 | Name and supplied icon | 01 identity; 05 PWA | 0, 4, 5 | T17, T21, T36 |
 | Weaker implementer can finish all phases | 00 procedure; 08 phases; status ledger | All | Complete gate evidence and honest blocked prerequisites |

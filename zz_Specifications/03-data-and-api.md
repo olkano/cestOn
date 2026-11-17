@@ -1,5 +1,7 @@
 # Data, commands, and HTTP contracts
 
+The baseline schema below is not sufficient for U19. [Project memory](13-project-memory.md) requires additional versioned knowledge, relationships, provenance and deletion handling. Their migrations and API contracts must be specified and tested before implementing the revised daily workflow; no such endpoints are claimed here as implemented.
+
 ## Schema conventions
 
 Use UUIDs for internal IDs, UTC ISO timestamps on the wire, integer UTC milliseconds in SQLite, and monotonic durations within a process. Every mutable aggregate has integer `revision`, starting at 1. Reject unknown JSON fields, cap text sizes, and generate OpenAPI plus browser types from shared Zod contracts. Database columns below are mandatory; implementation may add indexed projections without changing meaning.

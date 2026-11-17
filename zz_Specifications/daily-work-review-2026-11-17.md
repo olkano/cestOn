@@ -81,6 +81,10 @@ The production preference remains version-matched supported provider APIs. [Code
 
 The previous 106 automated tests are evidence for the baseline application and fixture scenarios. They do not certify this revised workflow, live provider control, an installed phone experience or automation classification.
 
+## Mandatory memory foundation added after this review
+
+The owner subsequently required maintained project knowledge from the first usable revised workflow. [U19](13-project-memory.md) includes explicit project relationships and explained importance/urgency. This does not reinstate speculative related-session suggestions: those remain deferred, while remembering confirmed project connections is now required. The original test and discovery evidence below does not verify memory.
+
 ## Recommendation and tradeoffs
 
 | Proposed change | Impact | Complexity | Side effects | Recommendation |

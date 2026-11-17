@@ -28,6 +28,7 @@ Use “assistant” in conversation and help text. Use “relay” only as a tec
 | U16 | Approve an external action | Show exact target, current/proposed state, effects, and verification; one approval applies to one immutable action revision. |
 | U17 | Recover a failure | Preserve evidence; bounded retries; route a fresh investigation; keep the task unverified until checks pass. |
 | U18 | Improve cestOn itself | A direct fix request creates a candidate, tests and builds it, applies it locally when eligible, verifies it, and reports the result with rollback. |
+| U19 | Remember and help organize my projects | Maintain sourced project knowledge and relationships across conversations; explain importance and urgency; support corrections, stale information and forgetting from the first revised daily-work delivery. See [project memory](13-project-memory.md). |
 
 ## Conversation behavior
 

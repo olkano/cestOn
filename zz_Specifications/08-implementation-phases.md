@@ -1,5 +1,11 @@
 # Implementation sequence
 
+## Required extension to the original baseline
+
+Before accepting the revised daily workflow, implement U19 in [13-project-memory.md](13-project-memory.md). Sequence the work as storage/migrations and lifecycle tests, authorized capture/retrieval and relationship tests, then plain-language UI and M01-M09 rehearsal. Memory is a foundation of that delivery, not a later optional enhancement. Original phases 0-9 retain their historical evidence; they do not imply this extension is complete.
+
+## Baseline sequence
+
 Execute all local phases after an implementation request. This document is sufficiently ordered to use directly as a cestDone specification or another agent's plan input; it does not grant the external writes excluded by `00-start-here.md`. Record actual outcomes in `implementation-status.md`. Do not mark phase completion from file presence alone.
 
 ## Common phase procedure

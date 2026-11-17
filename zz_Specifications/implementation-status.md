@@ -15,12 +15,17 @@ Specification baseline: 2026-11-14. Phases 0-9 are locally implemented and verif
 | 8 Full rehearsal | local fixture verified; external gates blocked | Five-task/two-project UI, two devices, exact decision race, three automatic phases, priorities/dependencies, session brief/continuation, synthetic approval, notifications, offline and recovery. Both themes inspected; 30-sample p95 meets all three targets. [Checkpoint](implementation-run.md). | Native execution, physical Android/iOS, real audio/push and sign-in/lock/reboot remain blocked. |
 | 9 Handoff and release preparation | local and hosted CI verified; release gates blocked | Portable setup/support/contributing/recovery guides; independent empty-home installation and complete local gates; current ZIP read-back, authenticated owner installation, DPAPI restore/bootstrap, paused restart, exact stop, project preservation and cleanup pass. [Windows CI](https://github.com/olkano/cestOn/actions/runs/43646788951) passes all 106 tests and package verification. [Report](implementation-report-2026-11-14.md). | Owner license, native/device/operational acceptance, persistent activation and application publication remain separate gates. |
 
+## Project-memory requirement added 2026-11-17
+
+[U19 and M01-M09](13-project-memory.md) are mandatory for the first usable revised daily workflow and remain unimplemented/unverified. Source review confirmed an execution journal, task priorities and task dependencies, but no maintained cross-project knowledge lifecycle. The original 106 tests remain baseline evidence only. Next: storage/migration contracts, lifecycle and retrieval implementation, then user-facing acceptance. Documentation checks are recorded in the resume checkpoint.
+
 ## Acceptance dimensions
 
 | Dimension | Status |
 |---|---|
 | Implementation present for phases 0-9 | yes |
-| Implementation complete against all required acceptance | no; mandatory native/device/operational evidence remains blocked |
+| U19 project knowledge and memory present | no; required extension specified, M01-M09 pending |
+| Implementation complete against all required acceptance | no; U19 memory implementation is pending and mandatory native/device/operational evidence remains blocked |
 | Full local automated verification passed | yes; 26 unit, 56 integration, 13 Chromium, 4 security, 7 update tests |
 | Hosted CI passed | yes; same 106 tests and package verification on application revision f39a229 |
 | Codex live adapter certified | no |
