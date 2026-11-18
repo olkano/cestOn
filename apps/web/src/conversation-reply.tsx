@@ -5,6 +5,7 @@ import { loadDraft, saveDraft } from './drafts.js';
 
 type Thread = Awaited<ReturnType<ConversationReplies['view']>>;
 type Draft = { key: string; text: string };
+type SavedMessage = { role: string; text: string; recordedAt: string | null };
 const emptyDraft: Draft = { key: '', text: '' };
 const statusText: Record<Thread['state'], string> = {
   ready: '',
@@ -15,7 +16,19 @@ const statusText: Record<Thread['state'], string> = {
   uncertain: 'cestOn is checking whether your last message reached the provider.',
 };
 
-export function ConversationReply({ id, provider, online, owner, savedMessages }: { id: string; provider: string; online: boolean; owner: string; savedMessages?: { role: string; text: string }[] | undefined }) {
+function present(turn: Thread['turns'][number], messages: SavedMessage[]) {
+  const started = Date.parse(turn.createdAt) - 1000;
+  const prompt = messages.findIndex(message => message.role === 'user' && message.text === turn.prompt.trim() &&
+    message.recordedAt !== null && Date.parse(message.recordedAt) >= started);
+  if (prompt === -1) return {prompt:false,answer:false};
+  for (const message of messages.slice(prompt+1)) {
+    if (message.role === 'user') break;
+    if (message.text === turn.answer?.trim()) return {prompt:true,answer:true};
+  }
+  return {prompt:true,answer:false};
+}
+
+export function ConversationReply({ id, provider, online, owner, savedMessages = [] }: { id: string; provider: string; online: boolean; owner: string; savedMessages?: SavedMessage[] | undefined }) {
   const [thread, setThread] = useState<Thread | null>(null);
   const [draft, setDraft] = useState<Draft>(emptyDraft);
   const [loaded, setLoaded] = useState(false);
@@ -75,16 +88,19 @@ export function ConversationReply({ id, provider, online, owner, savedMessages }
 
   return <>
     {thread?.opening && <article className="phase"><strong>You</strong><p className="prose">{thread.opening}</p></article>}
-    <div className="conversation" aria-live="polite">{thread?.turns.filter(turn => !turn.answer || !savedMessages?.some((message,index) =>
-      message.role === 'user' && message.text === turn.prompt.trim() && savedMessages[index+1]?.text === turn.answer)).map(turn => <article className="phase" key={turn.id}>
-      <strong>You</strong><p className="prose">{turn.prompt}</p>
-      {turn.answer && <><strong>{provider}</strong><p className="prose">{turn.answer}</p></>}
+    <div className="conversation" aria-live="polite">{thread?.turns.map(turn => {
+      const stored = present(turn,savedMessages);
+      const answer = stored.answer ? null : turn.answer ?? turn.preview;
+      if (stored.prompt && !answer && turn.state !== 'failed') return null;
+      return <article className="phase" key={turn.id}>
+      {!stored.prompt && <><strong>You</strong><p className="prose">{turn.prompt}</p></>}
+      {answer && <><strong>{provider}</strong><p className="prose">{answer}</p></>}
       {turn.state === 'failed' && <p>{turn.error === 'history_session_open'
         ? 'This conversation is open in the provider app. Close that conversation there, then try again.'
         : turn.error === 'history_provider_unavailable'
           ? 'Check that the provider is installed and signed in on your PC.'
           : 'cestOn couldn’t get a reply for this message.'}</p>}
-    </article>)}</div>
+    </article>;})}</div>
     <p role="status">{!online ? 'You’re offline. Your reply stays in this browser until you send it.' : readError ? 'Couldn’t check this conversation. Trying again…' : thread ? statusText[thread.state] : 'Checking this conversation…'}</p>
     <form className="composer" onSubmit={event => { event.preventDefault(); void send(); }}>
       <label>Your reply<textarea value={draft.text} disabled={!loaded || sending} maxLength={8000} rows={3} onChange={event => {

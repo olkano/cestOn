@@ -21,6 +21,7 @@ const server = await startIpcServer({ root, name: 'broker', installationId, toke
   if (method === 'update.edit') return broker.updateEdit(z.strictObject({ grantId: z.uuid() }).parse(payload).grantId);
   if (method === 'start') return broker.start(payload);
   if (method === 'reply.state') return broker.replyState(runSchema.parse(payload).runId);
+  if (method === 'history.activities') { z.strictObject({}).parse(payload); return broker.historyActivities(); }
   if (method === 'history.reply.state') return broker.historyReplyState(historyId.parse(payload).id);
   if (method === 'history.reply.send') {
     const input = historyId.extend({ commandId: z.uuid(), text: z.string().trim().min(1).max(8000) }).parse(payload);

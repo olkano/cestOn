@@ -1,20 +1,21 @@
 {
   "formatVersion": 1,
-  "objective": "Continue saved Codex and Claude chats from the installed web app and recover their titles",
-  "status": "chat_activity_specified",
-  "currentPhase": "chat_activity_and_recency",
-  "nextAction": "Implement and verify the scoped activity and recency specification, then archive it. The previous saved-chat build remains the live PC build.",
-  "activeSpec": "zz_Specifications/chat-activity-and-recency.md",
+  "objective": "Show activity, new messages and relative times for saved Codex and Claude conversations and their folders",
+  "status": "chat_activity_candidate_verified",
+  "currentPhase": "chat_activity_and_recency_complete",
+  "nextAction": "The activity candidate is ready for an authorized upgrade of the existing PC installation. Follow implementation-run.md for deployment and physical-phone acceptance.",
+  "completedSpec": "zz_Specifications/done/chat-activity-and-recency.md",
   "tracking": "zz_Specifications/implementation-run.md",
   "ledger": "zz_Specifications/implementation-status.md",
   "authorized": [
     "local_implementation",
     "isolated_tests",
-    "bounded_provider_smoke_tests",
-    "existing_installation_upgrade"
+    "read_only_provider_observation",
+    "git_commit",
+    "git_push"
   ],
   "notAuthorized": [
-    "new_persistent_pilot_activation",
+    "activity_candidate_activation",
     "infrastructure_changes",
     "paid_service_provisioning",
     "application_package_publication"
@@ -126,6 +127,18 @@
     }
   ],
   "baselineCompletedPhase": 9,
+  "activityVerification": {
+    "releaseId": "local-56db2613864a-f6a11eec",
+    "automatedTests": 125,
+    "cleanExport": "clean-export-1795032953447/record.json",
+    "edge": "chat-activity-edge-2026-11-18/.last-run.json",
+    "nativeEvidence": "chat-activity-observation-2026-11-18.json",
+    "artifact": "artifacts/ceston-f6a11eec-8136-4cbe-8d0d-8d76be2fb5ff.zip",
+    "artifactSha256": "8ae1e3317d9713efd6326e057c677bf14d7f00735b01a0dd6a28913ca2993766",
+    "isolatedFirstUseVerified": true,
+    "activated": false,
+    "physicalPhoneVerified": false
+  },
   "savedChatVerification": {
     "releaseId": "local-3bc068a78b39-036fc12a",
     "automatedTests": 120,

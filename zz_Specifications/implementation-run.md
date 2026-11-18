@@ -14,7 +14,7 @@ Current acceptance and build evidence are recorded in the [implementation ledger
 
 ## Continuation
 
-1. Use the installation and package details in the implementation ledger. For a changed build, rerun `npm run package:local` and `node --import tsx scripts/rehearse-package.ts <unpacked-bundle>` before recording new evidence. Check the machine-readable checkpoint for the pending upgrade or the latest activation evidence.
+1. The [completed activity specification](done/chat-activity-and-recency.md) records the current Windows candidate. Use the implementation ledger to distinguish that candidate from the PC's live release. For a changed build, rerun `npm run package:local` and `node --import tsx scripts/rehearse-package.ts <unpacked-bundle>` before recording new evidence.
 2. Complete the remaining U19 scenarios. The current authorized source policy uses explicit capture and accepted work. Broader proposed inference and conflict review still need scoped inputs and tests. Validate review/retirement and recovery on the installed device.
 3. Saved-chat replies use the original session ID and the installed, signed-in provider. Exact session and prior context have been verified in an isolated native session on both providers. Close a session held by the provider before retrying it in cestOn. Certification for autonomous Work and self-update remains separate. Reply from a physical phone and verify the standalone installation journey when a device is available.
 4. Keep the ledger and machine-readable checkpoint current when a gate changes. Follow project authority and preserve verified phase evidence. Persistent activation, infrastructure changes and package publication are separate operations.

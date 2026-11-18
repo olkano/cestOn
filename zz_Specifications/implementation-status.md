@@ -1,6 +1,6 @@
 # Implementation status
 
-Specification baseline: 2026-11-14. The Windows installation is available behind Cloudflare Access. The current saved-chat build passed 120 local automated tests, an independent clean export and exact-thread smoke tests with both signed-in providers. Physical-device and autonomous Work acceptance remain open. See the [resume checkpoint](implementation-run.md) for the current deployment and the [baseline report](implementation-report-2026-11-14.md) for phases 0-9.
+Specification baseline: 2026-11-14. The existing Windows installation serves saved chat replies behind Cloudflare Access. A newer candidate adds conversation activity, live messages and recency labels. Physical-device and autonomous Work acceptance remain open. See the [resume checkpoint](implementation-run.md) for deployment and the [baseline report](implementation-report-2026-11-14.md) for phases 0-9.
 
 | Phase | Status | Verification | Blocker / next action |
 |---|---|---|---|
@@ -41,23 +41,27 @@ Chats uses saved titles from Codex and Claude and shows **Your reply** on eligib
 
 The verified build is live on the existing PC at `https://ceston.troho.net/`. The upgrade preserved the installation identity, launcher and all 32 saved folder records, and retained a verified encrypted backup and the previous build. The coordinator served the packaged UI and the origin rejected unsigned and forged API calls. A fresh Edge session reached Cloudflare sign-in. A live history scan found usable titles and reply eligibility in all 30 sampled conversations per provider. See private evidence `saved-chat-mvp-in-place-2026-11-18.json`. The signed-in Edge tab was unavailable to browser automation. Physical-phone acceptance remains open.
 
+## Conversation activity and recency, 2026-11-18
+
+The [completed specification](done/chat-activity-and-recency.md) records activity markers, live visible messages, and recency for chats and folders. Windows candidate `local-56db2613864a-f6a11eec` uses the source verified by the independent clean export. The 125 checks comprise 27 unit, 67 integration, 18 Chromium, 6 security and 7 update tests. Four additional Edge scenarios passed. A read-only PC sample covered both provider formats and the real Claude roster without starting a turn. The overlapping local package run hit three security fixture timeouts. All six security tests and seven update tests passed on an isolated rerun. See `clean-export-1795032953447/record.json`, `chat-activity-edge-2026-11-18` and `chat-activity-observation-2026-11-18.json` in private evidence. Existing PC activation and physical-phone acceptance remain open for this candidate.
+
 ## Acceptance dimensions
 
 | Dimension | Status |
 |---|---|
 | Implementation present for phases 0-9 | yes |
 | U19 project knowledge and memory present | local implementation with targeted fixture evidence. Full M01-M09 acceptance remains open |
-| Revised automatic discovery and daily conversation workflow accepted | reading, search, titles and replies implemented. Original native threads verified in isolation. Physical phone acceptance remains open |
+| Revised automatic discovery and daily conversation workflow accepted | reading, search, titles and replies implemented. The candidate adds activity, live visible messages and recency. Physical phone acceptance remains open |
 | Implementation complete against all required acceptance | no. See the pending memory and native/device scenarios above |
-| Full local automated verification passed | yes, 120 tests for local-3bc068a78b39-036fc12a and independent clean export |
-| Hosted CI passed | yes, 115 tests and package verification on e317d24 |
+| Full local automated verification passed | yes, 125 tests for local-56db2613864a-f6a11eec |
+| Hosted CI baseline | saved-chat build passed on [1be9e39](https://github.com/olkano/cestOn/actions/runs/44385129546) |
 | Codex live provider verified | saved-chat replies verified. Managed Work adapter certification pending |
 | Claude live provider verified | saved-chat replies verified. Managed Work adapter certification pending |
 | Android physical device accepted | no |
 | iOS physical device accepted | no |
 | Real-provider isolated self-update certified | no |
 | Existing local installation activated and verified | saved-chat bundle local-3bc068a78b39-036fc12a is live behind Cloudflare Access |
-| Revised Windows ZIP and isolated install verified | yes, including first-use browser and restore |
+| Revised Windows ZIP and isolated install verified | yes, including startup, authenticated browser history and exact stop for the activity candidate |
 | Public release ready | no |
 | Authorized public source repository pushed | yes |
 | Public application package released | no |

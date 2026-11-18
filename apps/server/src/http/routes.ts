@@ -123,12 +123,14 @@ export async function registerApi(app: FastifyInstance, config: Config, input: A
       search: z.string().trim().max(200).default(''), folderId: z.uuid().optional(),
       offset: z.coerce.number().int().min(0).max(8000).default(0),
     }).parse(request.query);
-    return data(await history.list(query.search, query.folderId, query.offset, input.conversationReplies?.list()), request.id);
+    const activity = await input.conversationReplies?.activities();
+    return data(await history.list(query.search, query.folderId, query.offset, input.conversationReplies?.list(activity), activity), request.id);
   });
   app.get('/api/v1/history/:id', async request => {
     const { id } = z.strictObject({ id: z.string().regex(/^[a-f0-9]{32}$/) }).parse(request.params);
     const { before } = z.strictObject({ before: z.coerce.number().int().min(0).max(Number.MAX_SAFE_INTEGER).optional() }).parse(request.query);
-    return data(await history.read(id, before), request.id);
+    const activity = before === undefined ? (await input.conversationReplies?.activities())?.get(id) : undefined;
+    return data(await history.read(id, before, activity), request.id);
   });
   app.get('/api/v1/managed-conversations/:id', async request => {
     const { id } = threadId.parse(request.params);

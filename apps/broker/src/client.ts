@@ -12,6 +12,7 @@ import type { BrokerEvent } from './events.js';
 import type { RunRef } from '../../../packages/adapters/src/types.js';
 import type { BrokerReceipt } from '../../server/src/commands/outbox.js';
 import { readOwner } from './registry.js';
+import type { LiveStatus } from '../../server/src/projects/history.js';
 
 export class BrokerClient {
   constructor(readonly endpoint: string, private installationId: string, private token: string) {}
@@ -26,6 +27,7 @@ export class BrokerClient {
   replyState(runId: string) { return this.request<'ready' | 'working' | 'unavailable'>('reply.state', { runId }); }
   reply(runId: string, commandId: string, text: string) { return this.request<{ ref: RunRef }>('reply.send', { runId, commandId, text }); }
   historyReplyState(id: string) { return this.request<'ready' | 'working' | 'unavailable'>('history.reply.state', { id }); }
+  historyActivities() { return this.request<{id:string;status:LiveStatus}[]>('history.activities', {}); }
   historyReply(id: string, commandId: string, text: string) { return this.request<{ ref: RunRef }>('history.reply.send', { id, commandId, text }); }
   workspace(projectId: string, taskId: string, scopeRevisionId: string) { return this.request<{ root: string; sourceHash: string }>('workspace', { projectId, taskId, scopeRevisionId }); }
   lookup(commandId: string) { return this.request<BrokerReceipt>('receipt', { commandId }); }

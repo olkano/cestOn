@@ -131,6 +131,7 @@ export class Broker {
     if (recent.some(row => row.context?.historyId === id && (row.state !== 'resolved' || row.result?.state === 'reconciling'))) return 'working' as const;
     return 'ready' as const;
   }
+  historyActivities() { return this.historyProvider.activities(); }
   async historyReply(id: string, commandId: string, text: string) {
     return this.own(async () => {
       if (await this.historyReplyState(id) !== 'ready' || this.historyJobs.has(id)) throw new DomainError('conversation_unavailable');

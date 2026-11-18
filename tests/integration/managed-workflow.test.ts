@@ -46,6 +46,7 @@ it('T12 a real coordinator service and separate fixture broker produce independe
     await expect(replies.send(external, device, randomUUID(), 'Must stay read only')).rejects.toThrow('conversation_unavailable');
     const key = randomUUID();
     const reply = await replies.send(thread!.id, device, key, 'Explain the verified result');
+    expect(replies.list(await replies.activities())[0]).toMatchObject({ id:thread!.id, status:'working' });
     expect(await replies.send(thread!.id, device, key, 'Explain the verified result')).toEqual(reply);
     await expect(replies.send(thread!.id, device, key, 'Different content')).rejects.toThrow('idempotency_conflict');
     const original = store.db.prepare('SELECT s.provider_session_id,r.usage_json FROM sessions s JOIN runs r ON r.session_id=s.id WHERE s.id=?').get(thread!.id) as { provider_session_id: string; usage_json: string };
@@ -64,10 +65,15 @@ it('T12 a real coordinator service and separate fixture broker produce independe
       await restarted.tick();
       return store.command(reply.id).state;
     }, { timeout: 5000 }).toBe('succeeded');
+    const times = store.db.prepare('SELECT created_at,resolved_at FROM commands WHERE id=?').get(reply.id) as {created_at:number;resolved_at:number};
     expect((await restarted.view(thread!.id, device)).turns).toEqual([{
       id: reply.id, clientKey: key, state: 'succeeded', prompt: 'Explain the verified result',
-      answer: 'Synthetic worker result. Verification is required.',
+      answer: 'Synthetic worker result. Verification is required.', preview:null,
+      createdAt:new Date(times.created_at).toISOString(),
     }]);
+    expect(restarted.list(await restarted.activities())[0]).toMatchObject({
+      id:thread!.id, status:'idle', endedAt:new Date(times.resolved_at).toISOString(),
+    });
     expect(store.db.prepare('SELECT * FROM leases').all()).toHaveLength(0);
     const interrupted = await restarted.send(thread!.id, device, randomUUID(), 'An unacknowledged prompt');
     store.db.prepare("UPDATE commands SET state='dispatching' WHERE id=?").run(interrupted.id);

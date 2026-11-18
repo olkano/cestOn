@@ -6,6 +6,8 @@ Schema v4 adds [project memory](13-project-memory.md). `memory_notes` stores the
 
 `GET /api/v1/history` lists metadata from configured history homes with search, folder filter and offset. `GET /api/v1/history/:id` reads a bounded page of selected user and assistant messages. These endpoints expose no transcript path, execution controls or provider credential. General conversations use an optional `threadId` in `POST /api/v1/conversation` and read back through `GET /api/v1/general` and `/api/v1/general/:id`. Explicit “Remember:” saves a note without copying its text into the conversation journal.
 
+History returns current activity when observed, the latest conversation activity timestamp, and the last known turn-end timestamp when available. Folder timestamps reflect the newest conversation across the folder. A thread page includes message positions and an opaque file revision so the browser can merge newly saved messages with earlier pages from the same file. The browser polls within the existing authenticated routes. A managed reply can include a preview assembled from visible text events for its verified run.
+
 ## Schema conventions
 
 Use UUIDs for internal IDs, UTC ISO timestamps on the wire, integer UTC milliseconds in SQLite, and monotonic durations within a process. Every mutable aggregate has integer `revision`, starting at 1. Reject unknown JSON fields, cap text sizes, and generate OpenAPI plus browser types from shared Zod contracts. Database columns below are mandatory; implementation may add indexed projections without changing meaning.

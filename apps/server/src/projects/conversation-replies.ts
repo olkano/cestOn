@@ -5,11 +5,11 @@ import { DomainError } from '../../../../packages/contracts/src/commands.js';
 import type { Config } from '../../../../packages/contracts/src/config.js';
 import { redactText } from '../../../../packages/contracts/src/logging.js';
 import type { CommandRow, Store } from '../db/store.js';
-import { conversationFolderId, type Conversation } from './history.js';
+import { conversationFolderId, type ChatActivity, type Conversation } from './history.js';
 
 type Thread = {
   id: string; task_id: string; project_id: string; provider: string;
-  title: string; folder: string; canonical_root: string; observed_at: number;
+  title: string; folder: string; canonical_root: string; observed_at: number; ended_at: number | null; working: number;
 };
 type Target = { runId: string; root: string; scopeId: string };
 type Reply = { sessionId: string; text: string; runId?: string };
@@ -24,28 +24,59 @@ const savedHistory = (id: string) => /^[a-f0-9]{32}$/.test(id);
 export class ConversationReplies {
   private polling = false;
   private frozen = false;
+  private roster = new Map<string,ChatActivity>();
+  private observedAt = 0;
+  private observing: Promise<void> | undefined;
   constructor(private store: Store, private config: Config, private broker: BrokerClient) {}
   freeze(frozen: boolean) { this.frozen = frozen; }
 
   private threads(id: string | null = null) {
     return this.store.db.prepare(`WITH recent AS (
-      SELECT json_extract(payload_json,'$.sessionId') AS id,MAX(created_at) AS time
+      SELECT json_extract(payload_json,'$.sessionId') AS id,MAX(created_at) AS time,
+        MAX(CASE WHEN state='succeeded' THEN resolved_at END) AS ended
       FROM commands WHERE type='conversation.reply' GROUP BY id
+    ), work AS (
+      SELECT session_id,MAX(ended_at) AS ended,
+        MAX(CASE WHEN state='running' AND broker_receipt IS NOT NULL THEN 1 ELSE 0 END) AS working
+      FROM runs WHERE session_id IS NOT NULL GROUP BY session_id
     )
       SELECT s.id,s.task_id,s.project_id,s.provider,t.title,p.display_name AS folder,
-      p.canonical_root,MAX(s.observed_at,COALESCE(recent.time,0)) AS observed_at
+      p.canonical_root,MAX(s.observed_at,COALESCE(recent.time,0),COALESCE(recent.ended,0),COALESCE(work.ended,0)) AS observed_at,
+      NULLIF(MAX(COALESCE(recent.ended,0),COALESCE(work.ended,0)),0) AS ended_at,COALESCE(work.working,0) AS working
       FROM sessions s JOIN tasks t ON t.id=s.task_id JOIN projects p ON p.id=s.project_id
       LEFT JOIN recent ON recent.id=s.id
+      LEFT JOIN work ON work.session_id=s.id
       WHERE s.ownership='managed' AND t.project_id=p.id AND p.archived_at IS NULL
       AND (? IS NULL OR s.id=?) ORDER BY observed_at DESC,s.id LIMIT 4000`).all(id, id) as Thread[];
   }
-  list(): Conversation[] {
+  async activities() {
+    if (this.config.history.claudeExecutable && this.config.history.claudeHome && Date.now() - this.observedAt >= 5000) {
+      this.observing ??= this.broker.historyActivities().then(rows => {
+        this.roster = new Map(rows.map(row => [row.id,{status:row.status}]));
+      }).catch(() => { this.roster.clear(); }).finally(() => { this.observedAt = Date.now(); this.observing = undefined; });
+      await this.observing;
+    }
+    const result = new Map(this.roster);
+    const replies = this.store.db.prepare(`SELECT json_extract(payload_json,'$.sessionId') AS id,
+      MAX(CASE WHEN state IN ('queued','dispatching','accepted') THEN created_at END) AS started,
+      MAX(CASE WHEN state='succeeded' THEN resolved_at END) AS ended
+      FROM commands WHERE type=? GROUP BY id`).all(commandType) as {id:string;started:number|null;ended:number|null}[];
+    for (const row of replies) if (row.started || row.ended) result.set(row.id,{
+      ...result.get(row.id), ...(row.started ? {status:'working',startedAt:new Date(row.started).toISOString()} : {}),
+      ...(row.ended ? {endedAt:new Date(row.ended).toISOString()} : {}),
+    });
+    return result;
+  }
+
+  list(activity = new Map<string,ChatActivity>()): Conversation[] {
     return this.threads().map(row => {
       const kind = this.config.providers.find(profile => profile.id === row.provider)?.kind;
+      const status = activity.get(row.id)?.status ?? (row.working ? 'working' : row.ended_at ? 'idle' : 'unknown');
       return {
         id: row.id, folderId: conversationFolderId(row.canonical_root), folder: row.folder, managed: true,
         provider: kind === 'codex' ? 'Codex' : kind === 'claude' ? 'Claude' : kind === 'fixture' ? 'Fixture' : 'Managed',
-        title: row.title, activityAt: new Date(row.observed_at).toISOString(), approximate: false,
+        title: row.title, activityAt: new Date(row.observed_at).toISOString(), approximate: false, status,
+        endedAt: row.ended_at ? new Date(row.ended_at).toISOString() : null,
       };
     });
   }
@@ -89,14 +120,18 @@ export class ConversationReplies {
   }
   async view(id: string, deviceId: string) {
     const thread = savedHistory(id) ? null : this.thread(id);
-    const turns = this.store.db.prepare(`SELECT c.id,c.state,c.error_code,c.payload_json,e.sanitized_payload_json AS result,
+    const turns = this.store.db.prepare(`SELECT c.id,c.state,c.error_code,c.payload_json,c.created_at,e.sanitized_payload_json AS result,
       CASE WHEN c.device_id=? THEN c.idempotency_key END AS client_key
       FROM commands c LEFT JOIN events e ON e.provider_event_key='conversation.reply:'||c.id
       WHERE c.task_id IS ? AND c.type=? AND json_extract(c.payload_json,'$.sessionId')=?
-      ORDER BY c.created_at DESC,c.rowid DESC LIMIT 50`).all(deviceId, thread?.task_id ?? null, commandType, id) as (Pick<CommandRow, 'id' | 'state' | 'payload_json' | 'error_code'> & { result: string | null; client_key: string | null })[];
-    return { state: await this.state(id, thread ? this.target(thread) : null), opening: thread ? this.store.taskRow(thread.task_id).goal : null, turns: turns.reverse().map(row => ({
+      ORDER BY c.created_at DESC,c.rowid DESC LIMIT 50`).all(deviceId, thread?.task_id ?? null, commandType, id) as (Pick<CommandRow, 'id' | 'state' | 'payload_json' | 'error_code' | 'created_at'> & { result: string | null; client_key: string | null })[];
+    const state = await this.state(id, thread ? this.target(thread) : null);
+    const active = thread && turns.find(row => row.state === 'accepted');
+    const preview = active ? await this.acceptedRun(active.id,id).then(run => run ? this.answer(run.ref.runId) : '').catch(()=>'') : '';
+    return { state, opening: thread ? this.store.taskRow(thread.task_id).goal : null, turns: turns.reverse().map(row => ({
       id: row.id, state: row.state, ...(row.error_code ? { error: row.error_code } : {}), prompt: (JSON.parse(row.payload_json) as Reply).text, clientKey: row.client_key,
-      answer: row.result ? (JSON.parse(row.result) as { text: string }).text : null,
+      createdAt:new Date(row.created_at).toISOString(), answer: row.result ? (JSON.parse(row.result) as { text: string }).text : null,
+      preview:row.id === active?.id && preview ? preview : null,
     })) };
   }
   async send(id: string, deviceId: string, key: string, text: string) {
@@ -172,39 +207,46 @@ export class ConversationReplies {
         return;
       }
     }
-    const receipt = await this.broker.lookup(row.id);
-    if (receipt.status !== 'accepted') {
+    const run = await this.acceptedRun(row.id,reply.sessionId);
+    if (!run) {
       this.store.db.prepare("UPDATE commands SET state='reconciling' WHERE id=?").run(row.id);
       return;
     }
-    const ref = receipt.result.ref as RunRef | undefined;
-    const original = this.store.db.prepare('SELECT provider_session_id FROM sessions WHERE id=?').get(reply.sessionId) as { provider_session_id: string } | undefined;
-    if (!ref || (savedHistory(reply.sessionId) ? receipt.result.historyId !== reply.sessionId : ref.sessionId !== original?.provider_session_id)) {
-      this.store.db.prepare("UPDATE commands SET state='reconciling' WHERE id=?").run(row.id);
-      return;
-    }
+    const {ref,receipt} = run;
     const { state } = await this.broker.reconcile(ref.runId);
     if (state === 'succeeded') {
-      let text = '';
-      let after = 0;
-      for (let batch = 0; batch < 32 && text.length < 12000; batch++) {
-        const events = await this.broker.events(ref.runId, after);
-        for (const { event } of events) if (event.type === 'message.delta') {
-          if (typeof event.data.text === 'string') text += event.data.text;
-          else {
-            const blocks = (event.data.message as { content?: unknown } | undefined)?.content;
-            if (Array.isArray(blocks)) text += blocks.filter(block => block?.type === 'text' && typeof block.text === 'string').map(block => block.text).join('\n');
-          }
-        }
-        if (events.length < 100) break;
-        after = events.at(-1)!.sequence;
-      }
-      this.finish(row, reply, text.trim() ? 'succeeded' : 'failed', text.slice(0, 12000));
+      const text = await this.answer(ref.runId);
+      this.finish(row, reply, text.trim() ? 'succeeded' : 'failed', text);
     } else if (['interrupted', 'failed'].includes(state)) {
       this.finish(row, reply, 'failed', undefined, receipt.result.errorCode === 'history_session_open' ? 'history_session_open' : undefined);
     }
     else this.store.db.prepare('UPDATE commands SET state=?,accepted_at=COALESCE(accepted_at,?) WHERE id=?').run(
       ['starting', 'running'].includes(state) ? 'accepted' : 'reconciling', this.store.now(), row.id);
+  }
+  private async acceptedRun(commandId: string, sessionId: string) {
+    const receipt = await this.broker.lookup(commandId);
+    if (receipt.status !== 'accepted') return null;
+    const ref = receipt.result.ref as RunRef | undefined;
+    const original = this.store.db.prepare('SELECT provider_session_id FROM sessions WHERE id=?').get(sessionId) as {provider_session_id:string} | undefined;
+    if (!ref || (savedHistory(sessionId) ? receipt.result.historyId !== sessionId : ref.sessionId !== original?.provider_session_id)) return null;
+    return {ref,receipt};
+  }
+  private async answer(runId: string) {
+    let text = '';
+    let after = 0;
+    for (let batch = 0; batch < 32 && text.length < 12000; batch++) {
+      const events = await this.broker.events(runId,after);
+      for (const {event} of events) if (event.type === 'message.delta') {
+        if (typeof event.data.text === 'string') text += event.data.text;
+        else {
+          const blocks = (event.data.message as {content?:unknown} | undefined)?.content;
+          if (Array.isArray(blocks)) text += blocks.filter(block => block?.type === 'text' && typeof block.text === 'string').map(block => block.text).join('\n');
+        }
+      }
+      if (events.length < 100) break;
+      after = events.at(-1)!.sequence;
+    }
+    return text.slice(0,12000);
   }
   private finish(row: CommandRow, reply: Reply, state: 'succeeded' | 'failed', text?: string, error?: string) {
     this.store.db.transaction(() => {

@@ -1,5 +1,6 @@
 import { createHash } from 'node:crypto';
 import { lstat, open, opendir, realpath, readdir } from 'node:fs/promises';
+import type { FileHandle } from 'node:fs/promises';
 import Database from 'better-sqlite3';
 import { basename, isAbsolute, join, normalize, relative } from 'node:path';
 import type { Config } from '../../../../packages/contracts/src/config.js';
@@ -12,14 +13,19 @@ type Json = Record<string, unknown>;
 type Source = { provider: Provider; home: string; root: string; replyEnabled: boolean };
 export type Conversation = {
   id: string; folderId: string; folder: string; provider: Provider | 'Managed' | 'Fixture'; title: string;
-  activityAt: string; approximate: boolean; managed?: boolean; canReply?: boolean;
+  activityAt: string; endedAt: string | null; status: ChatStatus; approximate: boolean; managed?: boolean; canReply?: boolean;
 };
-type Entry = Conversation & Source & { file: string; nativeId: string; cwd: string };
+export type LiveStatus = 'working' | 'waiting' | 'idle';
+type ChatStatus = LiveStatus | 'likely_working' | 'unknown';
+export type ChatActivity = { status?: ChatStatus; startedAt?: string; endedAt?: string };
+type Entry = Conversation & Source & { file: string; nativeId: string; cwd: string; revision: string; modified: number; size: number; signalAt: number; indexedTitle?: string };
 export type HistoryTarget = Pick<Entry, 'provider' | 'home' | 'nativeId' | 'cwd'>;
 type Coverage = { provider: Provider; status: 'ready' | 'unavailable' | 'partial'; inspected: number; skipped: number };
 const budget = 4000;
 const chunkSize = 65536;
+const likelyWorkingFor = 3 * 60000;
 const digest = (value: string) => createHash('sha256').update(value).digest('hex').slice(0, 32);
+export const savedConversationId = (provider: Provider, id: string) => digest(provider + ':' + id);
 function folderId(path: string) {
   const hash = digest('folder:' + path);
   return `${hash.slice(0, 8)}-${hash.slice(8, 12)}-5${hash.slice(13, 16)}-8${hash.slice(17, 20)}-${hash.slice(20)}`;
@@ -92,6 +98,75 @@ function replyText(record: Json, provider: Provider) {
   return text ? [{ role, text }] : [];
 }
 
+function primaryRecord(row: Json, provider: Provider, id: string) {
+  return provider === 'Codex' || row.sessionId === id && !row.isSidechain && !row.isMeta;
+}
+
+function turnActivity(rows: Json[], provider: Provider) {
+  let status: ChatStatus = 'unknown';
+  let turnId: unknown;
+  let ended = 0;
+  let last = 0;
+  let signalAt = 0;
+  for (const row of rows) {
+    const time = Date.parse(String(row.timestamp));
+    if (!Number.isFinite(time)) continue;
+    const payload = object(provider === 'Codex' ? row.payload : row.message);
+    const visible = replyText(row, provider)[0];
+    const claudeStop = row.type === 'assistant' ? payload.stop_reason : null;
+    const codexEvent = provider === 'Codex' && row.type === 'event_msg' ? payload.type : null;
+    const starts = codexEvent === 'task_started' || provider === 'Claude' && (
+      visible?.role === 'user' || claudeStop === 'tool_use' || claudeStop === 'pause_turn'
+    );
+    const finishes = ['task_complete', 'turn_aborted'].includes(String(codexEvent)) ||
+      provider === 'Claude' && ['end_turn', 'stop_sequence', 'max_tokens', 'refusal'].includes(String(claudeStop));
+    const wrongTurn = finishes && provider === 'Codex' && turnId && payload.turn_id && turnId !== payload.turn_id;
+    if (wrongTurn) continue;
+    if (starts) {
+      status = 'likely_working';
+      turnId = payload.turn_id;
+    }
+    if (finishes) {
+      status = 'idle';
+      ended = Math.max(ended,time);
+      turnId = undefined;
+    }
+    if (visible || starts || finishes) last = Math.max(last, time);
+    // A saved tool result can corroborate an open turn without surfacing its content.
+    const tool = provider === 'Codex' && row.type === 'response_item' && ['function_call', 'function_call_output'].includes(String(payload.type)) ||
+      provider === 'Claude' && row.type === 'user' && Array.isArray(payload.content) && payload.content.some(part => object(part).type === 'tool_result');
+    if (visible || starts || tool) signalAt = Math.max(signalAt, time);
+  }
+  return { last, ended, status, signalAt };
+}
+
+function completeLines(buffer: Buffer, start: number, skipFirst: boolean) {
+  const lines: { row: Json; position: number }[] = [];
+  let offset = skipFirst ? buffer.indexOf(10) + 1 : 0;
+  if (skipFirst && offset === 0) return lines;
+  for (let end = buffer.indexOf(10, offset); end >= 0; end = buffer.indexOf(10, offset)) {
+    try { lines.push({ row: object(JSON.parse(buffer.toString('utf8', offset, end))), position: start + offset }); }
+    catch { /* A provider record may be incomplete or malformed. */ }
+    offset = end + 1;
+  }
+  if (offset < buffer.length) {
+    try { lines.push({row:object(JSON.parse(buffer.toString('utf8',offset))),position:start+offset}); }
+    catch { /* A partial trailing record will be available on a later read. */ }
+  }
+  return lines;
+}
+
+async function readWindow(handle: FileHandle, end: number, limit: number) {
+  const start = Math.max(0,end-limit);
+  const leading = start ? 1 : 0;
+  const buffer = Buffer.alloc(end-start+leading);
+  const {bytesRead} = await handle.read(buffer,0,buffer.length,start-leading);
+  const data = buffer.subarray(leading,bytesRead);
+  const partialLine = Boolean(leading && buffer[0] !== 10);
+  const skip = partialLine ? data.indexOf(10) + 1 : 0;
+  return { lines:completeLines(data,start,partialLine), older:start ? start+skip : null };
+}
+
 async function checkPath(root: string, file: string) {
   const [base, actual, info] = await Promise.all([realpath(root), realpath(file), lstat(file)]);
   const sub = relative(base, actual);
@@ -113,13 +188,10 @@ async function metadata(source: Source, file: string): Promise<Entry | null> {
   const stat = await checkPath(source.root, file);
   const handle = await open(file, 'r');
   try {
-    const head = Buffer.alloc(chunkSize);
-    const first = await handle.read(head, 0, head.length, 0);
-    const initial = records(head.subarray(0, first.bytesRead));
-    const tailStart = Math.max(0, stat.size - chunkSize);
-    const tail = Buffer.alloc(chunkSize);
-    const end = tailStart ? await handle.read(tail, 0, tail.length, tailStart) : first;
-    const recent = tailStart ? records(tail.subarray(0, end.bytesRead)) : initial;
+    const first = await readWindow(handle,Math.min(chunkSize,stat.size),chunkSize);
+    const initial = first.lines.map(line => line.row);
+    const recent = stat.size > chunkSize
+      ? (await readWindow(handle,stat.size,chunkSize)).lines.map(line => line.row) : initial;
     const meta = source.provider === 'Codex'
       ? object(initial.find(r => r.type === 'session_meta')?.payload)
       : initial.find(r => typeof r.sessionId === 'string' && typeof r.cwd === 'string' && !r.isSidechain);
@@ -128,23 +200,31 @@ async function metadata(source: Source, file: string): Promise<Entry | null> {
     if (typeof nativeId !== 'string' || nativeId.length > 200 || typeof meta.cwd !== 'string' || !isAbsolute(meta.cwd) || meta.cwd.length > 1024) return null;
     const cwd = normalize(meta.cwd);
     const identity = process.platform === 'win32' ? cwd.toLowerCase() : cwd;
-    const dates = recent.filter(r => replyText(r, source.provider).length).map(r => Date.parse(String(r.timestamp))).filter(Number.isFinite);
-    const activity = dates.length ? Math.max(...dates) : stat.mtimeMs;
-    const titled = [...initial, ...recent].reverse().filter(row => row.sessionId === undefined || row.sessionId === nativeId);
+    const turn = turnActivity(recent.filter(row => primaryRecord(row, source.provider, nativeId)), source.provider);
+    const activity = turn.last || stat.mtimeMs;
+    const titled = [...initial, ...recent].reverse().filter(row => !row.isSidechain && (row.sessionId === undefined || row.sessionId === nativeId));
     const title = label(titled.find(row => row.type === 'custom-title' && label(row.customTitle))?.customTitle)
       || label(titled.find(row => row.type === 'ai-title' && label(row.aiTitle))?.aiTitle) || label(meta.title)
       || label(titled.find(row => row.type === 'summary' && label(row.summary))?.summary)
-      || label(initial.flatMap(row => replyText(row, source.provider)).find(message => message.role === 'user' && !/^<(?:environment_context|user_instructions|local-command|command-name)|^# AGENTS\.md/i.test(message.text))?.text.replace(/\s+/g, ' '))
+      || label(initial.filter(row => primaryRecord(row, source.provider, nativeId)).flatMap(row => replyText(row, source.provider)).find(message => message.role === 'user' && !/^<(?:environment_context|user_instructions|local-command|command-name)|^# AGENTS\.md/i.test(message.text))?.text.replace(/\s+/g, ' '))
       || source.provider + ' conversation';
     return { provider: source.provider, home: source.home, root: source.root, replyEnabled: source.replyEnabled,
-      id: digest(source.provider + ':' + nativeId), folderId: folderId(identity), folder: label(basename(cwd)) || 'Unnamed folder',
-      nativeId, cwd, title, activityAt: new Date(activity).toISOString(), approximate: !dates.length, file };
+      id: savedConversationId(source.provider, nativeId), folderId: folderId(identity), folder: label(basename(cwd)) || 'Unnamed folder',
+      nativeId, cwd, title, activityAt: new Date(activity).toISOString(), endedAt: turn.ended ? new Date(turn.ended).toISOString() : null,
+      status: turn.status, signalAt: turn.signalAt, approximate: !turn.last, file,
+      revision: digest(stat.dev + ':' + stat.ino), modified: stat.mtimeMs, size: stat.size };
   } finally { await handle.close(); }
 }
 
 const providerId = /^[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}$/i;
-function dto({ id, folderId, folder, provider, title, activityAt, approximate, replyEnabled, nativeId }: Entry): Conversation {
-  return { id, folderId, folder, provider, title, activityAt, approximate, ...(replyEnabled && providerId.test(nativeId) ? {canReply:true} : {}) };
+function dto(entry: Entry, activity: ChatActivity | undefined): Conversation {
+  const { id, folderId, folder, provider, title, activityAt, endedAt, approximate, replyEnabled, nativeId } = entry;
+  const transcript = entry.status === 'likely_working' && Date.now() - entry.signalAt > likelyWorkingFor ? 'unknown' : entry.status;
+  const finished = activity?.endedAt && activity.endedAt > (endedAt ?? '') ? activity.endedAt : endedAt;
+  const observed = [activityAt, activity?.startedAt ?? '', finished ?? ''].sort().at(-1)!;
+  const status = activity?.status ?? transcript;
+  return { id, folderId, folder, provider, title, activityAt: observed, endedAt: finished, status, approximate: approximate && observed === activityAt,
+    ...(replyEnabled && providerId.test(nativeId) ? {canReply:true} : {}) };
 }
 
 export class LocalHistory {
@@ -163,50 +243,78 @@ export class LocalHistory {
     }
   }
 
-  async list(search: string, folderId: string | undefined, offset: number, managed: Conversation[] = []) {
+  private async discover() {
     if (Date.now() - this.capturedAt > 30000) {
       this.scan ??= this.refresh().finally(() => { this.scan = undefined; });
       await this.scan;
     }
-    const rows = [...Array.from(this.entries.values(), dto), ...managed].sort((a, b) => b.activityAt.localeCompare(a.activityAt) || a.id.localeCompare(b.id));
+  }
+
+  async list(search: string, folderId: string | undefined, offset: number, managed: Conversation[] = [], statuses = new Map<string, ChatActivity>()) {
+    await this.discover();
     const needle = search.toLowerCase();
-    const matching = rows.filter(row => [row.folder, row.title, row.provider].some(value => value.toLowerCase().includes(needle)));
-    const folders = new Map<string, { id: string; name: string; activityAt: string; count: number }>();
+    const byActivity = (a: Conversation, b: Conversation) => b.activityAt.localeCompare(a.activityAt) || a.id.localeCompare(b.id);
+    const matches = (row: Conversation) => [row.folder, row.title, row.provider].some(value => value.toLowerCase().includes(needle));
+    const eligible = [...this.entries.values()].filter(row => matches(row) && (!folderId || row.folderId === folderId));
+    const visible = eligible.sort(byActivity).slice(offset, offset + 30);
+    await Promise.all(visible.map(async entry => {
+      try { await this.latest(entry); } catch { /* A rotating file is rechecked on the next discovery pass. */ }
+    }));
+    const rows = [...Array.from(this.entries.values(), entry => dto(entry, statuses.get(entry.id))), ...managed].sort(byActivity);
+    const matching = rows.filter(matches);
+    const newest = new Map<string, Conversation>();
+    for (const row of rows) if (!newest.has(row.folderId)) newest.set(row.folderId, row);
+    const folders = new Map<string, { id: string; name: string; activityAt: string; approximate: boolean; count: number }>();
     for (const row of matching) {
       const prior = folders.get(row.folderId);
       if (prior) prior.count++;
-      else folders.set(row.folderId, { id: row.folderId, name: row.folder, activityAt: row.activityAt, count: 1 });
+      else {
+        const latest = newest.get(row.folderId)!;
+        folders.set(row.folderId, { id: row.folderId, name: row.folder, activityAt: latest.activityAt, approximate: latest.approximate, count: 1 });
+      }
     }
     const selected = folderId ? matching.filter(row => row.folderId === folderId) : matching;
-    return { folders: [...folders.values()], conversations: selected.slice(offset, offset + 30),
+    return { folders: [...folders.values()].sort((a,b) => b.activityAt.localeCompare(a.activityAt) || a.id.localeCompare(b.id)), conversations: selected.slice(offset, offset + 30),
       nextOffset: offset + 30 < selected.length ? offset + 30 : null,
       coverage: this.coverage, capturedAt: new Date(this.capturedAt).toISOString() };
   }
 
-  async read(id: string, before?: number) {
+  private async latest(entry: Entry, recheckIdentity = false) {
+    const stat = await checkPath(entry.root, entry.file);
+    const revision = digest(stat.dev + ':' + stat.ino);
+    if (!recheckIdentity && entry.revision === revision && entry.size === stat.size && entry.modified === stat.mtimeMs) return entry;
+    const current = await metadata(entry, entry.file);
+    if (current?.id !== entry.id || current.folderId !== entry.folderId) throw new Error('different_conversation');
+    if (entry.indexedTitle) current.title = current.indexedTitle = entry.indexedTitle;
+    if (current.revision === entry.revision && current.size >= entry.size && !current.endedAt) current.endedAt = entry.endedAt;
+    if (this.entries.get(entry.id) === entry) this.entries.set(entry.id, current);
+    return current;
+  }
+
+  async read(id: string, before?: number, activity?: ChatActivity) {
+    if (!this.entries.has(id)) await this.discover();
     const entry = this.entries.get(id);
     if (!entry) throw new DomainError('conversation_not_available', 404);
     try {
-      const stat = await checkPath(entry.root, entry.file);
-      // A path can be replaced while the app is running. Recheck its provider identity.
-      const current = await metadata(entry, entry.file);
-      if (current?.id !== entry.id || current.folderId !== entry.folderId) throw new Error('different_conversation');
-      const handle = await open(entry.file, 'r');
+      const current = await this.latest(entry,true);
+      const handle = await open(current.file, 'r');
       try {
+        const stat = await handle.stat();
+        if (current.revision !== digest(stat.dev + ':' + stat.ino)) throw new Error('different_conversation');
         const end = Math.min(stat.size, before ?? stat.size);
-        const start = Math.max(0, end - 2 * chunkSize);
-        const buffer = Buffer.alloc(end - start);
-        const { bytesRead } = await handle.read(buffer, 0, buffer.length, start);
-        const head = start ? buffer.indexOf(10) : -1;
-        const skip = start && head >= 0 && head + 1 < bytesRead ? head + 1 : 0;
-        const messages = records(buffer.subarray(skip, bytesRead)).flatMap(row => replyText(row, entry.provider));
-        return { messages, older: start ? start + skip : null };
+        const {lines,older} = await readWindow(handle,end,2*chunkSize);
+        const messages = lines
+          .filter(({row}) => primaryRecord(row,current.provider,current.nativeId))
+          .flatMap(({row,position}) => replyText(row,current.provider).map(message => ({...message,position,
+            recordedAt: Number.isFinite(Date.parse(String(row.timestamp))) ? new Date(String(row.timestamp)).toISOString() : null,
+          })));
+        return { messages, older, end, revision: current.revision, conversation: dto(current,activity) };
       } finally { await handle.close(); }
     } catch { throw new DomainError('conversation_not_available', 404); }
   }
 
   async target(id: string): Promise<HistoryTarget> {
-    await this.list('', undefined, 0);
+    await this.discover();
     const saved = this.entries.get(id);
     if (!saved) throw new DomainError('conversation_not_available', 404);
     try {
@@ -232,7 +340,8 @@ export class LocalHistory {
           try {
             const entry = await metadata(source, file);
             if (!entry) { state.skipped++; continue; }
-            entry.title = names?.get(entry.nativeId)?.title ?? stateNames?.get(entry.nativeId) ?? entry.title;
+            const indexedTitle = names?.get(entry.nativeId)?.title ?? stateNames?.get(entry.nativeId);
+            if (indexedTitle) entry.title = entry.indexedTitle = indexedTitle;
             const previous = entries.get(entry.id);
             if (!previous || previous.activityAt < entry.activityAt) entries.set(entry.id, entry);
           } catch { state.skipped++; state.status = 'partial'; }

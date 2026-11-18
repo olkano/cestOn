@@ -7,7 +7,7 @@ import { DomainError } from '../../../packages/contracts/src/commands.js';
 import { redactText } from '../../../packages/contracts/src/logging.js';
 import { within } from '../../../packages/contracts/src/paths.js';
 import { observedBilling } from '../../../packages/adapters/src/claude/index.js';
-import type { HistoryTarget } from '../../server/src/projects/history.js';
+import { savedConversationId, type HistoryTarget, type LiveStatus } from '../../server/src/projects/history.js';
 import { childEnvironment } from './policy/index.js';
 
 const run = promisify(execFile);
@@ -18,6 +18,21 @@ export class HistoryProvider {
 
   configured(provider: HistoryTarget['provider']) {
     return Boolean(provider === 'Codex' ? this.config.codexExecutable : this.config.claudeExecutable);
+  }
+
+  async activities() {
+    const executable = this.config.claudeExecutable;
+    const home = this.config.claudeHome;
+    if (!executable || !home || !isAbsolute(executable) || !isAbsolute(home)) return [];
+    if (this.testRoot && [executable,home].some(path => !within(this.testRoot!,path))) return [];
+    if (process.platform === 'win32' && !this.testRoot && !executable.endsWith('.exe')) return [];
+    const command = this.testRoot ? process.execPath : executable;
+    const args = [...(this.testRoot ? [executable] : []), 'agents', '--json', '--all'];
+    const {stdout} = await run(command,args,{
+      cwd: home, env: { ...childEnvironment(process.env), CLAUDE_CONFIG_DIR:home, DISABLE_AUTOUPDATER:'1', ENABLE_CLAUDEAI_MCP_SERVERS:'false' },
+      windowsHide:true, maxBuffer:1024 * 1024, timeout:3500,
+    });
+    return claudeActivities(JSON.parse(stdout));
   }
 
   async prepare(target: HistoryTarget) {
@@ -73,6 +88,19 @@ export class HistoryProvider {
       }
     };
   }
+}
+
+export function claudeActivities(input: unknown): { id: string; status: LiveStatus }[] {
+  if (!Array.isArray(input)) return [];
+  return input.slice(0,1000).flatMap((row: Json | null) => {
+    const id = row?.sessionId;
+    if (typeof id !== 'string' || !/^[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}$/i.test(id)) return [];
+    let status: LiveStatus | undefined;
+    if (row?.status === 'waiting' || row?.state === 'blocked') status = 'waiting';
+    else if (row?.status === 'busy' || row?.state === 'working') status = 'working';
+    else if (row?.status === 'idle' || ['done','failed','stopped'].includes(String(row?.state))) status = 'idle';
+    return status ? [{id:savedConversationId('Claude',id),status}] : [];
+  });
 }
 
 export function readHistoryReply(target: HistoryTarget, output: string) {
