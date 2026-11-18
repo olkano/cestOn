@@ -8,6 +8,7 @@ import { Scheduler } from '../../apps/server/src/scheduler/index.js';
 import { BrokerWorker } from '../../apps/server/src/scheduler/broker-worker.js';
 import { ArtifactVerifier } from '../../apps/server/src/verification/index.js';
 import { recipeExecutor } from '../../apps/server/src/verification/recipes.js';
+import { ConversationReplies } from '../../apps/server/src/projects/conversation-replies.js';
 import { PlanningService, FixtureModel } from '../../apps/server/src/intents/model.js';
 import { spawnBroker } from '../../apps/broker/src/client.js';
 import { parseConfig } from '../../packages/contracts/src/config.js';
@@ -34,5 +35,45 @@ it('T12 a real coordinator service and separate fixture broker produce independe
     expect(store.db.prepare('SELECT * FROM leases').all()).toHaveLength(0);
     const verified = store.events(0, task.id).find(e => e.type === 'phase.verified');
     expect((JSON.parse(verified!.sanitized_payload_json) as { checks: unknown[] }).checks).toHaveLength(1);
+
+    const replies = new ConversationReplies(store, config, broker.client);
+    const [thread] = replies.list();
+    expect(thread).toMatchObject({ title: task.title, managed: true });
+    expect((await replies.view(thread!.id, device)).state).toBe('ready');
+    const external = randomUUID();
+    store.db.prepare(`INSERT INTO sessions(id,provider,provider_session_id,provider_home_id,project_id,ownership,observed_state,observed_at)
+      VALUES(?,'fixture','external-session','other-home',?,'observe_only','stopped',?)`).run(external, projectId, Date.now());
+    await expect(replies.send(external, device, randomUUID(), 'Must stay read only')).rejects.toThrow('conversation_unavailable');
+    const key = randomUUID();
+    const reply = await replies.send(thread!.id, device, key, 'Explain the verified result');
+    expect(await replies.send(thread!.id, device, key, 'Explain the verified result')).toEqual(reply);
+    await expect(replies.send(thread!.id, device, key, 'Different content')).rejects.toThrow('idempotency_conflict');
+    const original = store.db.prepare('SELECT s.provider_session_id,r.usage_json FROM sessions s JOIN runs r ON r.session_id=s.id WHERE s.id=?').get(thread!.id) as { provider_session_id: string; usage_json: string };
+    const parentRunId = (JSON.parse(original.usage_json) as { providerRunId: string }).providerRunId;
+    replies.freeze(true);
+    await replies.tick();
+    expect(await broker.client.lookup(reply.id)).toEqual({ status: 'absent' });
+    // Simulate a lost coordinator after the durable write and broker acceptance.
+    store.db.prepare("UPDATE commands SET state='dispatching' WHERE id=?").run(reply.id);
+    store.acquireLease(config.projects[0]!.root, task.id, reply.id, reply.id);
+    const delivery = await broker.client.reply(parentRunId, reply.id, 'Explain the verified result');
+    expect(delivery.ref.sessionId).toBe(original.provider_session_id);
+    expect(delivery.ref.runId).not.toBe(parentRunId);
+    const restarted = new ConversationReplies(store, config, broker.client);
+    await expect.poll(async () => {
+      await restarted.tick();
+      return store.command(reply.id).state;
+    }, { timeout: 5000 }).toBe('succeeded');
+    expect((await restarted.view(thread!.id, device)).turns).toEqual([{
+      id: reply.id, clientKey: key, state: 'succeeded', prompt: 'Explain the verified result',
+      answer: 'Synthetic worker result. Verification is required.',
+    }]);
+    expect(store.db.prepare('SELECT * FROM leases').all()).toHaveLength(0);
+    const interrupted = await restarted.send(thread!.id, device, randomUUID(), 'An unacknowledged prompt');
+    store.db.prepare("UPDATE commands SET state='dispatching' WHERE id=?").run(interrupted.id);
+    await restarted.tick();
+    expect(store.command(interrupted.id).state).toBe('reconciling');
+    expect(await broker.client.lookup(interrupted.id)).toEqual({ status: 'absent' });
+    expect((await restarted.view(thread!.id, device)).state).toBe('uncertain');
   } finally { await broker.close(); store.close(); cleanupTestRoot(t.root, t.runId); }
-});
+}, 15000);

@@ -8,7 +8,7 @@ it('T18 every private route rejects unauthenticated callers, and writes reject f
   const t = createTestRoot(); const store = new Store(t.root, { testMode: true });
   const { app, auth } = await createApp({ store, origin: 'http://127.0.0.1:4317' });
   try {
-    for (const path of ['me', 'snapshot', 'tasks', 'projects', 'devices', 'events', 'sessions', 'memory', 'memory/folders', 'history', 'general', 'health/ready', `evidence/${randomUUID()}`]) expect((await app.inject(`/api/v1/${path}`)).statusCode).toBe(401);
+    for (const path of ['me', 'snapshot', 'tasks', 'projects', 'devices', 'events', 'sessions', 'memory', 'memory/folders', 'history', 'general', 'health/ready', `managed-conversations/${randomUUID()}`, `evidence/${randomUUID()}`]) expect((await app.inject(`/api/v1/${path}`)).statusCode).toBe(401);
     const invitation = auth!.invite(); const body = { invitation, deviceName: 'Test' };
     const headers = { host: '127.0.0.1:4317', origin: 'http://127.0.0.1:4317' };
     expect((await app.inject({ method: 'POST', url: '/api/v1/pairing/redeem', headers: { ...headers, origin: 'https://evil.invalid' }, payload: body })).statusCode).toBe(403);

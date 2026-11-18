@@ -28,7 +28,9 @@ export class CodexAdapter implements Adapter {
     return rpc;
   }
   private notification(method: string, params: Record<string, unknown>) {
-    const run = [...this.runs.values()].find(r => r.ref.sessionId === params.threadId && (r.state === 'starting' || !params.turnId || r.ref.turnId === params.turnId));
+    const turn = params.turn as { id?: string; status?: string } | undefined;
+    const turnId = method === 'turn/completed' ? turn?.id : params.turnId;
+    const run = [...this.runs.values()].findLast(r => r.ref.sessionId === params.threadId && (r.state === 'starting' || (r.state === 'running' || r.state === 'interrupting') && (!turnId || r.ref.turnId === turnId)));
     if (!run) return;
     if (run.state === 'starting') { if (run.pending.length >= 100) { run.state = 'reconciling'; run.queue.end(); return; } run.pending.push({ method, params }); return; }
     let type: ProviderEvent['type'] | null = null; let data: Record<string, unknown> = {};
@@ -37,7 +39,6 @@ export class CodexAdapter implements Adapter {
     if (method === 'item/started') { type = 'tool.started'; data = { itemId: (params.item as Record<string, unknown> | undefined)?.id }; }
     if (method === 'item/completed') { type = 'tool.completed'; data = { itemId: (params.item as Record<string, unknown> | undefined)?.id }; }
     if (method === 'turn/completed') {
-      const turn = params.turn as { id: string; status: string } | undefined;
       if (!turn || turn.id !== run.ref.turnId) return;
       run.state = turn.status === 'completed' ? 'succeeded' : turn.status === 'interrupted' ? 'interrupted' : 'failed';
       type = turn.status === 'completed' ? 'turn.completed' : 'provider.error'; data = { status: run.state };
@@ -69,6 +70,7 @@ export class CodexAdapter implements Adapter {
     const rpc = await this.connection();
     const readOnly = request.operations ? !request.operations.includes('edit') : this.options.readOnly;
     const thread = await rpc.request<{ thread: { id: string } }>(sessionId ? 'thread/resume' : 'thread/start', { ...(sessionId ? { threadId: sessionId, excludeTurns: true } : {}), cwd: request.workspace, approvalPolicy: 'untrusted', ...(this.options.model ? { model: this.options.model } : {}), config: permissionConfig(request.workspace, readOnly === true) });
+    if (sessionId && thread.thread.id !== sessionId) throw new CapabilityError('wrong_session');
     const ref = { runId: randomUUID(), sessionId: thread.thread.id, turnId: '' }; const run: ManagedRun = { ref, queue: new AsyncQueue(), state: 'starting', sequence: 0, pending: [] };
     this.runs.set(ref.runId, run); this.commandKeys.set(request.commandId, ref);
     const response = await rpc.request<{ turn: { id: string } }>('turn/start', { threadId: ref.sessionId, input: [{ type: 'text', text: request.prompt, text_elements: [] }], approvalPolicy: 'untrusted', ...(request.outputSchema ? { outputSchema: request.outputSchema } : {}) });

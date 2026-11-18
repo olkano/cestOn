@@ -18,6 +18,7 @@ import { SpeechService, FixtureSpeechAdapter, HttpSpeechAdapter } from './voice/
 import { dataAccess } from './security/access.js';
 import { DomainError } from '../../../packages/contracts/src/commands.js';
 import { ImprovementService } from './updates/service.js';
+import { ConversationReplies } from './projects/conversation-replies.js';
 
 export async function coordinator(root: string, options: { testMode?: boolean; origin?: string; dispatchFrozen?: boolean } = {}) {
   if (existsSync(join(root, 'state/recovery-fence.json'))) throw new DomainError('installation_retired_for_restore');
@@ -25,6 +26,8 @@ export async function coordinator(root: string, options: { testMode?: boolean; o
   const config = parseConfig(JSON.parse(readFileSync(join(root, 'state', 'config.json'), 'utf8')), options);
   const store = new Store(root, options); for (const project of config.projects) store.registerProject(project);
   const broker = await ensureBroker(root, store.installation().id, options.testMode);
+  const conversationReplies = new ConversationReplies(store, config, broker.client);
+  conversationReplies.freeze(options.dispatchFrozen === true);
   const commands = new CommandService(store, config); const actions = new ActionService(store, commands, options.testMode ? new Map([['fixture', new FixtureActionAdapter({ value: 'old' })]]) : new Map());
   const improvements = new ImprovementService(store, commands);
   const worker = new BrokerWorker(store, broker.client, config); const scheduler = new Scheduler(store, config, worker, new ArtifactVerifier(store, recipeExecutor(store, broker.client)));
@@ -34,12 +37,12 @@ export async function coordinator(root: string, options: { testMode?: boolean; o
   const speech = new SpeechService(config.voice.enabled ? options.testMode ? new FixtureSpeechAdapter(root) : config.voice.endpoint && config.voice.model ? new HttpSpeechAdapter(config.voice) : null : null);
   const notifications = new NotificationService(store, options.testMode ? new TestProtector(root) : new OsProtector(store.installation().id), options.testMode ? null : configuredPush(config));
   const staticManifest = 'apps/web/dist/release.json'; const staticBundle = existsSync(staticManifest) ? (JSON.parse(readFileSync(staticManifest, 'utf8')) as { staticBundle: string }).staticBundle : undefined;
-  const services = await createApp({ config, store, commands, actions, speech, notifications, improvements, assistant: new Assistant(store, commands, model), broker: broker.client, ...(staticBundle ? { staticBundle } : {}), ...(options.origin ? { origin: options.origin } : {}) });
+  const services = await createApp({ config, store, commands, actions, speech, notifications, improvements, conversationReplies, assistant: new Assistant(store, commands, model), broker: broker.client, ...(staticBundle ? { staticBundle } : {}), ...(options.origin ? { origin: options.origin } : {}) });
   let planning = false; let closing = false; const active = new Set<Promise<void>>();
   let frozen = options.dispatchFrozen === true;
   const track = (work: Promise<void>) => { const job = work.catch(() => { console.error(JSON.stringify({ operation: 'coordinator.tick', result: 'failed', code: 'reconciliation_required' })); }).finally(() => active.delete(job)); active.add(job); };
-  const pump = () => { if (closing) return; const dispatch = !frozen && !store.installation().dispatch_paused; if (!planning && dispatch) { planning = true; track(planner.tick().finally(() => { planning = false; })); } track(scheduler.tick()); if (dispatch) track(actions.tick()); track(notifications.tick()); };
+  const pump = () => { if (closing) return; const dispatch = !frozen && !store.installation().dispatch_paused; if (!planning && dispatch) { planning = true; track(planner.tick().finally(() => { planning = false; })); } track(scheduler.tick()); track(conversationReplies.tick()); if (dispatch) track(actions.tick()); track(notifications.tick()); };
   track(scheduler.recover());
   const timer = setInterval(pump, 250);
-  return { ...services, store, broker, scheduler, freeze(value: boolean) { frozen = value; scheduler.freeze(value); worker.freeze(value); if (!value) track(scheduler.recover()); }, async close() { closing = true; scheduler.freeze(true); clearInterval(timer); worker.detach(); await services.app.close(); await broker.close(); await Promise.all(active); await scheduler.idle(); store.close(); } };
+  return { ...services, store, broker, scheduler, freeze(value: boolean) { frozen = value; scheduler.freeze(value); worker.freeze(value); conversationReplies.freeze(value); if (!value) track(scheduler.recover()); }, async close() { closing = true; scheduler.freeze(true); conversationReplies.freeze(true); clearInterval(timer); worker.detach(); await services.app.close(); await broker.close(); await Promise.all(active); await scheduler.idle(); store.close(); } };
 }

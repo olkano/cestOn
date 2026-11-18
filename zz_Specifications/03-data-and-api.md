@@ -62,6 +62,8 @@ All authenticated routes use `/api/v1`. JSON responses use `{data, meta:{request
 | GET `/tasks/:id/events?after=` | Bounded historical timeline with monotonic cursor. |
 | GET `/sessions` | Metadata only by default; exact IDs scoped to registered projects. |
 | GET `/sessions/:id/history?cursor=` | Bounded on-demand excerpt, sanitized and authorized. |
+| GET `/managed-conversations/:id` | Opening message, recent replies, and current availability for an owned conversation UUID or a discovered history ID. |
+| POST `/managed-conversations/:id/replies` | Text and `Idempotency-Key`. Return 202 after saving the request. The broker resolves the exact target and honors provider ownership before sending. Reconcile a lost acknowledgement by its original receipt. |
 | POST `/commands` | Typed commands below, `Idempotency-Key` required; returns 202 with command ID and status URL. |
 | GET `/commands/:id` | Current receipt, acknowledgement, effect, and verification status. |
 | POST `/conversation` | Text, current task/decision IDs, revision, client message ID; emits answer or typed intent proposal. Mutating intent uses the command service, never a separate execution route. |

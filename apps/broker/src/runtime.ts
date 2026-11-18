@@ -26,6 +26,8 @@ import { executeSandboxedRecipe } from './recipes.js';
 import Database from 'better-sqlite3';
 import { UpdateExecution } from './update-worker.js';
 import { readUpdateGrant } from './update-grants.js';
+import { LocalHistory } from '../../server/src/projects/history.js';
+import { HistoryProvider } from './history-provider.js';
 
 export const executionSchema = z.strictObject({
   commandId: z.uuid(), taskId: z.uuid(), projectId: z.uuid(), scopeRevisionId: z.uuid(), providerId: z.string(), root: z.string(),
@@ -43,15 +45,21 @@ export class Broker {
   private closing = false;
   private ownedOperations = new Set<Promise<unknown>>();
   private async own<T>(action: () => Promise<T>): Promise<T> { if (this.closing) throw new DomainError('broker_closing'); const work = action(); this.ownedOperations.add(work); try { return await work; } finally { this.ownedOperations.delete(work); } }
-  activeOperations() { return this.roots.size + this.ownedOperations.size + this.updateWorker.activity().filter(run => run.state === 'reconciling').length; }
+  activeOperations() { return this.roots.size + this.historyJobs.size + this.ownedOperations.size + this.updateWorker.activity().filter(run => run.state === 'reconciling').length; }
   private updateWorker: UpdateExecution;
   private updatePending = new Set<Promise<void>>();
   private workspaces?: WorkspaceManager;
+  private savedHistory: LocalHistory;
+  private historyProvider: HistoryProvider;
+  private historyJobs = new Map<string, { runId: string | undefined; cancel: AbortController; work: Promise<void> }>();
   constructor(readonly root: string, readonly config: Config, private options: { testMode?: boolean; fixtureDelayMs?: number; liveCertification?: boolean } = {}) {
     if (existsSync(join(root, 'state/recovery-fence.json'))) throw new DomainError('installation_retired_for_restore');
     if (options.testMode) assertTestRoot(root); else validateDataRoot(root, config.projects.map(p => p.root));
     if (options.liveCertification && (!options.testMode || process.env.CESTON_LIVE_TESTS !== '1')) throw new DomainError('live_test_scope_required');
     this.journal = new ReceiptJournal(join(root, 'state', 'broker-receipts.jsonl')); this.log = new BrokerEvents(join(root, 'state', 'broker-events.jsonl'));
+    const testRoot = options.testMode ? root : undefined;
+    this.savedHistory = new LocalHistory(config.history, testRoot);
+    this.historyProvider = new HistoryProvider(config.history, testRoot);
     this.updateWorker = new UpdateExecution(root, config);
     const latest = new Map(this.journal.list().map(r => [r.commandId, r]));
     for (const receipt of latest.values()) if (receipt.state !== 'resolved' && receipt.context?.root) this.roots.set(receipt.commandId, receipt.context.root);
@@ -98,6 +106,61 @@ export class Broker {
     this.adapters.set(key, adapter); return adapter;
   }
   async start(input: unknown) { return this.own(() => this.startOwned(input)); }
+  replyState(runId: string) {
+    const run = this.runs.get(runId);
+    if (!run || run.state !== 'succeeded' || !run.execution.operations.includes('read')) return 'unavailable' as const;
+    const profile = this.config.providers.find(value => value.id === run.providerId);
+    if (!profile || !(profile.kind === 'fixture' ? this.options.testMode : profile.billingMode === 'subscription' && certificationValid(this.root, profile))) return 'unavailable' as const;
+    if ([...this.runs.values()].some(other => other.ref.sessionId === run.ref.sessionId && other.adapter === run.adapter && !['succeeded', 'failed', 'interrupted'].includes(other.state))) return 'working' as const;
+    return 'ready' as const;
+  }
+  async reply(runId: string, commandId: string, prompt: string) {
+    const state = this.replyState(runId);
+    if (state !== 'ready') throw new DomainError(state === 'working' ? 'conversation_busy' : 'conversation_unavailable');
+    const prior = this.runs.get(runId)!;
+    const { taskId, projectId, scopeRevisionId, providerId, root, limits } = prior.execution;
+    return this.start({ commandId, taskId, projectId, scopeRevisionId, providerId, root, prompt,
+      operations: ['read'], resumeSessionId: prior.ref.sessionId,
+      limits: { turns: Math.min(limits.turns, 4), runMinutes: Math.min(limits.runMinutes, 5) } });
+  }
+  async historyReplyState(id: string) {
+    const target = await this.savedHistory.target(id);
+    if (!this.historyProvider.configured(target.provider)) return 'unavailable' as const;
+    if (this.historyJobs.has(id)) return 'working' as const;
+    const recent = [...new Map(this.journal.list().map(row => [row.commandId,row])).values()];
+    if (recent.some(row => row.context?.historyId === id && (row.state !== 'resolved' || row.result?.state === 'reconciling'))) return 'working' as const;
+    return 'ready' as const;
+  }
+  async historyReply(id: string, commandId: string, text: string) {
+    return this.own(async () => {
+      if (await this.historyReplyState(id) !== 'ready' || this.historyJobs.has(id)) throw new DomainError('conversation_unavailable');
+      if (this.historyJobs.size >= this.config.limits.concurrency) throw new DomainError('concurrency_limit');
+      const cancel = new AbortController();
+      const job = { runId: undefined as string | undefined, cancel, work: Promise.resolve() };
+      this.historyJobs.set(id, job);
+      try {
+        const target = await this.savedHistory.target(id);
+        const send = await this.historyProvider.prepare(target);
+        const ref = { runId: randomUUID(), sessionId: target.nativeId, turnId: '' };
+        const receipt = await this.journal.dispatch(commandId, { id, text }, async () => ({ ref, historyId: id }), { historyId: id });
+        const recorded = receipt.result.ref as RunRef;
+        if (recorded.runId !== ref.runId) { this.historyJobs.delete(id); return { ref: recorded }; }
+        job.runId = ref.runId;
+        job.work = (async () => {
+          try {
+            const response = await send(text,cancel.signal);
+            this.log.append(ref.runId,{key:ref.runId+':reply',sequence:1,type:'message.delta',data:{text:response}});
+            this.journal.resolve(commandId,{...receipt.result,state:'succeeded'});
+          } catch (error) {
+            if (error instanceof DomainError && error.code === 'history_session_open') {
+              this.journal.resolve(commandId,{...receipt.result,state:'failed',errorCode:error.code});
+            } else this.journal.resolve(commandId,{...receipt.result,state:'reconciling'});
+          } finally { this.historyJobs.delete(id); }
+        })();
+        return { ref };
+      } catch (error) { this.historyJobs.delete(id); throw error; }
+    });
+  }
   private async startOwned(input: unknown) {
     const parsed = executionSchema.safeParse(input); if (!parsed.success) throw new DomainError('invalid_execution', 400);
     const execution = parsed.data; const project = this.config.projects.find(p => p.id === execution.projectId);
@@ -112,6 +175,7 @@ export class Broker {
     const adapter = this.adapter(execution);
     const probe = await adapter.probe();
     if (!probe.authenticated || !probe.capabilities.start) throw new DomainError('provider_authentication_required', 503);
+    if (execution.resumeSessionId && !probe.capabilities.resumeExact) throw new DomainError('resume_unavailable', 422);
     if (profile && profile.kind !== 'fixture' && probe.capabilities.billingMode !== profile.billingMode) throw new DomainError('billing_mode_mismatch', 403);
     const capabilities = probe.capabilities;
     if (!this.journal.receipt(execution.commandId)) {
@@ -148,7 +212,17 @@ export class Broker {
     return { status: 'accepted' as const, sequence: receipt.sequence, result: receipt.result! };
   }
   events(runId: string, after: number) { return this.log.read(runId, after); }
-  async reconcile(runId: string) { const run = this.runs.get(runId); if (run) { if (run.state === 'reconciling') return { state: 'reconciling' }; const observed = await run.adapter.reconcile(runId); return { state: observed.state === 'succeeded' ? run.state : observed.state }; } const receipt = this.journal.list().findLast(record => (record.result?.ref as RunRef | undefined)?.runId === runId); return { state: receipt?.state === 'resolved' && typeof receipt.result?.state === 'string' ? receipt.result.state : 'needs_attention' }; }
+  async reconcile(runId: string) {
+    if ([...this.historyJobs.values()].some(job => job.runId === runId)) return { state: 'running' };
+    const run = this.runs.get(runId);
+    if (run) {
+      if (run.state === 'reconciling') return { state: 'reconciling' };
+      const observed = await run.adapter.reconcile(runId);
+      return { state: observed.state === 'succeeded' ? run.state : observed.state };
+    }
+    const receipt = this.journal.list().findLast(record => (record.result?.ref as RunRef | undefined)?.runId === runId);
+    return { state: receipt?.state === 'resolved' && typeof receipt.result?.state === 'string' ? receipt.result.state : 'needs_attention' };
+  }
   async steer(runId: string, text: string, turnId: string) { const run = this.runs.get(runId); if (!run || run.ref.turnId !== turnId) throw new DomainError('stale_run'); return run.adapter.enqueue(run.ref, text); }
   async interrupt(runId: string) {
     const run = this.runs.get(runId); if (!run) throw new DomainError('unmanaged_run');
@@ -234,6 +308,9 @@ export class Broker {
   history(providerId: string, id: string, after = 0) { return this.discovery(providerId).history(id, after); }
   async close() {
     this.closing = true; await Promise.allSettled([...this.ownedOperations]);
+    const historyJobs = [...this.historyJobs.values()];
+    for (const job of historyJobs) job.cancel.abort();
+    await Promise.allSettled(historyJobs.map(job => job.work));
     await Promise.allSettled([...this.updatePending]);
     for (const run of this.runs.values()) if (['running', 'starting'].includes((await run.adapter.reconcile(run.ref.runId)).state)) await this.interrupt(run.ref.runId);
     await Promise.all([...this.runs.values()].map(r => r.collecting));

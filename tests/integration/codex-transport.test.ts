@@ -17,6 +17,13 @@ it('T09/T10 Codex handshake, duplicate starts, exact targeting and fast completi
     const recorded = readFileSync(record, 'utf8').trim().split('\n').map(line => JSON.parse(line) as { method: string });
     expect(recorded.slice(0, 2).map(r => r.method)).toEqual(['initialize', 'initialized']);
     expect(recorded.filter(r => r.method === 'thread/start')).toHaveLength(1);
+    const resumed = await adapter.resume(a.sessionId, { ...request, commandId: 'reply', operations: ['read'] });
+    expect(resumed.sessionId).toBe(a.sessionId);
+    expect(resumed.turnId).not.toBe(a.turnId);
+    const replies = []; for await (const event of adapter.events(resumed.runId)) replies.push(event);
+    expect(replies.find(event => event.type === 'message.delta')?.data.text).toBe('fixture response');
+    expect(replies.some(event => event.type === 'turn.completed')).toBe(true);
+    expect((await adapter.reconcile(resumed.runId)).state).toBe('succeeded');
     const slow = await adapter.start({ ...request, commandId: 'two', prompt: 'slow synthetic' });
     await expect(adapter.enqueue({ ...slow, turnId: 'stale' }, 'wrong')).rejects.toThrow('stale_run');
     await adapter.interrupt(slow);

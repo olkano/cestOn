@@ -1,6 +1,6 @@
 # Implementation status
 
-Specification baseline: 2026-11-14. Phases 0-9 are locally implemented and verified, with all 106 automated tests passing locally and in hosted Windows CI. Native, operational and physical-device acceptance remains blocked. No persistent pilot is activated. See the [current report](implementation-report-2026-11-14.md) and [resume checkpoint](implementation-run.md).
+Specification baseline: 2026-11-14. The Windows installation is available behind Cloudflare Access. The current saved-chat build passed 120 local automated tests, an independent clean export and exact-thread smoke tests with both signed-in providers. Physical-device and autonomous Work acceptance remain open. See the [resume checkpoint](implementation-run.md) for the current deployment and the [baseline report](implementation-report-2026-11-14.md) for phases 0-9.
 
 | Phase | Status | Verification | Blocker / next action |
 |---|---|---|---|
@@ -27,22 +27,36 @@ Bundle `artifacts/ceston-9c92b973-e237-49f3-8d6e-8c5b668c61ae.zip`, release `loc
 
 The unpacked package passed a fresh installation in an isolated owner data folder, separate-process canary, pairing and Chromium first use. The browser read a discovered fixture conversation, created a General thread, reloaded it and recalled a saved note. Encrypted backup, exact restore reconciliation, restarted paired-device authentication, owned process shutdown, unchanged synthetic source project and cleanup passed. See `package-rehearsal-1794943084055.json`. The earlier attempt stopped at an ambiguous heading locator after successful startup and pairing. The corrected test reran the full rehearsal on the same package bytes.
 
+## Cloudflare sign-in rollout, 2026-11-18
+
+The opt-in Cloudflare Access mode opens cestOn after a verified Cloudflare sign-in and creates a browser session without a manual pairing code. The local Windows bundle `local-4ca670535e71-032e6fd9` passed 117 automated tests and archive verification. A signed fixture opened Conversations and reconnected by keyboard in phone-sized and desktop Chromium, in both themes. An isolated bundle install passed startup, health, rejection of unsigned and direct-host access, exact shutdown and cleanup. See private evidence `2026-11-18T13-25-43-732Z-5086dd78/record.json` and `cloudflare-package-rehearsal-2026-11-18.json`.
+
+The owner-approved build is running on the Windows PC at `https://ceston.troho.net/`. A side-by-side rehearsal verified startup, an encrypted backup, rollback, and refusal to switch when it found a saved note. At cutover the earlier installation held no saved notes, tasks or conversations. The new installation retained both provider history settings, and the existing launcher now points to it. The old installation and its verified backup are retained. The live origin is healthy and rejects unsigned requests. A fresh Edge context reached Cloudflare sign-in, and the live installation recorded signed browser sessions after the owner opened the workspace. Physical-device acceptance remains open. See private evidence `cloudflare-side-by-side-rehearsal.json` and `cloudflare-cutover-2be40e1d-403f-4b72-9927-9369b54e3c32.json`.
+
+## Saved conversation titles and replies, 2026-11-18
+
+Chats uses saved titles from Codex and Claude and shows **Your reply** on eligible threads. The broker opens the original session through the signed-in provider on the host. The saved-chat path requires no separate Windows execution-host setup. When a provider holds a conversation open, close it there and then retry from cestOn. Work and self-update still have their own execution requirements.
+
+`npm run package:local` passed 120 tests and verified Windows bundle `local-3bc068a78b39-036fc12a`. `npm run test:clean-export` passed independently. Edge verified the inline flow, original session targeting, titles and reconnect at desktop and phone sizes with fixture providers. Each signed-in provider also resumed its exact disposable native session and recalled prior context. That native smoke test used two requests per provider. No owner conversation received a test message. See private evidence `2026-11-18T18-49-46-787Z-2c824425/record.json`, `clean-export-1795027870202/record.json`, `saved-chat-mvp-edge-2026-11-18/`, and `native-history-reply-stdin-2026-11-18.mts`.
+
+The verified build is live on the existing PC at `https://ceston.troho.net/`. The upgrade preserved the installation identity, launcher and all 32 saved folder records, and retained a verified encrypted backup and the previous build. The coordinator served the packaged UI and the origin rejected unsigned and forged API calls. A fresh Edge session reached Cloudflare sign-in. A live history scan found usable titles and reply eligibility in all 30 sampled conversations per provider. See private evidence `saved-chat-mvp-in-place-2026-11-18.json`. The signed-in Edge tab was unavailable to browser automation. Physical-phone acceptance remains open.
+
 ## Acceptance dimensions
 
 | Dimension | Status |
 |---|---|
 | Implementation present for phases 0-9 | yes |
 | U19 project knowledge and memory present | local implementation with targeted fixture evidence. Full M01-M09 acceptance remains open |
-| Revised automatic discovery and daily conversation workflow accepted | local reading, search and General implemented. Same-conversation native replies and phone acceptance remain open |
+| Revised automatic discovery and daily conversation workflow accepted | reading, search, titles and replies implemented. Original native threads verified in isolation. Physical phone acceptance remains open |
 | Implementation complete against all required acceptance | no. See the pending memory and native/device scenarios above |
-| Full local automated verification passed | yes, 115 tests on e317d24 and independent clean export |
+| Full local automated verification passed | yes, 120 tests for local-3bc068a78b39-036fc12a and independent clean export |
 | Hosted CI passed | yes, 115 tests and package verification on e317d24 |
-| Codex live adapter certified | no |
-| Claude live adapter certified | no |
+| Codex live provider verified | saved-chat replies verified. Managed Work adapter certification pending |
+| Claude live provider verified | saved-chat replies verified. Managed Work adapter certification pending |
 | Android physical device accepted | no |
 | iOS physical device accepted | no |
 | Real-provider isolated self-update certified | no |
-| Local persistent pilot activated and verified | no |
+| Existing local installation activated and verified | saved-chat bundle local-3bc068a78b39-036fc12a is live behind Cloudflare Access |
 | Revised Windows ZIP and isolated install verified | yes, including first-use browser and restore |
 | Public release ready | no |
 | Authorized public source repository pushed | yes |

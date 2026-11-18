@@ -52,18 +52,24 @@ export class ClaudeAdapter implements Adapter {
   private async startQuery(request: RunRequest, sessionId?: string): Promise<RunRef> {
     const ref: RunRef = { runId: randomUUID(), sessionId: sessionId ?? '', turnId: randomUUID() };
     const permissions: { tool: string; allowed: boolean; reason: string }[] = [];
+    const readOnly = request.operations !== undefined && !request.operations.includes('edit');
+    const readTools = ['Read', 'Glob', 'Grep'];
+    const tools = this.options.tools ?? ['Read', 'Edit', 'Write', 'Glob', 'Grep'];
+    const check: PermissionCheck = (name, input) => readOnly && !readTools.includes(name)
+      ? { allowed: false, reason: 'This reply can only read the workspace' }
+      : this.options.check(name, input);
     const hook: HookCallback = async input => {
       if (input.hook_event_name !== 'PreToolUse') return {};
-      const permission = this.options.check(input.tool_name, input.tool_input as Record<string, unknown>);
+      const permission = check(input.tool_name, input.tool_input as Record<string, unknown>);
       permissions.push({ tool: input.tool_name, ...permission });
       return { hookSpecificOutput: { hookEventName: 'PreToolUse', permissionDecision: permission.allowed ? 'allow' : 'deny', permissionDecisionReason: permission.reason } };
     };
     const abort = new AbortController();
     const options: Options = {
       cwd: request.workspace, pathToClaudeCodeExecutable: this.options.executable, env: this.environment(),
-      settingSources: [], skills: [], plugins: [], mcpServers: {}, tools: this.options.tools ?? ['Read', 'Edit', 'Write', 'Glob', 'Grep'],
+      settingSources: [], skills: [], plugins: [], mcpServers: {}, tools: readOnly ? tools.filter(tool => readTools.includes(tool)) : tools,
       permissionMode: 'default', allowedTools: [], disallowedTools: ['Bash', 'Agent', 'Task', 'WebFetch', 'WebSearch', 'NotebookEdit'],
-      canUseTool: async (name, input) => { const permission = this.options.check(name, input); return permission.allowed ? { behavior: 'allow', updatedInput: input } : { behavior: 'deny', message: permission.reason }; },
+      canUseTool: async (name, input) => { const permission = check(name, input); return permission.allowed ? { behavior: 'allow', updatedInput: input } : { behavior: 'deny', message: permission.reason }; },
       hooks: { PreToolUse: [{ matcher: '.*', hooks: [hook], onFailure: 'block', timeout: 5 }] },
       maxTurns: request.limits?.turns ?? 32, abortController: abort,
       ...(sessionId ? { resume: sessionId } : {}), ...(this.options.model ? { model: this.options.model } : {}),

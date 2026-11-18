@@ -34,6 +34,8 @@ Scan only configured provider homes and registered projects. Initial discovery i
 
 An adoption transaction records old ownership, operator request, last observed event, stopped-owner evidence, new managed session ID or handoff ID, and scope revision. Refuse adoption while a verified owner is active. If stopped state is uncertain, offer a new isolated task/worktree, not a forced takeover. Cross-provider continuation always creates a new provider session and preserves the cestOn task ID.
 
+In Chats, a conversation with a connected provider has an inline reply field. For saved history, pressing Send authorizes one resume attempt using the exact ID, provider home and working directory resolved from the saved record. This owner-approved path uses the signed-in provider directly and does not require cestOn execution-host certification. Codex applies its native writer lock and read-only permissions. Claude checks its active-session roster before resuming with tools disabled. Only an exact-ID terminal response is shown as delivered. Managed Work tasks continue under their separate scope and certification contract.
+
 ## Optional cestDone batch profile
 
 Source inspection baseline: sibling `cestdone` commit `fb30d27`, 2026-11-14. Its `src/cli/index.ts` exports `handleRun`; its CLI and configuration support non-interactive runs and configurable auto-commit. Its backend implementations are internal interfaces, not an established public cestOn bridge. README says ISC while package metadata says MIT and no root LICENSE was found. Do not copy its code or assume a resolved redistribution license.

@@ -2,21 +2,21 @@
 
 ## Authority and resume
 
-The owner authorized the original baseline and later requested the full daily-work revision, tests and an installable build. Commit and push verified milestones under the recorded authority. Persistent pilot activation, infrastructure/account changes outside isolated tests, paid provisioning and application artifact publication remain separate operations under `00-start-here.md`.
+The owner authorized the original baseline and later requested the full daily-work revision, tests and an installable build. The saved-chat upgrade operates on the existing owner installation and keeps its data and Cloudflare routing. New persistent installations, infrastructure/account changes, paid provisioning and application artifact publication remain separate operations under `00-start-here.md`.
 
 Read AGENTS, README, this file, `implementation-status.md` and `implementation-progress.json`. Inspect Git status and the actual remote SHA before editing. Preserve unfinished work. Use `npm run checkpoint` for the machine-readable state. Resolve source/test failures autonomously; never substitute fixtures for native or physical evidence.
 
 ## Revised daily workflow
 
-The Windows build opens in Chats. It can search, read and sort configured Codex and Claude history, start and reopen General conversations, and maintain project memory. History is read-only and never grants execution authority. Memory accepts notes without a project, supports confirmed folder moves, flags time-sensitive notes, and learns accepted verified work. The [first-use guide](../docs/first-use.html) ships beside the Windows launcher.
+The Windows build opens in Chats. It can search, sort and read named Codex and Claude conversations, reply in eligible saved threads, start and reopen General conversations, and maintain project memory. The installed host uses the owner's signed-in provider apps for saved-chat replies. Memory accepts notes without a project, supports confirmed folder moves, flags time-sensitive notes, and learns accepted verified work. The [first-use guide](../docs/first-use.html) ships beside the Windows launcher.
 
 Current acceptance and build evidence are recorded in the [implementation ledger](implementation-status.md). Sanity-check provider and device readiness before live tests. The production history reader checked 568 Codex files and 1,115 Claude files in a bounded local metadata scan on 2026-11-17. It returned 32 folders and 747 conversations. No titles, identifiers or texts were logged. Targeted fixture tests cover both readers and browser checks cover desktop, phone viewport, reconnect and independent General history.
 
 ## Continuation
 
-1. The current Windows package passed local and hosted verification, clean export, installed first use and restore. Use the package details in the implementation ledger. For a changed build, rerun `npm run package:local` and `node --import tsx scripts/rehearse-package.ts <unpacked-bundle>` before recording new evidence.
+1. Use the installation and package details in the implementation ledger. For a changed build, rerun `npm run package:local` and `node --import tsx scripts/rehearse-package.ts <unpacked-bundle>` before recording new evidence. Check the machine-readable checkpoint for the pending upgrade or the latest activation evidence.
 2. Complete the remaining U19 scenarios. The current authorized source policy uses explicit capture and accepted work. Broader proposed inference and conflict review still need scoped inputs and tests. Validate review/retirement and recovery on the installed device.
-3. For real provider work, first prove confinement and dedicated managed-profile readiness. Observe exact same-conversation capability for each existing provider session before enabling replies. Never use history discovery as ownership or silently open a second writer. A credential-free probe on 2026-11-17 reported `native_sandbox_setup_required` with zero model calls. No Android device was attached. Phone connectivity, iOS and Android standalone install and actual remote replies still require direct evidence.
+3. Saved-chat replies use the original session ID and the installed, signed-in provider. Exact session and prior context have been verified in an isolated native session on both providers. Close a session held by the provider before retrying it in cestOn. Certification for autonomous Work and self-update remains separate. Reply from a physical phone and verify the standalone installation journey when a device is available.
 4. Keep the ledger and machine-readable checkpoint current when a gate changes. Follow project authority and preserve verified phase evidence. Persistent activation, infrastructure changes and package publication are separate operations.
 
 ## Verified baseline evidence
@@ -41,7 +41,7 @@ The results above establish the original baseline at the recorded revisions. Con
 
 ## External gates and operation limits
 
-- Native Windows confinement reports `native_sandbox_setup_required`; dedicated Codex and Claude homes are unauthenticated. Zero real model turns were started. Baseline and full self-update certificates remain unissued. The native issuer's refusal, signature, expiry, suspension and toolchain/baseline binding tests pass; its live path is unverified.
+- Native Work confinement reports `native_sandbox_setup_required` and the dedicated managed Codex and Claude homes are unauthenticated. Saved-chat replies use the installed user's provider sign-in. Baseline and full self-update certificates remain unissued. The native issuer's refusal, signature, expiry, suspension and toolchain/baseline binding tests pass; its live path is unverified.
 - Android inventory found no attached device; physical iOS tooling/device is unavailable. Real standalone install, microphone/audio, lock-screen push and assistive-device evidence remain blocked.
 - Persistent startup, sign-in, locked-session and reboot acceptance are unperformed. No pilot, tunnel, remote origin, paid service, operational schedule or account integration was activated. Optional cestDone remains disabled and its daemon/configuration untouched.
 - Owner-selected application license and explicit artifact/signing/publication authority remain open. The authorized public source repository exists; `private: true` and `UNLICENSED` remain in package metadata.

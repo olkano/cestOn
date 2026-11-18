@@ -1,12 +1,13 @@
 import { useEffect, useState } from 'react';
 import type { LocalHistory } from '../../server/src/projects/history.js';
 import { api } from './api.js';
+import { ConversationReply } from './conversation-reply.js';
 
 type Inventory = Awaited<ReturnType<LocalHistory['list']>>;
 type Messages = Awaited<ReturnType<LocalHistory['read']>>;
 type Conversation = Inventory['conversations'][number];
 
-export function Conversations({ online, startGeneral }: { online: boolean; startGeneral: () => void }) {
+export function Conversations({ online, owner, startGeneral }: { online: boolean; owner: string; startGeneral: () => void }) {
   const [search, setSearch] = useState('');
   const [offset, setOffset] = useState(0);
   const [folder, setFolder] = useState('');
@@ -33,7 +34,7 @@ export function Conversations({ online, startGeneral }: { online: boolean; start
     return () => { clearTimeout(timer); abort.abort(); };
   }, [search, offset, folder, online, loadKey]);
   useEffect(() => {
-    if (!online || !selected) return;
+    if (!online || !selected || selected.managed) return;
     const abort = new AbortController();
     void api<Messages>('/history/' + selected.id, { signal: abort.signal }).then(next => {
       if (!abort.signal.aborted) setHistory(next);
@@ -85,7 +86,8 @@ export function Conversations({ online, startGeneral }: { online: boolean; start
           <button className="daily-back" onClick={back}>Back to conversations</button>
           <h2>{selected.title}</h2>
           <p className="muted">{selected.folder} · {selected.provider}</p>
-          <p>Can’t reply to this conversation from cestOn. Open it in {selected.provider} to continue there.</p>
+          {selected.managed ? <ConversationReply key={selected.id} id={selected.id} provider={selected.provider} online={online} owner={owner}/> : <>
+          {!selected.canReply && <p>Can’t reply to this conversation from cestOn. This is saved history. Open it in {selected.provider} to continue there.</p>}
           {historyError && <p role="alert">{historyError}</p>}
           {!history && !historyError && online && <p>Opening messages…</p>}
           {history && history.older !== null && <button disabled={!online || busy} onClick={() => {
@@ -96,6 +98,8 @@ export function Conversations({ online, startGeneral }: { online: boolean; start
           }}>Earlier messages</button>}
           {history && !history.messages.length && <p>No text messages in this part of the conversation.</p>}
           {history?.messages.map((message, index) => <article className="phase" key={index}><strong>{message.role === 'user' ? 'You' : selected.provider}</strong><p className="prose">{message.text}</p></article>)}
+          {selected.canReply && <ConversationReply key={selected.id} id={selected.id} provider={selected.provider} online={online && !historyError} owner={owner} savedMessages={history?.messages}/>}
+          </>}
         </> : <><h2>Pick a conversation</h2><p>Open a folder or search across recent work. Select a conversation to read its messages.</p></>}
       </section>
     </div>

@@ -4,7 +4,7 @@ import { ClaudeAdapter, observedBilling } from './index.js';
 
 it('T09/T27 Claude uses exact sessions and a fail-closed hook before effective tool permissions', async () => {
   let options: Options | undefined; let starts = 0;
-  const adapter = new ClaudeAdapter({ executable: 'synthetic', version: '2.1.317', workspace: 'fixture', env: {}, certified: true, billingMode: 'subscription', check: name => ({ allowed: name === 'Read', reason: 'fixture boundary' }), queryFactory: params => {
+  const adapter = new ClaudeAdapter({ executable: 'synthetic', version: '2.1.317', workspace: 'fixture', env: {}, certified: true, billingMode: 'subscription', check: name => ({ allowed: ['Read', 'Edit'].includes(name), reason: 'fixture boundary' }), queryFactory: params => {
     options = params.options; starts++;
     const generator = (async function* () {
       yield { type: 'system', subtype: 'init', session_id: 'exact-session' } as unknown as SDKMessage;
@@ -25,6 +25,15 @@ it('T09/T27 Claude uses exact sessions and a fail-closed hook before effective t
     const blocked = await matcher.hooks[0]!({ hook_event_name: 'PreToolUse', tool_name: 'Bash', tool_input: { command: 'unsafe' }, session_id: 'exact-session', transcript_path: 'fixture', cwd: 'fixture', tool_use_id: 'one' }, 'one', { signal: new AbortController().signal });
     expect(blocked).toMatchObject({ hookSpecificOutput: { permissionDecision: 'deny' } });
     await expect(adapter.resume('other-session', { ...request, commandId: 'two' })).rejects.toThrow('unmanaged_or_active_session');
+    const resumed = await adapter.resume(a.sessionId, { ...request, commandId: 'reply', operations: ['read'] });
+    expect(resumed.sessionId).toBe(a.sessionId);
+    expect(resumed.turnId).not.toBe(a.turnId);
+    expect(options?.resume).toBe(a.sessionId);
+    expect(options?.tools).toEqual(['Read', 'Glob', 'Grep']);
+    const input = { hook_event_name: 'PreToolUse' as const, tool_name: 'Edit', tool_input: {}, session_id: 'exact-session', transcript_path: 'fixture', cwd: 'fixture', tool_use_id: 'two' };
+    expect(await options!.hooks!.PreToolUse![0]!.hooks[0]!(input, 'two', { signal: new AbortController().signal })).toMatchObject({ hookSpecificOutput: { permissionDecision: 'deny' } });
+    for await (const event of adapter.events(resumed.runId)) void event;
+    expect((await adapter.reconcile(resumed.runId)).state).toBe('succeeded');
   } finally { await adapter.close(); }
 });
 

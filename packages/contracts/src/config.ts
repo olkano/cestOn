@@ -30,17 +30,26 @@ export const configSchema = z.strictObject({
   publicOrigin: z.url().refine(value => {
     const u = new URL(value); return u.protocol === 'https:' && !u.hostname.endsWith('.invalid') && u.pathname === '/' && !u.search && !u.hash && !u.username && !u.password;
   }, 'A dedicated valid HTTPS origin is required').optional(),
+  cloudflareAccess: z.strictObject({
+    team: z.string().regex(/^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/),
+    audience: z.string().regex(/^[a-f0-9]{64}$/),
+    ownerEmails: z.array(z.email().transform(email => email.toLowerCase())).min(1).max(5),
+  }).optional(),
   projects: z.array(projectSchema).max(100).default([]), providers: z.array(providerSchema).max(20).default([]),
   limits: limitsSchema.prefault({}),
   assistant: z.strictObject({ providerId: z.string().optional() }).prefault({}),
   history: z.strictObject({
     codexHome: z.string().trim().min(1).optional(),
     claudeHome: z.string().trim().min(1).optional(),
+    codexExecutable: z.string().trim().min(1).optional(),
+    claudeExecutable: z.string().trim().min(1).optional(),
   }).prefault({}),
   executionHost: z.strictObject({ codexExecutable: z.string().optional(), version: z.string().optional(), home: z.string().optional(), toolchainRoot: z.string().optional() }).prefault({}),
   voice: z.strictObject({ enabled: z.boolean().default(false), endpoint: z.url().refine(value => { const url = new URL(value); return url.protocol === 'https:' && !url.username && !url.password && !url.search && !url.hash; }).optional(), credentialEnv: z.string().regex(/^CESTON_SPEECH_[A-Z0-9_]+$/).optional(), model: z.string().optional() }).prefault({}),
   push: z.strictObject({ enabled: z.boolean().default(false), subject: z.string().optional(), publicKey: z.string().optional(), privateKeyEnv: z.string().regex(/^CESTON_PUSH_[A-Z0-9_]+$/).optional() }).prefault({}),
   updates: z.strictObject({ requestedLocalApply: z.boolean().default(false), retainVerifiedReleases: z.number().int().min(3).max(10).default(3) }).prefault({}),
+}).refine(config => !config.cloudflareAccess || config.publicOrigin !== undefined, {
+  path: ['cloudflareAccess'], message: 'Cloudflare Access requires an HTTPS publicOrigin',
 });
 export type Config = z.infer<typeof configSchema>;
 export type ProjectConfig = z.infer<typeof projectSchema>;

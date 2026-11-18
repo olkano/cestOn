@@ -16,9 +16,20 @@ if (testMode && (!Number.isInteger(fixtureDelay) || fixtureDelay < 0 || fixtureD
 const broker = new Broker(root, config, { testMode, fixtureDelayMs: testMode ? fixtureDelay : 0 });
 const instance = await acquireInstance(root, 'broker', installationSecrets(root).broker);
 const runSchema = z.strictObject({ runId: z.string().min(1).max(100) });
+const historyId = z.strictObject({ id: z.string().regex(/^[a-f0-9]{32}$/) });
 const server = await startIpcServer({ root, name: 'broker', installationId, token: installationSecrets(root).broker }, async (method, payload) => {
   if (method === 'update.edit') return broker.updateEdit(z.strictObject({ grantId: z.uuid() }).parse(payload).grantId);
   if (method === 'start') return broker.start(payload);
+  if (method === 'reply.state') return broker.replyState(runSchema.parse(payload).runId);
+  if (method === 'history.reply.state') return broker.historyReplyState(historyId.parse(payload).id);
+  if (method === 'history.reply.send') {
+    const input = historyId.extend({ commandId: z.uuid(), text: z.string().trim().min(1).max(8000) }).parse(payload);
+    return broker.historyReply(input.id,input.commandId,input.text);
+  }
+  if (method === 'reply.send') {
+    const input = runSchema.extend({ commandId: z.uuid(), text: z.string().trim().min(1).max(8000) }).parse(payload);
+    return broker.reply(input.runId, input.commandId, input.text);
+  }
   if (method === 'workspace') { const p = z.strictObject({ projectId: z.uuid(), taskId: z.uuid(), scopeRevisionId: z.uuid() }).parse(payload); return broker.workspace(p.projectId, p.taskId, p.scopeRevisionId); }
   if (method === 'receipt') return broker.lookup(z.strictObject({ commandId: z.uuid() }).parse(payload).commandId);
   if (method === 'events') { const p = z.strictObject({ runId: z.string().max(100), after: z.number().int().nonnegative() }).parse(payload); return broker.events(p.runId, p.after); }

@@ -566,6 +566,135 @@
         }
       }
     },
+    "/api/v1/managed-conversations/{id}": {
+      "get": {
+        "operationId": "get__api_v1_managed_conversations__id_",
+        "security": [
+          {
+            "deviceSession": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "oneOf": [
+                {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                {
+                  "type": "string",
+                  "pattern": "^[a-f0-9]{32}$"
+                }
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response. JSON uses data and meta.requestId; evidence uses attachment bytes."
+          },
+          "400": {
+            "description": "Malformed request."
+          },
+          "401": {
+            "description": "Device pairing is required."
+          },
+          "403": {
+            "description": "Authority, origin, host or CSRF rejected."
+          },
+          "409": {
+            "description": "Stale revision, identity conflict or snapshot changed."
+          },
+          "422": {
+            "description": "Unsupported capability."
+          },
+          "429": {
+            "description": "Rate limit."
+          },
+          "503": {
+            "description": "Dependency unavailable."
+          }
+        }
+      }
+    },
+    "/api/v1/managed-conversations/{id}/replies": {
+      "post": {
+        "operationId": "post__api_v1_managed_conversations__id__replies",
+        "security": [
+          {
+            "deviceSession": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "oneOf": [
+                {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                {
+                  "type": "string",
+                  "pattern": "^[a-f0-9]{32}$"
+                }
+              ]
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConversationReply"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Successful response. JSON uses data and meta.requestId; evidence uses attachment bytes."
+          },
+          "400": {
+            "description": "Malformed request."
+          },
+          "401": {
+            "description": "Device pairing is required."
+          },
+          "403": {
+            "description": "Authority, origin, host or CSRF rejected."
+          },
+          "409": {
+            "description": "Stale revision, identity conflict or snapshot changed."
+          },
+          "422": {
+            "description": "Unsupported capability."
+          },
+          "429": {
+            "description": "Rate limit."
+          },
+          "503": {
+            "description": "Dependency unavailable."
+          }
+        }
+      }
+    },
     "/api/v1/general": {
       "get": {
         "operationId": "get__api_v1_general",
@@ -2729,6 +2858,21 @@
         },
         "required": [
           "messageId",
+          "text"
+        ],
+        "additionalProperties": false
+      },
+      "ConversationReply": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "text": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 8000
+          }
+        },
+        "required": [
           "text"
         ],
         "additionalProperties": false

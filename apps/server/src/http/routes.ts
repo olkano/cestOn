@@ -1,4 +1,4 @@
-import type { FastifyInstance } from 'fastify';
+import type { FastifyInstance, FastifyRequest } from 'fastify';
 import cookie from '@fastify/cookie';
 import multipart from '@fastify/multipart';
 import { z, ZodError } from 'zod';
@@ -7,7 +7,7 @@ import { readFileSync, existsSync } from 'node:fs';
 import type { ServerResponse } from 'node:http';
 import type { Config } from '../../../../packages/contracts/src/config.js';
 import { DomainError } from '../../../../packages/contracts/src/commands.js';
-import { pairingSchema, conversationSchema, intakeSchema, pageSchema, taskQuerySchema, idSchema } from '../../../../packages/contracts/src/http.js';
+import { pairingSchema, conversationSchema, conversationReplySchema, intakeSchema, pageSchema, taskQuerySchema, idSchema } from '../../../../packages/contracts/src/http.js';
 import { safePath } from '../../../../packages/contracts/src/paths.js';
 import type { Store } from '../db/store.js';
 import { AuthService } from '../auth/service.js';
@@ -24,8 +24,10 @@ import type { ImprovementService } from '../updates/service.js';
 import { ProjectMemory } from '../db/memory.js';
 import { memoryQuery, memoryWrite } from '../../../../packages/contracts/src/memory.js';
 import { LocalHistory } from '../projects/history.js';
+import { cloudflareIdentity } from '../auth/cloudflare.js';
+import type { ConversationReplies } from '../projects/conversation-replies.js';
 
-export type ApiServices = { commands?: CommandService; assistant?: Assistant; actions?: ActionService; broker?: BrokerClient; speech?: SpeechService; notifications?: NotificationService; improvements?: ImprovementService; staticBundle?: string };
+export type ApiServices = { commands?: CommandService; assistant?: Assistant; actions?: ActionService; broker?: BrokerClient; conversationReplies?: ConversationReplies; speech?: SpeechService; notifications?: NotificationService; improvements?: ImprovementService; staticBundle?: string };
 export async function registerApi(app: FastifyInstance, config: Config, input: ApiServices & { store?: Store; origin?: string }) {
   const store = input.store; const auth = store ? new AuthService(store) : null;
   const commands = input.commands ?? (store ? new CommandService(store, config) : null);
@@ -33,8 +35,12 @@ export async function registerApi(app: FastifyInstance, config: Config, input: A
   const intake = store ? new SourceIntake(store) : null;
   const memory = store ? new ProjectMemory(store) : null;
   const history = new LocalHistory(config.history, store?.testMode ? store.dataRoot : undefined);
+  const threadId = z.strictObject({ id: z.union([z.uuid(), z.string().regex(/^[a-f0-9]{32}$/)]) });
   const originUrl = new URL(input.origin ?? config.publicOrigin ?? `http://127.0.0.1:${config.listen.port}`); const secure = originUrl.protocol === 'https:';
   if (!secure && !['127.0.0.1', 'localhost', '[::1]'].includes(originUrl.hostname)) throw new DomainError('https_required');
+  if (config.cloudflareAccess && (!secure || originUrl.origin !== new URL(config.publicOrigin!).origin)) throw new DomainError('cloudflare_origin_invalid');
+  const verifyAccess = config.cloudflareAccess ? cloudflareIdentity(config.cloudflareAccess) : null;
+  const signedAccess = new WeakMap<FastifyRequest, { email: string; expiresAt: number }>();
   await app.register(cookie); await app.register(multipart, { limits: { fileSize: 10485760, files: 1, fields: 2, parts: 3 } });
   const streams = new Set<ServerResponse>();
   app.addHook('preClose', async () => { for (const stream of streams) stream.end(); streams.clear(); });
@@ -48,9 +54,24 @@ export async function registerApi(app: FastifyInstance, config: Config, input: A
     if (!request.url.startsWith('/api/')) return;
     reply.header('Cache-Control', 'no-store'); reply.header('Vary', 'Cookie');
     if (request.headers['x-ceston-protocol'] && request.headers['x-ceston-protocol'] !== '1') throw new DomainError('protocol_mismatch', 426);
-    const pairing = request.url.split('?')[0] === '/api/v1/pairing/redeem' && request.method === 'POST';
+    const path = request.url.split('?')[0];
+    const pairing = path === '/api/v1/pairing/redeem' && request.method === 'POST';
     if (!auth) throw new DomainError('setup_required', 503);
-    const device = pairing ? null : auth.authenticate(request.cookies.ceston);
+    if (verifyAccess) {
+      if (request.headers.host !== originUrl.host) throw new DomainError('host_rejected', 403);
+      const access = await verifyAccess(request.headers['cf-access-jwt-assertion']);
+      if (pairing) throw new DomainError('cloudflare_sign_in_required', 403);
+      signedAccess.set(request, access);
+    }
+    const bootstrap = verifyAccess && request.method === 'GET' && path === '/api/v1/me';
+    let device = null;
+    if (!bootstrap && !pairing) {
+      try { device = auth.authenticate(request.cookies.ceston); }
+      catch (error) {
+        if (verifyAccess && error instanceof DomainError && error.status === 401) throw new DomainError('cloudflare_sign_in_required', 403);
+        throw error;
+      }
+    }
     if (request.headers.host !== originUrl.host) throw new DomainError('host_rejected', 403);
     if (!['GET', 'HEAD'].includes(request.method)) {
       if (request.headers.origin !== originUrl.origin) throw new DomainError('origin_rejected', 403);
@@ -63,9 +84,19 @@ export async function registerApi(app: FastifyInstance, config: Config, input: A
     reply.setCookie('ceston', result.token, { path: '/api', httpOnly: true, sameSite: 'strict', secure, maxAge: 30 * 86400 });
     return data({ deviceId: result.device.id, csrf: result.csrf }, request.id);
   });
-  app.get('/api/v1/me', async request => {
-    const device = auth!.authenticate(request.cookies.ceston);
-    return data({ installationId: store!.installation().id, deviceId: device.id, displayName: device.display_name, csrf: auth!.csrf(request.cookies.ceston!), protocol: 1, capabilities: { voice: input.speech?.available ?? false, push: config.push.enabled && Boolean(input.notifications?.pushAvailable), pushPublicKey: config.push.enabled && input.notifications?.pushAvailable ? config.push.publicKey ?? null : null, providers: config.providers.map(p => ({ id: p.id, kind: p.kind, profile: p.profile })) } }, request.id);
+  app.get('/api/v1/me', async (request, reply) => {
+    let token = request.cookies.ceston;
+    let device;
+    try { device = auth!.authenticate(token); }
+    catch (error) {
+      const identity = signedAccess.get(request);
+      if (!identity || !(error instanceof DomainError) || error.status !== 401) throw error;
+      const session = auth!.signedInBrowser(identity.email);
+      token = session.token;
+      device = session.device;
+      reply.setCookie('ceston', token, { path: '/api', httpOnly: true, sameSite: 'strict', secure: true, maxAge: 30 * 86400 });
+    }
+    return data({ installationId: store!.installation().id, deviceId: device.id, displayName: device.display_name, csrf: auth!.csrf(token!), protocol: 1, capabilities: { voice: input.speech?.available ?? false, push: config.push.enabled && Boolean(input.notifications?.pushAvailable), pushPublicKey: config.push.enabled && input.notifications?.pushAvailable ? config.push.publicKey ?? null : null, providers: config.providers.map(p => ({ id: p.id, kind: p.kind, profile: p.profile })) } }, request.id);
   });
   app.get('/api/v1/openapi.json', async () => openapi);
   app.get('/api/v1/updates', async request => data(input.improvements?.list() ?? [], request.id));
@@ -92,12 +123,26 @@ export async function registerApi(app: FastifyInstance, config: Config, input: A
       search: z.string().trim().max(200).default(''), folderId: z.uuid().optional(),
       offset: z.coerce.number().int().min(0).max(8000).default(0),
     }).parse(request.query);
-    return data(await history.list(query.search, query.folderId, query.offset), request.id);
+    return data(await history.list(query.search, query.folderId, query.offset, input.conversationReplies?.list()), request.id);
   });
   app.get('/api/v1/history/:id', async request => {
     const { id } = z.strictObject({ id: z.string().regex(/^[a-f0-9]{32}$/) }).parse(request.params);
     const { before } = z.strictObject({ before: z.coerce.number().int().min(0).max(Number.MAX_SAFE_INTEGER).optional() }).parse(request.query);
     return data(await history.read(id, before), request.id);
+  });
+  app.get('/api/v1/managed-conversations/:id', async request => {
+    const { id } = threadId.parse(request.params);
+    if (!input.conversationReplies) throw new DomainError('conversation_unavailable', 404);
+    return data(await input.conversationReplies.view(id, auth!.authenticate(request.cookies.ceston).id), request.id);
+  });
+  app.post('/api/v1/managed-conversations/:id/replies', async (request, reply) => {
+    const { id } = threadId.parse(request.params);
+    const key = z.uuid().parse(request.headers['idempotency-key']);
+    const { text } = conversationReplySchema.parse(request.body);
+    const device = auth!.authenticate(request.cookies.ceston);
+    auth!.commandLimit(device.id);
+    if (!input.conversationReplies) throw new DomainError('conversation_unavailable', 404);
+    return reply.code(202).send(data(await input.conversationReplies.send(id, device.id, key, text), request.id));
   });
   app.post('/api/v1/memory', async request => {
     auth!.commandLimit(auth!.authenticate(request.cookies.ceston).id);
@@ -201,11 +246,13 @@ export async function registerApi(app: FastifyInstance, config: Config, input: A
   app.get('/api/v1/tasks/:id/approvals', async request => { const id = idSchema.parse(request.params).id; store!.taskRow(id); const rows = store!.db.prepare('SELECT id FROM action_approvals WHERE task_id=? LIMIT 100').all(id) as { id: string }[]; return data(input.actions ? rows.map(r => input.actions!.view(r.id)) : [], request.id); });
   app.get('/api/v1/events', async (request, reply) => {
     let cursor = pageSchema.parse(request.query).after; const token = request.cookies.ceston; let blocked = false;
+    const accessExpiry = signedAccess.get(request)?.expiresAt;
     reply.hijack(); const stream = reply.raw; streams.add(stream);
     stream.writeHead(200, { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-store', 'X-Accel-Buffering': 'no', 'X-Content-Type-Options': 'nosniff' });
     const send = (value: string) => { if (!stream.write(value)) blocked = true; }; stream.on('drain', () => { blocked = false; });
     const poll = () => {
       try {
+        if (accessExpiry !== undefined && Date.now() >= accessExpiry) { stream.end(); return; }
         auth!.authenticate(token, false); if (blocked) return;
         const earliest = (store!.db.prepare('SELECT MIN(sequence) AS n FROM events').get() as { n: number | null }).n;
         if ((earliest !== null && cursor > 0 && cursor < earliest - 1) || cursor > store!.latestCursor()) { send('event: resync_required\ndata: {"snapshot":"/api/v1/snapshot"}\n\n'); stream.end(); return; }

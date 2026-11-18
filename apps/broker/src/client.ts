@@ -16,13 +16,17 @@ import { readOwner } from './registry.js';
 export class BrokerClient {
   constructor(readonly endpoint: string, private installationId: string, private token: string) {}
   private async request<T>(method: string, payload: unknown): Promise<T> {
-    const requestId = randomUUID(); const response = await ipcRequest(this.endpoint, { protocol: 1, installationId: this.installationId, token: this.token, requestId, method, payload }, method === 'update.edit' ? 550000 : method === 'recipe' ? 610000 : method === 'infer' ? 65000 : method === 'start' ? 35000 : 12000);
+    const requestId = randomUUID(); const response = await ipcRequest(this.endpoint, { protocol: 1, installationId: this.installationId, token: this.token, requestId, method, payload }, method === 'update.edit' ? 550000 : method === 'recipe' ? 610000 : method === 'infer' ? 65000 : ['start','reply.send','history.reply.send'].includes(method) ? 35000 : 12000);
     if (response.error) throw new DomainError(response.error.code, 503);
     if (response.requestId !== requestId || response.protocol !== 1) throw new DomainError('ipc_wrong_response', 503);
     return response.data as T;
   }
   updateEdit(grantId: string) { return this.request<{ completed: boolean }>('update.edit', { grantId }); }
   start(execution: Execution) { return this.request<{ sequence: number; ref: RunRef; providerId: string; capabilities: unknown }>('start', execution); }
+  replyState(runId: string) { return this.request<'ready' | 'working' | 'unavailable'>('reply.state', { runId }); }
+  reply(runId: string, commandId: string, text: string) { return this.request<{ ref: RunRef }>('reply.send', { runId, commandId, text }); }
+  historyReplyState(id: string) { return this.request<'ready' | 'working' | 'unavailable'>('history.reply.state', { id }); }
+  historyReply(id: string, commandId: string, text: string) { return this.request<{ ref: RunRef }>('history.reply.send', { id, commandId, text }); }
   workspace(projectId: string, taskId: string, scopeRevisionId: string) { return this.request<{ root: string; sourceHash: string }>('workspace', { projectId, taskId, scopeRevisionId }); }
   lookup(commandId: string) { return this.request<BrokerReceipt>('receipt', { commandId }); }
   events(runId: string, after: number) { return this.request<BrokerEvent[]>('events', { runId, after }); }

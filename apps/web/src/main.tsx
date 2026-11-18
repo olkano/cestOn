@@ -37,7 +37,7 @@ function App() {
   const [theme, updateTheme] = useState(localStorage.getItem('ceston.theme') ?? 'system');
   const [route, setRoute] = useState(location.pathname === '/' ? '/conversations' : location.pathname);
   const [me, setMe] = useState<Me | null>(null); const [snapshot, setSnapshot] = useState<Snapshot | null>(null);
-  const [connection, setConnection] = useState<'loading' | 'connected' | 'offline' | 'pairing' | 'setup' | 'refresh'>('loading');
+  const [connection, setConnection] = useState<'loading' | 'connected' | 'offline' | 'pairing' | 'setup' | 'refresh' | 'cloudflare'>('loading');
   const [notice, setNotice] = useState(''); const [taskDetail, setTaskDetail] = useState<TaskView | null>(null); const [history, setHistory] = useState<History>([]);
   const [receipt, setReceipt] = useState<Receipt | null>(null); const [pending, setPending] = useState<{ key: string; command: Command } | null>(null);
   const [deliveryLoaded, setDeliveryLoaded] = useState(false);
@@ -50,7 +50,11 @@ function App() {
   const generalId = route.match(/^\/general\/([a-f0-9-]{36})$/)?.[1];
   const refresh = useCallback(async () => { for (let attempt = 0; attempt < 3; attempt++) { try { const next = await api<Snapshot>('/snapshot'); let after = next.nextCursor; while (after !== null) { const page = await api<Snapshot>(`/snapshot?after=${after}&expectedCursor=${next.cursor}`); next.tasks.push(...page.tasks); after = page.nextCursor; } setSnapshot(next); return next; } catch (error) { if (!(error instanceof ApiError) || error.code !== 'snapshot_changed' || attempt === 2) throw error; } } throw new Error('Snapshot changed. Reconnect to refresh.'); }, []);
   const handleError = useCallback((error: unknown) => {
-    if (error instanceof ApiError && error.status === 401) { sessionCsrf(''); localStorage.removeItem('ceston.owner'); localStorage.removeItem('ceston.push-subscription'); setMe(null); setSnapshot(null); setTaskDetail(null); setHistory([]); setConversation([]); setPending(null); setReceipt(null); setConnection('pairing'); void clearDrafts(); }
+    if (error instanceof ApiError && (error.status === 401 || error.code === 'cloudflare_sign_in_required')) {
+      sessionCsrf(''); setMe(null); setSnapshot(null); setTaskDetail(null); setHistory([]); setConversation([]); setPending(null); setReceipt(null);
+      if (error.code === 'cloudflare_sign_in_required') setConnection('cloudflare');
+      else { localStorage.removeItem('ceston.owner'); localStorage.removeItem('ceston.push-subscription'); setConnection('pairing'); void clearDrafts(); }
+    }
     else if (error instanceof ApiError && error.status === 426) setConnection('refresh');
     else if (error instanceof ApiError && error.code === 'setup_required') setConnection('setup');
     else if (error instanceof TypeError) setConnection('offline');
@@ -99,6 +103,7 @@ function App() {
     <div className="workspace">{me && <nav aria-label="Main navigation">{nav.map(([path, name]) => <a href={path} key={path} aria-current={route === path ? 'page' : undefined} onClick={event => { event.preventDefault(); go(path); }}>{name}{path === '/needs-me' && attentionCount(tasks) > 0 ? <span className="badge">{attentionCount(tasks)}</span> : null}</a>)}<div className="nav-note">The host needs to stay awake and connected.</div></nav>}
     <main id="main" ref={main} tabIndex={-1}><UpdateBanner owner={owner}/>{!me && connection === 'offline' && localStorage.getItem('ceston.owner') && <OfflineDraft owner={localStorage.getItem('ceston.owner')!} target={selectedId ?? (route === '/assistant' ? 'assistant' : 'offline')}/>}
       {connection === 'loading' && <p role="status">Connecting to your host…</p>}
+      {connection === 'cloudflare' && <section className="pairing"><h1>Reconnect through Cloudflare</h1><p>Open cestOn through your Cloudflare address and sign in with an allowed email.</p><button onClick={() => location.reload()}>Reconnect</button></section>}
       {(connection === 'pairing' || connection === 'setup') && <section className="pairing"><p className="eyebrow">Your private workspace</p><h1>Connect this device</h1><p>Generate a one-use pairing code from the local cestOn console. Codes expire after ten minutes.</p><form onSubmit={event => { event.preventDefault(); void api<{ csrf: string }>('/pairing/redeem', { method: 'POST', body: { invitation: pairCode.trim(), deviceName } }).then(result => { sessionCsrf(result.csrf); setPairCode(''); return connect(); }).catch(handleError); }}><label>Pairing code<input autoComplete="off" spellCheck={false} value={pairCode} onChange={event => setPairCode(event.target.value)} required/></label><label>Device name<input value={deviceName} onChange={event => setDeviceName(event.target.value)} maxLength={80} required/></label><button className="primary" disabled={connection === 'setup'}>Connect device</button></form><p className="muted">The host needs to stay awake and connected. Closing your phone will not stop managed work.</p>{connection === 'setup' && <p>Local setup is required. Start the host from its console.</p>}</section>}
       {me && snapshot && <><div className="page-heading"><div><p className="eyebrow">{selectedId ? taskDetail?.project ?? 'Task' : 'cestOn workspace'}</p><h1>{sectionTitle}</h1></div><span className="badge">{connection === 'connected' ? 'Connected' : 'Evidence may be stale'}</span></div>{me.capabilities.providers.some(p => p.kind === 'fixture') && <p className="fixture-banner">Synthetic installation. Artifacts and provider activity are test fixtures.</p>}
       {!writable && <div className="banner" role="status">{connection === 'refresh' ? 'This page needs a compatible update. Refresh before sending commands.' : 'Your host is unavailable. Drafts stay unsent; reconnect to revalidate before sending.'}<button onClick={() => { if (connection === 'refresh') location.reload(); else void connect(); }}>Reconnect</button></div>}
@@ -121,7 +126,7 @@ function App() {
       {route === '/memory' && <MemoryPanel projects={snapshot.projects} cursor={snapshot.cursor} online={transportReady}/>}
       {route === '/conversations' && <>
         <GeneralThreads online={transportReady} cursor={snapshot.cursor} open={id => go('/general/' + id)}/>
-        <Conversations online={transportReady} startGeneral={() => go('/general/' + crypto.randomUUID())}/>
+        <Conversations online={transportReady} owner={owner} startGeneral={() => go('/general/' + crypto.randomUUID())}/>
       </>}
       {generalId && <section className="card">
         <p>Ask for a work overview or write “Remember:” followed by a note. You can start here before choosing a folder.</p>

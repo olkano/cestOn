@@ -14,7 +14,7 @@ Issue a random per-device session token in an HttpOnly, SameSite=Strict cookie, 
 
 For cookie writes require a per-session CSRF token plus exact allowed Origin and Host checks. Initial invitation redemption precedes a session and uses the one-use invitation with exact Origin/Host checks; it cannot require a session CSRF token. SameSite alone is not the entire CSRF defense. Disable cross-origin API CORS by default. Validate proxy headers only from the configured loopback proxy. Reject DNS rebinding/host-header variants. Rate-limit pairing to five failed attempts per 15 minutes per source and installation, and authenticated command creation to 60/minute per device with a clear retry response.
 
-Cloudflare Access is an optional additional gate. If enabled, validate issuer, audience, signature using trusted JWKS, expiry, and the configured owner allowlist server-side. Do not trust an email header alone or reuse another app's audience. A tunnel is transport, not authentication. No tunnel is provisioned by these specs.
+Cloudflare Access can gate manual pairing or provide the sign-in for the HTTPS installation. In the sign-in mode, validate the signed application assertion on each API request against the configured issuer, audience, signature using trusted JWKS, expiry, and exact owner allowlist. Start the browser session automatically on the authenticated initial connection. Use the usual cookie, CSRF and host/origin checks for writes. The local pairing endpoint is disabled in this mode and open event streams end when the assertion expires. Revoking a cestOn browser session invalidates its cookie. Revoke the Cloudflare session too to prevent that browser from signing in again.
 
 ## Authority records
 

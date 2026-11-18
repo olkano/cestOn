@@ -2,7 +2,7 @@
 
 cestOn is a self-hosted assistant in development for coordinating coding and operational agents from a desktop or phone. It brings tasks, decisions, progress, voice interaction, and requested improvements to cestOn itself into one workspace.
 
-**Current state:** the Windows bundle includes recent Codex and Claude history, General conversations and project memory. It also includes durable tasks, authenticated devices and the desktop/phone web app. Local tests use isolated workspaces. Live agent execution needs certified profiles. Replies to conversations discovered from external history and the physical phone workflow remain open. See the implementation ledger for the verified bundle and scope.
+**Current state:** cestOn includes Codex and Claude history, restored conversation names, General conversations, project memory, durable tasks and an authenticated web app. Chats can resume a saved conversation through a configured, signed-in local provider when that provider can open the exact original session. See the implementation ledger for the verified bundle and physical-device checks.
 
 ## Start here
 
@@ -35,6 +35,6 @@ Use Node 24 LTS and npm 11. Run `npm ci --ignore-scripts`, verify the distribute
 
 Run `npm run verify` for typecheck, lint, unit, integration, Chromium E2E, build, and documentation checks. Security and update checks are separate: `npm run test:security` and `npm run test:updates`. All tests use synthetic data. `npm run doctor` reports local runtime readiness without executing provider work.
 
-Use `npm run checkpoint` to inspect resumable implementation state. Read `AGENTS.md` and the [implementation entry point](zz_Specifications/00-start-here.md) before making changes. `npm run package:local` verifies and creates an immutable local bundle with checksums. The [operations guide](docs/operations.md) covers the owner CLI, startup preparation, backup and frozen recovery. Native provider execution and automatic application remain disabled without live certification.
+Use `npm run checkpoint` to inspect resumable implementation state. Read `AGENTS.md` and the [implementation entry point](zz_Specifications/00-start-here.md) before making changes. `npm run package:local` verifies and creates an immutable local bundle with checksums. The [operations guide](docs/operations.md) covers the owner CLI, startup preparation, backup and frozen recovery. Managed tasks and automatic application require live certification. Saved chat replies use the provider connection described in [setup](docs/setup.md).
 
 See [setup](docs/setup.md), [support and acceptance boundaries](docs/support-matrix.md), [contributing](docs/contributing.md), and [release preparation](docs/release.md). `npm run check:export` scans the public source/history; `npm run test:clean-export` verifies independent setup. The application remains `UNLICENSED` and private for package distribution pending the owner's license choice. Public source pushes, application publication and persistent activation are tracked separately.

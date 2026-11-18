@@ -29,15 +29,22 @@ export class AuthService {
     if (consume) entry.count++; this.limits.set(key, entry);
   }
   commandLimit(deviceId: string) { this.limit(`command:${deviceId}`, 60, 60000); }
+  signedInBrowser(email: string) {
+    this.limit(`cloudflare:${email}`, 30, 60000);
+    return this.issueBrowser('Cloudflare browser');
+  }
+  private issueBrowser(name: string) {
+    const token = randomBytes(32).toString('base64url'); const id = randomUUID(); const now = this.store.now(); const csrf = this.csrf(token);
+    this.store.db.prepare('INSERT INTO devices(id,display_name,token_hash,created_at,last_seen_at,expires_at,csrf_hash) VALUES(?,?,?,?,?,?,?)').run(id, name, this.hash(token), now, now, now + 7 * 86400000, this.hash(csrf));
+    return { token, csrf, device: this.device(id) };
+  }
   redeem(invitation: string, name: string, source: string) {
     this.limit(`pair:${source}`, 5, 900000, false); this.limit('pair:installation', 5, 900000, false);
     try { return this.store.db.transaction(() => {
       if (typeof invitation !== 'string' || invitation.length > 100 || !name.trim() || name.length > 80) throw new DomainError('invalid_invitation', 401);
       const consumed = this.store.db.prepare('UPDATE pairing_invitations SET redeemed_at=? WHERE token_hash=? AND redeemed_at IS NULL AND expires_at>?').run(this.store.now(), this.hash(invitation), this.store.now());
       if (!consumed.changes) throw new DomainError('invalid_invitation', 401);
-      const token = randomBytes(32).toString('base64url'); const id = randomUUID(); const now = this.store.now(); const csrf = this.csrf(token);
-      this.store.db.prepare('INSERT INTO devices(id,display_name,token_hash,created_at,last_seen_at,expires_at,csrf_hash) VALUES(?,?,?,?,?,?,?)').run(id, name.trim(), this.hash(token), now, now, now + 7 * 86400000, this.hash(csrf));
-      return { token, csrf, device: this.device(id) };
+      return this.issueBrowser(name.trim());
     })(); } catch (error) { if (error instanceof DomainError && error.code === 'invalid_invitation') { this.limit(`pair:${source}`, 5, 900000); this.limit('pair:installation', 5, 900000); } throw error; }
   }
   device(id: string) { return this.store.db.prepare('SELECT id,display_name,created_at,last_seen_at,expires_at,revoked_at,csrf_hash FROM devices WHERE id=?').get(id) as Device; }
