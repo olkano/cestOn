@@ -1,9 +1,10 @@
 {
   "formatVersion": 1,
   "objective": "Continue saved Codex and Claude chats from the installed web app and recover their titles",
-  "status": "saved_chat_upgrade_live_verified",
-  "currentPhase": "saved_chat_in_place_upgrade_complete",
-  "nextAction": "Use Chats on the existing PC installation. Follow implementation-run.md for the physical-phone and autonomous Work acceptance still open.",
+  "status": "chat_activity_specified",
+  "currentPhase": "chat_activity_and_recency",
+  "nextAction": "Implement and verify the scoped activity and recency specification, then archive it. The previous saved-chat build remains the live PC build.",
+  "activeSpec": "zz_Specifications/chat-activity-and-recency.md",
   "tracking": "zz_Specifications/implementation-run.md",
   "ledger": "zz_Specifications/implementation-status.md",
   "authorized": [
