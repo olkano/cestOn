@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import type { Assistant, AssistantResponse } from '../../server/src/intents/assistant.js';
 import { api } from './api.js';
+import { ChatMessage, ChatTranscript } from './chat-transcript.js';
 
 type Threads = ReturnType<Assistant['generalThreads']>;
 type Messages = ReturnType<Assistant['generalMessages']>;
@@ -41,11 +42,11 @@ export function GeneralMessages({ id, online, cursor, received }: { id: string; 
     });
     return () => abort.abort();
   }, [id, online, cursor, received]);
-  return <div className="conversation" aria-live="polite">
+  return <ChatTranscript>
     {error && <p role="alert">{error}</p>}
     {history.map((message, index) => <article className="phase" key={index}>
       <strong>{message.type === 'conversation.user' ? 'You' : 'cestOn'}</strong>
-      <p className="prose">{message.content.text ?? responseText(message.content.response)}</p>
+      <ChatMessage text={message.content.text ?? responseText(message.content.response)}/>
     </article>)}
-  </div>;
+  </ChatTranscript>;
 }

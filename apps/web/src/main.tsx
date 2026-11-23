@@ -125,8 +125,8 @@ function App() {
       {route === '/improve' && <Improve revision={snapshot.installation.revision} owner={owner} release={snapshot.installation.active_release} cursor={snapshot.cursor} disabled={!writable} voiceEnabled={me.capabilities.voice} submit={sendCommand}/>}
       {route === '/memory' && <MemoryPanel projects={snapshot.projects} cursor={snapshot.cursor} online={transportReady}/>}
       {route === '/conversations' && <>
-        <GeneralThreads online={transportReady} cursor={snapshot.cursor} open={id => go('/general/' + id)}/>
         <Conversations online={transportReady} owner={owner} startGeneral={() => go('/general/' + crypto.randomUUID())}/>
+        <GeneralThreads online={transportReady} cursor={snapshot.cursor} open={id => go('/general/' + id)}/>
       </>}
       {generalId && <section className="card">
         <p>Ask for a work overview or write “Remember:” followed by a note. You can start here before choosing a folder.</p>

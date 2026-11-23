@@ -146,6 +146,12 @@ export async function registerApi(app: FastifyInstance, config: Config, input: A
     if (!input.conversationReplies) throw new DomainError('conversation_unavailable', 404);
     return reply.code(202).send(data(await input.conversationReplies.send(id, device.id, key, text), request.id));
   });
+  app.post('/api/v1/managed-conversations/:id/replies/:commandId/cancel', async request => {
+    const { id, commandId } = threadId.extend({ commandId:z.uuid() }).parse(request.params);
+    auth!.commandLimit(auth!.authenticate(request.cookies.ceston).id);
+    if (!input.conversationReplies) throw new DomainError('conversation_unavailable', 404);
+    return data(input.conversationReplies.cancelWaiting(id,commandId), request.id);
+  });
   app.post('/api/v1/memory', async request => {
     auth!.commandLimit(auth!.authenticate(request.cookies.ceston).id);
     return data(memory!.save(memoryWrite.parse(request.body)), request.id);

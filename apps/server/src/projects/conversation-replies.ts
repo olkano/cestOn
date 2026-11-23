@@ -12,8 +12,8 @@ type Thread = {
   title: string; folder: string; canonical_root: string; observed_at: number; ended_at: number | null; working: number;
 };
 type Target = { runId: string; root: string; scopeId: string };
-type Reply = { sessionId: string; text: string; runId?: string };
-type ReplyState = 'ready' | 'working' | 'paused' | 'unavailable' | 'offline' | 'uncertain';
+type Reply = { sessionId: string; text: string; runId?: string; attemptId?: string };
+type ReplyState = 'ready' | 'working' | 'waiting' | 'paused' | 'unavailable' | 'offline' | 'uncertain';
 const pending = "('queued','dispatching','accepted','reconciling')";
 const commandType = 'conversation.reply';
 const refusedBeforeSend = new Set(['conversation_busy', 'conversation_unavailable', 'provider_authentication_required',
@@ -58,7 +58,7 @@ export class ConversationReplies {
     }
     const result = new Map(this.roster);
     const replies = this.store.db.prepare(`SELECT json_extract(payload_json,'$.sessionId') AS id,
-      MAX(CASE WHEN state IN ('queued','dispatching','accepted') THEN created_at END) AS started,
+      MAX(CASE WHEN state IN ('queued','dispatching','accepted') AND error_code IS NULL THEN created_at END) AS started,
       MAX(CASE WHEN state='succeeded' THEN resolved_at END) AS ended
       FROM commands WHERE type=? GROUP BY id`).all(commandType) as {id:string;started:number|null;ended:number|null}[];
     for (const row of replies) if (row.started || row.ended) result.set(row.id,{
@@ -103,8 +103,8 @@ export class ConversationReplies {
     return runId && work.operations.includes('read') ? { runId, root: work.root, scopeId: task.scope_revision_id } : null;
   }
   private active(id: string) {
-    return this.store.db.prepare(`SELECT state FROM commands WHERE type=? AND state IN ${pending}
-      AND json_extract(payload_json,'$.sessionId')=? LIMIT 1`).get(commandType, id) as { state: string } | undefined;
+    return this.store.db.prepare(`SELECT state,error_code FROM commands WHERE type=? AND state IN ${pending}
+      AND json_extract(payload_json,'$.sessionId')=? LIMIT 1`).get(commandType, id) as Pick<CommandRow,'state'|'error_code'> | undefined;
   }
   private paused() { return this.frozen || this.store.installation().dispatch_paused !== 0; }
   private deviceActive(id: string) {
@@ -112,7 +112,8 @@ export class ConversationReplies {
   }
   private async state(id: string, target: Target | null): Promise<ReplyState> {
     const active = this.active(id);
-    if (active) return active.state === 'reconciling' ? 'uncertain' : 'working';
+    if (active?.state === 'reconciling') return 'uncertain';
+    if (active) return active.error_code === 'history_session_open' ? 'waiting' : 'working';
     if (this.paused()) return 'paused';
     if (!target && !savedHistory(id)) return 'unavailable';
     try { return target ? await this.broker.replyState(target.runId) : await this.broker.historyReplyState(id); }
@@ -133,6 +134,15 @@ export class ConversationReplies {
       createdAt:new Date(row.created_at).toISOString(), answer: row.result ? (JSON.parse(row.result) as { text: string }).text : null,
       preview:row.id === active?.id && preview ? preview : null,
     })) };
+  }
+  cancelWaiting(id: string, commandId: string) {
+    return this.store.db.transaction(() => {
+      const row = this.store.db.prepare(`SELECT * FROM commands WHERE id=? AND type=? AND state='queued'
+        AND error_code='history_session_open' AND json_extract(payload_json,'$.sessionId')=?`).get(commandId,commandType,id) as CommandRow | undefined;
+      if (!row) throw new DomainError('conversation_busy',409);
+      this.finish(row,JSON.parse(row.payload_json) as Reply,'cancelled');
+      return this.store.command(row.id);
+    }).immediate();
   }
   async send(id: string, deviceId: string, key: string, text: string) {
     const thread = savedHistory(id) ? null : this.thread(id);
@@ -168,12 +178,13 @@ export class ConversationReplies {
         WHERE c.type=? AND c.state IN ${pending} AND o.next_attempt_at<=? ORDER BY o.next_attempt_at,c.created_at LIMIT 12`).all(commandType, this.store.now()) as CommandRow[];
       for (const row of rows) {
         await this.advance(row).catch(() => { /* Retry receipt lookup without sending an uncertain command again. */ });
-        this.store.db.prepare('UPDATE outbox SET next_attempt_at=? WHERE command_id=?').run(this.store.now() + 750, row.id);
+        this.store.db.prepare('UPDATE outbox SET next_attempt_at=MAX(next_attempt_at,?) WHERE command_id=?').run(this.store.now() + 750, row.id);
       }
     } finally { this.polling = false; }
   }
   private async advance(row: CommandRow) {
     const reply = JSON.parse(row.payload_json) as Reply;
+    const attemptId = reply.attemptId ?? row.id;
     if (row.state === 'queued') {
       if (this.paused()) return;
       const external = savedHistory(reply.sessionId);
@@ -185,29 +196,36 @@ export class ConversationReplies {
       let state: 'working' | 'ready' | 'unavailable';
       try { state = target ? await this.broker.replyState(target.runId) : await this.broker.historyReplyState(reply.sessionId); }
       catch (error) {
-        if (error instanceof DomainError && refusedBeforeSend.has(error.code)) this.finish(row, reply, 'failed',undefined,error.code);
+        if (error instanceof DomainError && refusedBeforeSend.has(error.code) && this.store.command(row.id).state === 'queued') this.finish(row, reply, 'failed',undefined,error.code);
         return;
       }
       if (state === 'working' || this.paused()) return;
-      if (state !== 'ready') { this.finish(row, reply, 'failed'); return; }
-      this.store.db.transaction(() => {
+      if (state !== 'ready') {
+        if (this.store.command(row.id).state === 'queued') this.finish(row, reply, 'failed');
+        return;
+      }
+      const dispatch = this.store.db.transaction(() => {
+        if (!this.store.db.prepare("SELECT 1 FROM commands WHERE id=? AND state='queued'").get(row.id)) return false;
         if (this.paused() || !this.deviceActive(row.device_id) || target && this.target(this.thread(reply.sessionId))?.runId !== target.runId) throw new DomainError('conversation_unavailable');
         if (target) this.store.acquireLease(target.root, row.task_id!, row.id, row.id);
         this.store.db.prepare("UPDATE commands SET state='dispatching' WHERE id=?").run(row.id);
+        return true;
       }).immediate();
+      if (!dispatch) return;
       // Persist the send boundary first. A recovered dispatch only looks up the broker receipt.
       try {
         if (target) await this.broker.reply(target.runId, row.id, reply.text);
-        else await this.broker.historyReply(reply.sessionId, row.id, reply.text);
+        else await this.broker.historyReply(reply.sessionId, attemptId, reply.text);
       }
       catch (error) {
-        if (error instanceof DomainError && refusedBeforeSend.has(error.code) && (await this.broker.lookup(row.id)).status === 'absent') {
-          this.finish(row, reply, 'failed',undefined,error.code);
+        if (error instanceof DomainError && refusedBeforeSend.has(error.code) && (await this.broker.lookup(attemptId)).status === 'absent') {
+          if (external && error.code === 'history_session_open') this.waitForSession(row,reply);
+          else this.finish(row, reply, 'failed',undefined,error.code);
         }
         return;
       }
     }
-    const run = await this.acceptedRun(row.id,reply.sessionId);
+    const run = await this.acceptedRun(attemptId,reply.sessionId);
     if (!run) {
       this.store.db.prepare("UPDATE commands SET state='reconciling' WHERE id=?").run(row.id);
       return;
@@ -217,11 +235,22 @@ export class ConversationReplies {
     if (state === 'succeeded') {
       const text = await this.answer(ref.runId);
       this.finish(row, reply, text.trim() ? 'succeeded' : 'failed', text);
+    } else if (state === 'failed' && savedHistory(reply.sessionId) && receipt.result.errorCode === 'history_session_open') {
+      // The broker recorded a provider refusal before any turn. Preserve this receipt and use a new attempt.
+      this.waitForSession(row,{ ...reply, attemptId:randomUUID() });
     } else if (['interrupted', 'failed'].includes(state)) {
-      this.finish(row, reply, 'failed', undefined, receipt.result.errorCode === 'history_session_open' ? 'history_session_open' : undefined);
+      this.finish(row, reply, 'failed');
     }
-    else this.store.db.prepare('UPDATE commands SET state=?,accepted_at=COALESCE(accepted_at,?) WHERE id=?').run(
+    else this.store.db.prepare('UPDATE commands SET state=?,error_code=NULL,accepted_at=COALESCE(accepted_at,?) WHERE id=?').run(
       ['starting', 'running'].includes(state) ? 'accepted' : 'reconciling', this.store.now(), row.id);
+  }
+  private waitForSession(row: CommandRow, reply: Reply) {
+    this.store.db.transaction(() => {
+      this.store.db.prepare("UPDATE commands SET state='queued',error_code='history_session_open',payload_json=? WHERE id=?").run(JSON.stringify(reply),row.id);
+      const attempts = this.store.db.prepare('SELECT attempts FROM outbox WHERE command_id=?').get(row.id) as {attempts:number};
+      const delay = Math.min(60000,10000 * 2 ** Math.min(attempts.attempts,3));
+      this.store.db.prepare('UPDATE outbox SET next_attempt_at=?,attempts=attempts+1 WHERE command_id=?').run(this.store.now() + delay,row.id);
+    }).immediate();
   }
   private async acceptedRun(commandId: string, sessionId: string) {
     const receipt = await this.broker.lookup(commandId);
@@ -248,7 +277,7 @@ export class ConversationReplies {
     }
     return text.slice(0,12000);
   }
-  private finish(row: CommandRow, reply: Reply, state: 'succeeded' | 'failed', text?: string, error?: string) {
+  private finish(row: CommandRow, reply: Reply, state: 'succeeded' | 'failed' | 'cancelled', text?: string, error?: string) {
     this.store.db.transaction(() => {
       if (state === 'succeeded' && text) this.store.event(reply.sessionId, 1, 'conversation.reply', { text }, `conversation.reply:${row.id}`);
       this.store.db.prepare('UPDATE commands SET state=?,resolved_at=?,error_code=? WHERE id=?').run(state, this.store.now(), error ?? null, row.id);

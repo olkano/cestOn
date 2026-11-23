@@ -3,6 +3,7 @@ import type { LocalHistory } from '../../server/src/projects/history.js';
 import { api } from './api.js';
 import { ConversationReply } from './conversation-reply.js';
 import { chatRecency } from './chat-recency.js';
+import { ChatMessage, ChatTranscript } from './chat-transcript.js';
 
 type Inventory = Awaited<ReturnType<LocalHistory['list']>>;
 type Messages = Awaited<ReturnType<LocalHistory['read']>>;
@@ -56,6 +57,7 @@ export function Conversations({ online, owner, startGeneral }: { online: boolean
   const [offset, setOffset] = useState(0);
   const [folder, setFolder] = useState('');
   const [inventory, setInventory] = useState<Inventory | null>(null);
+  const [folders, setFolders] = useState<Inventory['folders']>([]);
   const [selected, setSelected] = useState<Conversation | null>(null);
   const [history, setHistory] = useState<Messages | null>(null);
   const [loadKey, setLoadKey] = useState(0);
@@ -83,6 +85,7 @@ export function Conversations({ online, owner, startGeneral }: { online: boolean
       try {
         const next = await api<Inventory>('/history?' + query, { signal });
         if (signal.aborted) return;
+        if (!search) setFolders(next.folders);
         setInventory(next); setError(''); setNow(Date.now());
       } catch { if (!signal.aborted) setError('Could not check conversation history. Trying again…'); }
     },5000,160);
@@ -128,84 +131,95 @@ export function Conversations({ online, owner, startGeneral }: { online: boolean
   const shown = history?.conversation ?? inventory?.conversations.find(item=>item.id===selectedId) ?? selected;
   const active = (status: Conversation['status'], stale: string) => online && !stale ? status : 'unknown';
 
-  return <>
-    <div className="row">
-      <button className="primary" onClick={startGeneral}>New conversation</button>
-      <button disabled={!online} onClick={() => setLoadKey(value => value + 1)}>Refresh history</button>
-      <a href="/install">Use cestOn on another device</a>
-    </div>
-    {!online && <p role="status">Can’t reach your PC. Any history on screen may be out of date.</p>}
-    {error && <p role="alert">{error}</p>}
-    <div className="daily-columns" data-show-conversation={Boolean(selected)}>
-      <section className="card daily-list">
-        <h2>Your folders</h2>
-        <label>Find a folder or conversation<input type="search" maxLength={200} value={search} onChange={event => { back(); setSearch(event.target.value); setOffset(0); setFolder(''); }}/></label>
-        {inventory && !inventory.coverage.length && <p>Connect local history from the PC to find your existing Codex and Claude work here. You can start a general conversation or save a note now.</p>}
-        {inventory && inventory.coverage.length > 0 && <details>
-          <summary>History sources</summary>
-          {inventory.coverage.map(source => <p key={source.provider}>{source.provider} · {source.status === 'ready' ? 'Checked' : source.status === 'partial' ? 'Partially checked' : 'Unavailable'}. {source.inspected} files checked, {source.skipped} skipped.</p>)}
-          <p className="muted">Last checked {new Date(inventory.capturedAt).toLocaleString()}.</p>
-        </details>}
-        <ul className="daily-folders">
-          {Boolean(inventory?.folders.length) && <li><button aria-pressed={!folder} onClick={() => { back(); setFolder(''); setOffset(0); }}>All folders</button></li>}
-          {inventory?.folders.map(item => <li key={item.id}><button data-age={chatRecency(item.activityAt,now).tier} aria-pressed={folder === item.id} onClick={() => {
-            back(); setFolder(item.id); setOffset(0);
-          }}><span>{item.name} <small>({item.count})</small></span>
-            <span className="chat-row-meta"><Recency iso={item.activityAt} now={now} caption={item.approximate ? 'Estimated' : 'Latest chat'}/></span>
-          </button></li>)}
-        </ul>
-        <h2>Conversations</h2>
-        {!inventory && !error && <p>Checking the PC for conversations…</p>}
-        {inventory && !inventory.conversations.length && <p>No matching conversations.</p>}
-        <ul className="daily-folders">{inventory?.conversations.map(item => {
+  const choose = (item: Conversation) => {
+    if (selectedId !== item.id) { back(); setSelected(item); }
+  };
+  const rows = inventory?.conversations ?? [];
+  const selectedFolder = folder ? folders.find(item => item.id === folder) : folders[0];
+  const earlier = shown && history && history.older !== null ? <button disabled={!online || busy} onClick={() => {
+    const abort = new AbortController();
+    previousRead.current = abort;
+    setBusy(true);
+    void api<Messages>('/history/' + shown.id + '?before=' + history.older, {signal:abort.signal}).then(previous => {
+      if (abort.signal.aborted) return;
+      setHistory(current => current?.conversation.id === shown.id && current.revision === previous.revision
+        ? { ...current, messages:mergeMessages(previous.messages,current.messages), older:previous.older } : current);
+    }).catch(() => { if (!abort.signal.aborted) setHistoryError('Could not read earlier messages.'); }).finally(() => {
+      if (!abort.signal.aborted) setBusy(false);
+    });
+  }}>Earlier messages</button> : null;
+  const messages = shown && !shown.managed && <>
+    {historyError && <p role="alert">{historyError}</p>}
+    {!history && !historyError && online && <p>Opening messages…</p>}
+    {earlier}
+    {history && !history.messages.length && <p>No text messages in this part of the conversation.</p>}
+    {history?.messages.map(message => <article className="phase" key={message.position}>
+      <strong>{message.role === 'user' ? 'You' : shown.provider}</strong><ChatMessage text={message.text}/>
+    </article>)}
+  </>;
+
+  return <div className="chat-workspace">
+    <section className="chat-picker" aria-label="Find a conversation">
+      <div className="chat-controls">
+        <label>Folder<select value={folder} onChange={event => { setFolder(event.target.value); setOffset(0); }}>
+          <option value="">All folders</option>
+          {folders.map(item => <option key={item.id} value={item.id}>{item.name} ({item.count}) · {chatRecency(item.activityAt,now).label}</option>)}
+        </select></label>
+        <label>Search chats<input type="search" maxLength={200} value={search} onChange={event => { setSearch(event.target.value); setOffset(0); }}/></label>
+        <button className="primary" onClick={startGeneral}>New conversation</button>
+      </div>
+      {selectedFolder && <Recency iso={selectedFolder.activityAt} now={now} caption={selectedFolder.approximate ? 'Estimated' : 'Latest chat'}/>}
+      {!online && <p role="status">Can’t reach your PC. Any history on screen may be out of date.</p>}
+      {error && <p role="alert">{error}</p>}
+      {!inventory && !error && <p>Checking the PC for conversations…</p>}
+      {inventory && !rows.length && <p>No matching conversations.</p>}
+      {inventory && !inventory.coverage.length && <p>Connect local history from the PC to find your existing Codex and Claude work here.</p>}
+      {rows.length > 0 && <ul className="chat-chips" aria-label={offset ? 'Older conversations' : 'Recent conversations'}>
+        {rows.slice(0,4).map(item => {
           const updated = shown?.id === item.id ? shown : item;
           const time = timeFor(updated);
-          return <li key={item.id}>
-            <button data-age={chatRecency(time.iso,now).tier} aria-pressed={selectedId === item.id} onClick={() => {
-              if (selectedId !== item.id) { back(); setSelected(item); }
-            }}>
-              <strong>{updated.title}</strong><br/><small>{updated.folder} · {updated.provider}</small>
-              <span className="chat-row-meta"><Activity status={active(updated.status,shown?.id === item.id && history ? historyError : error)}/><Recency now={now} {...time}/></span>
-            </button>
-          </li>;
-        })}</ul>
-        <div className="row">
-          {offset > 0 && <button disabled={!online} onClick={() => setOffset(Math.max(0, offset - 30))}>Previous conversations</button>}
-          {inventory?.nextOffset != null && <button disabled={!online} onClick={() => setOffset(inventory.nextOffset!)}>More conversations</button>}
-        </div>
-      </section>
-      <section className="card daily-thread">
-        {shown ? <>
-          <button className="daily-back" onClick={back}>Back to conversations</button>
+          return <li key={item.id}><button aria-pressed={selectedId === item.id} title={updated.title}
+            data-age={chatRecency(time.iso,now).tier} onClick={() => choose(item)}>
+            <strong>{updated.title}</strong>
+            <small>{updated.folder} · {updated.provider}</small>
+            <span className="chat-row-meta"><Activity status={active(updated.status,shown?.id === item.id && history ? historyError : error)}/><Recency now={now} {...time}/></span>
+          </button></li>;
+        })}
+      </ul>}
+      {(rows.length > 4 || offset > 0) && <div className="row chat-more">
+        <label>All matching chats<select value={rows.some(row => row.id === selectedId) ? selectedId : ''} onChange={event => {
+          const item = rows.find(row => row.id === event.target.value);
+          if (item) choose(item);
+        }}>
+          <option value="">Choose a conversation</option>
+          {rows.map(item => <option value={item.id} key={item.id}>{item.title} · {item.folder} · {item.provider} · {chatRecency(timeFor(item).iso,now).label}</option>)}
+        </select></label>
+        {offset > 0 && <button disabled={!online} onClick={() => setOffset(Math.max(0, offset - 30))}>Newer chats</button>}
+        {inventory?.nextOffset != null && <button disabled={!online} onClick={() => setOffset(inventory.nextOffset!)}>Older chats</button>}
+      </div>}
+    </section>
+    <section className="card chat-thread">
+      {shown ? <>
+        <div className="chat-thread-heading">
           <h2>{shown.title}</h2>
-          <p className="muted">{shown.folder} · {shown.provider}</p>
+          <small>{shown.folder} · {shown.provider}</small>
           <div className="chat-row-meta chat-thread-meta" aria-live="polite">
             <Activity detail={online} status={active(shown.status,shown.managed ? error : historyError)}/><Recency now={now} {...timeFor(shown)}/>
           </div>
-          {shown.managed ? <ConversationReply key={shown.id} id={shown.id} provider={shown.provider} online={online} owner={owner}/> : <>
+        </div>
+        {shown.managed || shown.canReply
+          ? <ConversationReply key={shown.id} id={shown.id} provider={shown.provider} online={online && !historyError} owner={owner} savedMessages={history?.messages}>{messages}</ConversationReply>
+          : <><ChatTranscript key={shown.id}>{messages}</ChatTranscript>
           {!shown.canReply && <p>Can’t reply to this conversation from cestOn. This is saved history. Open it in {shown.provider} to continue there.</p>}
-          {historyError && <p role="alert">{historyError}</p>}
-          {!history && !historyError && online && <p>Opening messages…</p>}
-          {history && history.older !== null && <button disabled={!online || busy} onClick={() => {
-            const abort = new AbortController();
-            previousRead.current = abort;
-            setBusy(true);
-            void api<Messages>('/history/' + shown.id + '?before=' + history.older, {signal:abort.signal}).then(previous => {
-              if (abort.signal.aborted) return;
-              setHistory(current => current?.conversation.id === shown.id && current.revision === previous.revision
-                ? { ...current, messages:mergeMessages(previous.messages,current.messages), older:previous.older } : current);
-            }).catch(() => { if (!abort.signal.aborted) setHistoryError('Could not read earlier messages.'); }).finally(() => {
-              if (!abort.signal.aborted) setBusy(false);
-            });
-          }}>Earlier messages</button>}
-          {history && !history.messages.length && <p>No text messages in this part of the conversation.</p>}
-          <div role="log" aria-label="Conversation messages" aria-live="polite">
-            {history?.messages.map(message => <article className="phase" key={message.position}><strong>{message.role === 'user' ? 'You' : shown.provider}</strong><p className="prose">{message.text}</p></article>)}
-          </div>
-          {shown.canReply && <ConversationReply key={shown.id} id={shown.id} provider={shown.provider} online={online && !historyError} owner={owner} savedMessages={history?.messages}/>}
-          </>}
-        </> : <><h2>Pick a conversation</h2><p>Open a folder or search across recent work. Select a conversation to read its messages.</p></>}
-      </section>
-    </div>
-  </>;
+        </>}
+      </> : <p className="muted">Choose a conversation above to open it here.</p>}
+    </section>
+    <details className="chat-sources">
+      <summary>History sources and refresh</summary>
+      {inventory?.coverage.map(source => <p key={source.provider}>{source.provider} · {source.status === 'ready' ? 'Checked' : source.status === 'partial' ? 'Partially checked' : 'Unavailable'}. {source.inspected} files checked, {source.skipped} skipped.</p>)}
+      {inventory && <p className="muted">Last checked {new Date(inventory.capturedAt).toLocaleString()}.</p>}
+      <div className="row"><button disabled={!online} onClick={() => setLoadKey(value => value + 1)}>Refresh history</button>
+        <a href="/install">Use cestOn on another device</a></div>
+    </details>
+  </div>;
 }

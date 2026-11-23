@@ -14,14 +14,15 @@ Read [13-project-memory.md](13-project-memory.md) and the [daily-work review](da
 
 ## Implementation authority and limits
 
-The original specification delivery established documentation, design and a local repository. An instruction to “implement these specifications” authorizes the local steps below without repeated phase-by-phase confirmation. The implementation ledger records the resulting capabilities; implementation does not itself authorize persistent activation or application publication.
+An instruction to implement these specifications authorizes the local steps below without repeated phase-by-phase confirmation. The owner also authorizes deployment and restart on the existing Windows installation for product changes requested for personal use. Record the served build and access checks in the implementation ledger.
 
 | Operation during implementation | Boundary |
 |---|---|
 | Create source, dependencies, fixtures, builds, and documentation | This repository and its isolated test roots; inspect dependency scripts before execution. |
 | Run local services, tests, browser checks, and crash drills | Loopback listeners, synthetic projects, reserved test ports, per-run cleanup. |
 | Provider smoke tests | Existing configured account under its authorized identity, synthetic workspaces, explicit opt-in test flag, caps in `09-acceptance-tests.md`; no operational tasks. Missing access is a recorded gate. |
-| Local pilot install and restart | Only after implementation authorization includes activation of the local cestOn pilot; complete scripts and dry-run tests first. If activation was not requested, leave a fully built, validated candidate. |
+| Existing Windows installation | Deploy and restart after verification and an isolated rehearsal. Take a verified backup at a safe point, preserve a verified rollback, and check the served build and the existing HTTPS access from desktop and phone-sized browsers. |
+| New local installation or startup registration | Requires separate authorization covering that installation or startup change. |
 | Git staging, commits, remote creation, push, public package/release | Only when the implementation request explicitly includes them. Preserve task scope and separate Git roots. |
 | Tunnel, identity provider, DNS, provider account, app-store or paid service changes | Prepare exact configuration and read-back plan; require authorization for the specific external target. |
 | Existing cestDone daemon, real schedules, customer systems, mail, CRM, production projects | Outside implementation test scope. Never run a real workflow as a smoke test. |

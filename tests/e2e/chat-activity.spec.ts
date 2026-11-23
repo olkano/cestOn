@@ -8,6 +8,52 @@ const timestamp = (minutes: number) => new Date(Date.now() - minutes * 60000).to
 const codexId = '01234567-89ab-4def-8123-000000000001';
 const claudeId = '01234567-89ab-4def-8123-000000000002';
 
+test('finds conversations by folder and keeps a Markdown transcript independently scrollable', async ({page}) => {
+  const store = localStore();
+  const root = store.dataRoot;
+  store.close();
+  const file = join(root,'history-fixture','sessions','reply.jsonl');
+  const old = readFileSync(file);
+  const markdown = '## Verification summary\n\n**Done**\n\n- First check\n- Second check\n\n| Check | Result |\n| --- | --- |\n| Build | Passed |\n\n```text\nsynthetic output\n```\n\n[Report](https://example.com) [Invalid](invalid:ignored)\n\n![Private image](https://example.com/ignored.png)\n\n<aside>Raw HTML marker</aside>';
+  const message = (text: string) => ({type:'response_item',timestamp:timestamp(0),payload:{type:'message',role:'assistant',content:text}});
+  appendFileSync(file,rows(message(markdown),...Array.from({length:20},(_,index) => message('Scrollable message ' + index))));
+  try {
+    await page.setViewportSize({width:390,height:844});
+    await pair(page);
+    await page.getByRole('link',{name:'Chats'}).click();
+    const folders = page.getByRole('combobox',{name:'Folder'});
+    await expect(folders).toHaveValue('');
+    const [folder] = await folders.selectOption({label:(await folders.getByRole('option',{name:/^project \(/}).textContent())!});
+    const search = page.getByRole('searchbox',{name:'Search chats'});
+    await search.fill('No chat matches this synthetic query');
+    await expect(page.getByText('No matching conversations.')).toBeVisible();
+    await expect(folders).toHaveValue(folder!);
+    await search.fill('Indexed Codex');
+    await page.getByRole('button',{name:/Indexed Codex fixture title/}).click();
+    const log = page.getByRole('log',{name:'Conversation messages'});
+    await expect(log.getByText('Scrollable message 19')).toBeVisible();
+    await expect.poll(() => log.evaluate(element => element.scrollHeight - element.clientHeight - element.scrollTop)).toBeLessThan(24);
+    const before = await page.evaluate(() => window.scrollY);
+    await log.evaluate(element => { element.scrollTop = 0; });
+    await expect(page.getByRole('button',{name:'Jump to latest'})).toBeVisible();
+    expect(await page.evaluate(() => window.scrollY)).toBe(before);
+    await expect(log.getByRole('heading',{name:'Verification summary'})).toHaveCount(1);
+    await expect(log.getByRole('listitem')).toHaveCount(2);
+    await expect(log.getByRole('cell',{name:'Passed'})).toHaveCount(1);
+    await expect(log.locator('pre code')).toHaveText('synthetic output\n');
+    await expect(log.getByRole('link',{name:'Report'})).toHaveAttribute('href','https://example.com');
+    await expect(log.getByRole('link',{name:'Invalid'})).toHaveCount(0);
+    await expect(log.getByRole('img')).toHaveCount(0);
+    await expect(log.getByText('Raw HTML marker')).toHaveCount(0);
+    await expect(page.getByRole('textbox',{name:'Your reply'})).toBeVisible();
+    appendFileSync(file,rows(message('Arrived while reading earlier messages')));
+    await expect(log.getByText('Arrived while reading earlier messages')).toHaveCount(1);
+    await expect.poll(() => log.evaluate(element => element.scrollTop)).toBe(0);
+    await page.getByRole('button',{name:'Jump to latest'}).click();
+    await expect(log).toBeFocused();
+  } finally {writeFileSync(file,old);}
+});
+
 test('shows a saved Codex turn live and retains earlier pages across changes and reconnect', async ({page,context},info) => {
   test.setTimeout(60000);
   const store = localStore();
@@ -35,8 +81,8 @@ test('shows a saved Codex turn live and retains earlier pages across changes and
     const listRow = page.getByRole('button',{name:/Indexed Codex fixture title/});
     await expect(listRow.getByText('Likely working',{exact:true})).toBeVisible({timeout:12000});
     await expect(listRow.locator('time')).toHaveAttribute('data-age','recent');
-    const folder = page.getByRole('button',{name:/^project \(/});
-    await expect(folder.locator('time')).toHaveText(/Latest chat [23] min ago/);
+    const folder = page.getByRole('combobox',{name:'Folder'});
+    await expect(folder.getByRole('option',{name:/^project \(.*[23] min ago/})).toHaveCount(1);
     await listRow.focus();
     await page.keyboard.press('Enter');
     const conversation = page.getByRole('log',{name:'Conversation messages'});

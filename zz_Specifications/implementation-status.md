@@ -1,6 +1,6 @@
 # Implementation status
 
-Specification baseline: 2026-11-14. The existing Windows installation serves saved chat replies behind Cloudflare Access. A newer candidate adds conversation activity, live messages and recency labels. Physical-device and autonomous Work acceptance remain open. See the [resume checkpoint](implementation-run.md) for deployment and the [baseline report](implementation-report-2026-11-14.md) for phases 0-9.
+Specification baseline: 2026-11-14. The Windows installation serves the compact chat picker, Markdown transcripts, queued replies, activity, live messages and recency behind Cloudflare Access. Physical-device and autonomous Work acceptance remain open. See the [resume checkpoint](implementation-run.md) for deployment and the [baseline report](implementation-report-2026-11-14.md) for phases 0-9.
 
 | Phase | Status | Verification | Blocker / next action |
 |---|---|---|---|
@@ -35,7 +35,7 @@ The owner-approved build is running on the Windows PC at `https://ceston.troho.n
 
 ## Saved conversation titles and replies, 2026-11-18
 
-Chats uses saved titles from Codex and Claude and shows **Your reply** on eligible threads. The broker opens the original session through the signed-in provider on the host. The saved-chat path requires no separate Windows execution-host setup. When a provider holds a conversation open, close it there and then retry from cestOn. Work and self-update still have their own execution requirements.
+This release introduced saved titles and **Your reply** for eligible Codex and Claude threads. The broker uses the original session through the signed-in provider on the host. Saved chats require no separate Windows execution-host setup. See the current queue behavior below.
 
 `npm run package:local` passed 120 tests and verified Windows bundle `local-3bc068a78b39-036fc12a`. `npm run test:clean-export` passed independently. Edge verified the inline flow, original session targeting, titles and reconnect at desktop and phone sizes with fixture providers. Each signed-in provider also resumed its exact disposable native session and recalled prior context. That native smoke test used two requests per provider. No owner conversation received a test message. See private evidence `2026-11-18T18-49-46-787Z-2c824425/record.json`, `clean-export-1795027870202/record.json`, `saved-chat-mvp-edge-2026-11-18/`, and `native-history-reply-stdin-2026-11-18.mts`.
 
@@ -43,7 +43,17 @@ The verified build is live on the existing PC at `https://ceston.troho.net/`. Th
 
 ## Conversation activity and recency, 2026-11-18
 
-The [completed specification](done/chat-activity-and-recency.md) records activity markers, live visible messages, and recency for chats and folders. Windows candidate `local-56db2613864a-f6a11eec` uses the source verified by the independent clean export. The 125 checks comprise 27 unit, 67 integration, 18 Chromium, 6 security and 7 update tests. Four additional Edge scenarios passed. A read-only PC sample covered both provider formats and the real Claude roster without starting a turn. The overlapping local package run hit three security fixture timeouts. All six security tests and seven update tests passed on an isolated rerun. See `clean-export-1795032953447/record.json`, `chat-activity-edge-2026-11-18` and `chat-activity-observation-2026-11-18.json` in private evidence. Existing PC activation and physical-phone acceptance remain open for this candidate.
+The [completed specification](done/chat-activity-and-recency.md) records activity markers, live visible messages, and recency for chats and folders. Windows build `local-56db2613864a-f6a11eec` uses the source verified by the independent clean export. The 125 checks comprise 27 unit, 67 integration, 18 Chromium, 6 security and 7 update tests. Four additional Edge scenarios passed. A read-only PC sample covered both provider formats and the real Claude roster without starting a turn. The overlapping local package run hit three security fixture timeouts. All six security tests and seven update tests passed on an isolated rerun. See `clean-export-1795032953447/record.json`, `chat-activity-edge-2026-11-18` and `chat-activity-observation-2026-11-18.json` in private evidence.
+
+The existing PC installation restarted into the activity build and serves it at `https://ceston.troho.net/`. The first attempt rolled back after a Windows control-channel timeout. The retry passed with a longer authenticated readiness check. It preserved the installation identity, configuration, launcher and all 32 folder records, and retained the previous runtime and a verified encrypted backup. Independent read-back matched the served JavaScript to the manifest, confirmed the tunnel was ready, and reached Cloudflare sign-in in desktop and phone-sized Edge sessions. See `activity-live-cutover-2026-11-18.json` and `activity-live-readback-2026-11-18.json` in private evidence. Physical-phone acceptance remains open.
+
+## Compact Chats and queued replies, 2026-11-19
+
+The [completed specification](done/chats-layout-and-reply-delivery.md) covers the folder selector, recent chips, independent Markdown transcript and queued same-session replies. `npm run package:local` passed 126 checks (27 unit, 67 integration, 19 Chromium, 6 security and 7 update tests) and archive verification. Edge covered desktop and phone widths, both themes and the older-chat selector. The exact-session queue passed a separate broker and database restart for each fixture provider. Native tests confirmed prior context in disposable sessions on both providers and reproduced the Codex writer refusal. See `2026-11-19T06-05-10-391Z-74620132/record.json`, `compact-chats-edge-2026-11-19/`, `compact-chats-dropdown-edge/`, `native-codex-locked-reply.mts` and `compact-chats-restart.json` in private evidence.
+
+The isolated Windows package rehearsal passed owner install, startup, browser first use, stop, DPAPI restore, and paired-device authentication after restore. The Windows PC restarted into `local-e71a282def8d-187fd6d7`, retained a verified encrypted backup and previous release, and served the expected JavaScript. Desktop and phone-sized Edge reached Cloudflare sign-in at `https://ceston.troho.net/`. The supervisor needed extra time for its Windows readiness reply. See `compact-chats-package-rehearsal.json`, `compact-chats-live-cutover-2026-11-19.json` and `compact-chats-live-readback-2026-11-19.json`. Immediate delivery into a provider-held thread and physical-phone acceptance remain open.
+
+The independent clean checkout passed dependency installation, native SQLite loading, all 126 checks and cleanup. The first run, which overlapped the Windows rehearsal, failed two timing-sensitive integration checks. The isolated rerun passed both. See `clean-export-1795068793331/record.json` and `clean-export-1795069231306/record.json`.
 
 ## Acceptance dimensions
 
@@ -51,16 +61,16 @@ The [completed specification](done/chat-activity-and-recency.md) records activit
 |---|---|
 | Implementation present for phases 0-9 | yes |
 | U19 project knowledge and memory present | local implementation with targeted fixture evidence. Full M01-M09 acceptance remains open |
-| Revised automatic discovery and daily conversation workflow accepted | reading, search, titles and replies implemented. The candidate adds activity, live visible messages and recency. Physical phone acceptance remains open |
+| Revised automatic discovery and daily conversation workflow accepted | reading, search, titles, replies, activity, live visible messages and recency are live. Physical phone acceptance remains open |
 | Implementation complete against all required acceptance | no. See the pending memory and native/device scenarios above |
 | Full local automated verification passed | yes, 125 tests for local-56db2613864a-f6a11eec |
-| Hosted CI baseline | saved-chat build passed on [1be9e39](https://github.com/olkano/cestOn/actions/runs/44385129546) |
+| Hosted CI | activity build passed on [bd1e8b0](https://github.com/olkano/cestOn/actions/runs/44391027805) |
 | Codex live provider verified | saved-chat replies verified. Managed Work adapter certification pending |
 | Claude live provider verified | saved-chat replies verified. Managed Work adapter certification pending |
 | Android physical device accepted | no |
 | iOS physical device accepted | no |
 | Real-provider isolated self-update certified | no |
-| Existing local installation activated and verified | saved-chat bundle local-3bc068a78b39-036fc12a is live behind Cloudflare Access |
+| Existing local installation activated and verified | activity build local-56db2613864a-f6a11eec is live behind Cloudflare Access |
 | Revised Windows ZIP and isolated install verified | yes, including startup, authenticated browser history and exact stop for the activity candidate |
 | Public release ready | no |
 | Authorized public source repository pushed | yes |

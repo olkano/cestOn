@@ -25,7 +25,7 @@ test('replies inline to the same managed thread and remembers the result', async
   await prompt.fill('What did the fixture verify?');
   await context.setOffline(false);
   await expect(prompt).toHaveValue('What did the fixture verify?');
-  await expect(page.locator('.conversation').getByText('What did the fixture verify?', { exact: true })).toHaveCount(0);
+  await expect(page.getByRole('log').getByText('What did the fixture verify?', { exact: true })).toHaveCount(0);
   await prompt.press('Tab');
   await expect(page.getByRole('button', { name: 'Send', exact: true })).toBeFocused();
   await page.keyboard.press('Enter');

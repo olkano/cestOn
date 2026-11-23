@@ -79,8 +79,8 @@ export class HistoryProvider {
       execution.child.stdin?.end(text);
       try { return readHistoryReply(target,(await execution).stdout); }
       catch (error) {
-        const detail = error as { stdout?: string; stderr?: string };
-        if (target.provider === 'Codex' && !detail.stdout?.includes('"turn.started"') &&
+        const detail = error as { code?: number; killed?: boolean; stdout?: string; stderr?: string };
+        if (target.provider === 'Codex' && typeof detail.code === 'number' && !detail.killed && !detail.stdout?.includes('"turn.started"') &&
           /already has an active writer|thread is already open in another/i.test((detail.stdout ?? '')+' '+(detail.stderr ?? ''))) {
           throw new DomainError('history_session_open',409);
         }

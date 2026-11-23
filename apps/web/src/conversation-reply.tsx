@@ -1,7 +1,8 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import type { ConversationReplies } from '../../server/src/projects/conversation-replies.js';
 import { api } from './api.js';
 import { loadDraft, saveDraft } from './drafts.js';
+import { ChatMessage, ChatTranscript } from './chat-transcript.js';
 
 type Thread = Awaited<ReturnType<ConversationReplies['view']>>;
 type Draft = { key: string; text: string };
@@ -10,6 +11,7 @@ const emptyDraft: Draft = { key: '', text: '' };
 const statusText: Record<Thread['state'], string> = {
   ready: '',
   working: 'Waiting for a reply…',
+  waiting: '',
   paused: 'Work on this PC is paused. Your draft stays here.',
   unavailable: 'This conversation can’t accept replies right now. Its provider or the original session is unavailable.',
   offline: 'cestOn can’t reach the provider on your PC.',
@@ -28,7 +30,7 @@ function present(turn: Thread['turns'][number], messages: SavedMessage[]) {
   return {prompt:true,answer:false};
 }
 
-export function ConversationReply({ id, provider, online, owner, savedMessages = [] }: { id: string; provider: string; online: boolean; owner: string; savedMessages?: SavedMessage[] | undefined }) {
+export function ConversationReply({ id, provider, online, owner, savedMessages = [], children }: { id: string; provider: string; online: boolean; owner: string; savedMessages?: SavedMessage[] | undefined; children?: ReactNode }) {
   const [thread, setThread] = useState<Thread | null>(null);
   const [draft, setDraft] = useState<Draft>(emptyDraft);
   const [loaded, setLoaded] = useState(false);
@@ -59,7 +61,7 @@ export function ConversationReply({ id, provider, online, owner, savedMessages =
       void api<Thread>(path, { signal: abort.signal }).then(value => {
         if (abort.signal.aborted) return;
         setThread(value); setReadError(false);
-        if (value.state === 'working' || value.state === 'uncertain') interval = 900;
+        if (value.state === 'working' || value.state === 'waiting' || value.state === 'uncertain') interval = 900;
       }).catch(() => { if (!abort.signal.aborted) setReadError(true); }).finally(() => {
         if (!abort.signal.aborted) timer = setTimeout(read, interval);
       });
@@ -76,6 +78,13 @@ export function ConversationReply({ id, provider, online, owner, savedMessages =
   }, [draft.key, thread, owner, draftPath]);
 
   const canSend = online && !readError && thread?.state === 'ready';
+  const queued = thread?.turns.find(turn => turn.state === 'queued' && turn.error === 'history_session_open');
+  const cancel = async (command: string) => {
+    setSending(true); setSendError('');
+    try { await api(path + '/replies/' + command + '/cancel', { method:'POST' }); }
+    catch { setSendError('Couldn’t cancel the reply. It may already be sending.'); }
+    finally { setSending(false); setRefresh(value => value + 1); }
+  };
   const send = async () => {
     if (!canSend || sending || !draft.text.trim()) return;
     setSending(true); setSendError('');
@@ -87,23 +96,28 @@ export function ConversationReply({ id, provider, online, owner, savedMessages =
   };
 
   return <>
-    {thread?.opening && <article className="phase"><strong>You</strong><p className="prose">{thread.opening}</p></article>}
-    <div className="conversation" aria-live="polite">{thread?.turns.map(turn => {
+    <ChatTranscript>{children}
+    {thread?.opening && <article className="phase"><strong>You</strong><ChatMessage text={thread.opening}/></article>}
+    {thread?.turns.map(turn => {
       const stored = present(turn,savedMessages);
       const answer = stored.answer ? null : turn.answer ?? turn.preview;
       if (stored.prompt && !answer && turn.state !== 'failed') return null;
       return <article className="phase" key={turn.id}>
-      {!stored.prompt && <><strong>You</strong><p className="prose">{turn.prompt}</p></>}
-      {answer && <><strong>{provider}</strong><p className="prose">{answer}</p></>}
+      {!stored.prompt && <><strong>You</strong><ChatMessage text={turn.prompt}/></>}
+      {answer && <><strong>{provider}</strong><ChatMessage text={answer}/></>}
+      {turn.state === 'cancelled' && <small>Queued reply cancelled.</small>}
       {turn.state === 'failed' && <p>{turn.error === 'history_session_open'
-        ? 'This conversation is open in the provider app. Close that conversation there, then try again.'
+        ? 'This earlier reply was blocked while the conversation was open. You can send it again.'
         : turn.error === 'history_provider_unavailable'
           ? 'Check that the provider is installed and signed in on your PC.'
           : 'cestOn couldn’t get a reply for this message.'}</p>}
-    </article>;})}</div>
-    <p role="status">{!online ? 'You’re offline. Your reply stays in this browser until you send it.' : readError ? 'Couldn’t check this conversation. Trying again…' : thread ? statusText[thread.state] : 'Checking this conversation…'}</p>
-    <form className="composer" onSubmit={event => { event.preventDefault(); void send(); }}>
-      <label>Your reply<textarea value={draft.text} disabled={!loaded || sending} maxLength={8000} rows={3} onChange={event => {
+    </article>;})}</ChatTranscript>
+    <div className="chat-reply-status">
+      <p role="status">{!online ? 'You’re offline. Your draft stays here.' : readError ? 'Couldn’t check this conversation. Trying again…' : thread?.state === 'waiting' ? `Reply saved. Waiting for ${provider} to release this conversation. Close the chat there when you’re done and cestOn will send it automatically.` : thread ? statusText[thread.state] : 'Checking this conversation…'}</p>
+      {queued && <button type="button" disabled={!online || sending} onClick={() => void cancel(queued.id)}>Cancel queued reply</button>}
+    </div>
+    <form className="composer chat-composer" onSubmit={event => { event.preventDefault(); void send(); }}>
+      <label>Your reply<textarea value={draft.text} disabled={!loaded || sending} maxLength={8000} rows={2} onChange={event => {
         const next = { key: crypto.randomUUID(), text: event.target.value };
         setDraft(next);
         void saveDraft(owner, draftPath, next.text.trim() ? JSON.stringify(next) : '').catch(() => setSendError('Couldn’t save your draft. Keep this page open.'));

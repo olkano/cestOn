@@ -10,8 +10,7 @@ test('opens discovered conversations on desktop and phone, saves and corrects me
   await page.screenshot({ path: info.outputPath('conversations-desktop.png'), fullPage: true });
   await page.setViewportSize({ width: 360, height: 800 });
   await page.getByLabel('Appearance').selectOption('dark');
-  await expect(page.getByRole('button', { name: 'Back to conversations' })).toBeVisible();
-  await page.getByRole('button', { name: 'Back to conversations' }).click();
+  await expect(page.getByRole('combobox', { name: 'Folder' })).toHaveValue('');
   await page.getByRole('link', { name: 'Memory' }).click();
   await page.getByLabel('Your note').fill('Keep the deployment checklist handy.');
   await page.getByRole('button', { name: 'Save note' }).click();

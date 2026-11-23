@@ -16,6 +16,10 @@ else if (args[0] === 'agents') {
 else {
   const id = args[args.indexOf(codex ? '--json' : '--resume')+1];
   if (!args.includes('resume') && !args.includes('--resume')) throw new Error('Expected exact resume');
+  if (codex && existsSync(join(home,'open'))) {
+    console.error('thread already has an active writer');
+    process.exit(1);
+  }
   let text = '';
   process.stdin.setEncoding('utf8').on('data', chunk => { text += chunk; });
   await new Promise(resolve => process.stdin.once('end',resolve));

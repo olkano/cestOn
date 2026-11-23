@@ -34,6 +34,7 @@ This file is self-contained for public contributors. The portable engineering co
 
 ## Completion
 
+- For owner-requested product changes, deploy the verified build to the existing Windows installation and restart cestOn before handoff. Verify the served build and the existing HTTPS address used by the PC and phone. Follow the [activation boundary](zz_Specifications/00-start-here.md#implementation-authority-and-limits).
 - Update the implementation ledger after each verified phase, with commands, results, unresolved gates, and evidence locations. Continue with independent work when a real-device or credential gate is unavailable.
 - Keep README limited to actual setup, architecture, and usage. Put detailed behavior in the owning spec and operational procedures in `docs/` when implemented.
 - Git authorization is task-specific under the portable engineering core below. No other repository's standing push rule transfers here.

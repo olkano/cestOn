@@ -27,6 +27,6 @@ Recheck the selected transcript about every two seconds and refresh visible rows
 
 The independent clean export passed typecheck, lint, build and 125 automated checks. The four focused Edge scenarios passed. The browser covered 1440 px and 390 px in light and dark, keyboard selection, older history retained when several messages arrived, a gap larger than one history page, reconnect, and the Claude roster transitions. The [first-use guide](../../docs/first-use.html) explains the new activity labels.
 
-A read-only PC check sampled 30 chats per provider. It found turn-end evidence in 29 Codex and 25 Claude chats, and the Claude roster identified two working sessions. The check started zero model turns. Fixtures exercised live transitions. Physical-phone testing remains open, and the live installation serves the prior saved-chat build.
+A read-only PC check sampled 30 chats per provider. It found turn-end evidence in 29 Codex and 25 Claude chats, and the Claude roster identified two working sessions. The check started zero model turns. Fixtures exercised live transitions. The existing Windows installation serves the activity build. Physical-phone testing remains open.
 
 See [the ledger](../implementation-status.md) for the verified candidate and private evidence references.

@@ -1,21 +1,19 @@
 {
   "formatVersion": 1,
-  "objective": "Show activity, new messages and relative times for saved Codex and Claude conversations and their folders",
-  "status": "chat_activity_candidate_verified",
-  "currentPhase": "chat_activity_and_recency_complete",
-  "nextAction": "The activity candidate is ready for an authorized upgrade of the existing PC installation. Follow implementation-run.md for deployment and physical-phone acceptance.",
-  "completedSpec": "zz_Specifications/done/chat-activity-and-recency.md",
+  "objective": "Make Chats compact and deliver replies once to the original saved session, including after a provider releases it",
+  "status": "compact_chats_live_verified",
+  "currentPhase": "compact_chats_and_durable_reply_queue_deployed",
+  "nextAction": "Verify the standalone app from a physical phone when available. Immediate same-session replies while a provider holds the chat open require a verified connection to its owning provider.",
+  "completedSpec": "zz_Specifications/done/chats-layout-and-reply-delivery.md",
   "tracking": "zz_Specifications/implementation-run.md",
   "ledger": "zz_Specifications/implementation-status.md",
   "authorized": [
     "local_implementation",
     "isolated_tests",
     "read_only_provider_observation",
-    "git_commit",
-    "git_push"
+    "existing_windows_installation_activation"
   ],
   "notAuthorized": [
-    "activity_candidate_activation",
     "infrastructure_changes",
     "paid_service_provisioning",
     "application_package_publication"
@@ -136,7 +134,10 @@
     "artifact": "artifacts/ceston-f6a11eec-8136-4cbe-8d0d-8d76be2fb5ff.zip",
     "artifactSha256": "8ae1e3317d9713efd6326e057c677bf14d7f00735b01a0dd6a28913ca2993766",
     "isolatedFirstUseVerified": true,
-    "activated": false,
+    "activated": true,
+    "cutoverEvidence": "activity-live-cutover-2026-11-18.json",
+    "readbackEvidence": "activity-live-readback-2026-11-18.json",
+    "publicOrigin": "https://ceston.troho.net/",
     "physicalPhoneVerified": false
   },
   "savedChatVerification": {
@@ -166,5 +167,24 @@
     "physicalPhoneVerified": false,
     "persistentActivation": false,
     "publiclyReleased": false
+  },
+  "compactChatsVerification": {
+    "releaseId": "local-e71a282def8d-187fd6d7",
+    "automatedTests": 126,
+    "localRecord": "2026-11-19T06-05-10-391Z-74620132/record.json",
+    "artifact": "artifacts/ceston-187fd6d7-c51a-4656-a289-f56539af1155.zip",
+    "artifactSha256": "245f26290ffcae1d70176072c33b84c0e5faec28dff14a0cbf3dd5c46cb53b39",
+    "manifestHash": "c87bd55433a40972fd7acf704f6b25be0957f5f6c7912838466787edae1cf91b",
+    "restartQueueEvidence": "compact-chats-restart.json",
+    "isolatedFirstUseVerified": true,
+    "activated": true,
+    "publicOrigin": "https://ceston.troho.net/",
+    "physicalPhoneVerified": false,
+    "immediateReplyIntoExternallyOwnedSessionVerified": false,
+    "rehearsalEvidence": "compact-chats-package-rehearsal.json",
+    "cutoverEvidence": "compact-chats-live-cutover-2026-11-19.json",
+    "readbackEvidence": "compact-chats-live-readback-2026-11-19.json",
+    "firstCleanExport": "clean-export-1795068793331/record.json",
+    "cleanExport": "clean-export-1795069231306/record.json"
   }
 }

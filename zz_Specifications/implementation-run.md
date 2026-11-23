@@ -2,7 +2,7 @@
 
 ## Authority and resume
 
-The owner authorized the original baseline and later requested the full daily-work revision, tests and an installable build. The saved-chat upgrade operates on the existing owner installation and keeps its data and Cloudflare routing. New persistent installations, infrastructure/account changes, paid provisioning and application artifact publication remain separate operations under `00-start-here.md`.
+Owner-requested product changes include deployment and restart on the existing Windows installation. Use the [activation boundary](00-start-here.md#implementation-authority-and-limits) and verify the new build at the existing PC and phone address before handoff.
 
 Read AGENTS, README, this file, `implementation-status.md` and `implementation-progress.json`. Inspect Git status and the actual remote SHA before editing. Preserve unfinished work. Use `npm run checkpoint` for the machine-readable state. Resolve source/test failures autonomously; never substitute fixtures for native or physical evidence.
 
@@ -14,10 +14,10 @@ Current acceptance and build evidence are recorded in the [implementation ledger
 
 ## Continuation
 
-1. The [completed activity specification](done/chat-activity-and-recency.md) records the current Windows candidate. Use the implementation ledger to distinguish that candidate from the PC's live release. For a changed build, rerun `npm run package:local` and `node --import tsx scripts/rehearse-package.ts <unpacked-bundle>` before recording new evidence.
+1. The [compact Chats and reply delivery specification](done/chats-layout-and-reply-delivery.md) records the current Windows update. For a changed build, run `npm run package:local` and rehearse the isolated package before deployment. Verify and record the served release in the implementation ledger.
 2. Complete the remaining U19 scenarios. The current authorized source policy uses explicit capture and accepted work. Broader proposed inference and conflict review still need scoped inputs and tests. Validate review/retirement and recovery on the installed device.
-3. Saved-chat replies use the original session ID and the installed, signed-in provider. Exact session and prior context have been verified in an isolated native session on both providers. Close a session held by the provider before retrying it in cestOn. Certification for autonomous Work and self-update remains separate. Reply from a physical phone and verify the standalone installation journey when a device is available.
-4. Keep the ledger and machine-readable checkpoint current when a gate changes. Follow project authority and preserve verified phase evidence. Persistent activation, infrastructure changes and package publication are separate operations.
+3. Saved-chat replies use the original session ID and the installed, signed-in provider. If the provider confirms it holds the thread open, a pending cestOn reply can be cancelled or will send automatically after release. Immediate delivery into the open session needs a verified exact-session connection to its owning provider. Reply from a physical phone and verify the standalone installation journey when a device is available.
+4. Keep the ledger and machine-readable checkpoint current when a gate changes. Preserve verified phase evidence and confirm separate authority for new installations, infrastructure changes or package publication.
 
 ## Verified baseline evidence
 
@@ -43,7 +43,7 @@ The results above establish the original baseline at the recorded revisions. Con
 
 - Native Work confinement reports `native_sandbox_setup_required` and the dedicated managed Codex and Claude homes are unauthenticated. Saved-chat replies use the installed user's provider sign-in. Baseline and full self-update certificates remain unissued. The native issuer's refusal, signature, expiry, suspension and toolchain/baseline binding tests pass; its live path is unverified.
 - Android inventory found no attached device; physical iOS tooling/device is unavailable. Real standalone install, microphone/audio, lock-screen push and assistive-device evidence remain blocked.
-- Persistent startup, sign-in, locked-session and reboot acceptance are unperformed. No pilot, tunnel, remote origin, paid service, operational schedule or account integration was activated. Optional cestDone remains disabled and its daemon/configuration untouched.
+- The existing PC serves cestOn through Cloudflare Access. Persistent startup, operation from a locked session and operation after a reboot still need direct acceptance. Optional cestDone remains disabled.
 - Owner-selected application license and explicit artifact/signing/publication authority remain open. The authorized public source repository exists; `private: true` and `UNLICENSED` remain in package metadata.
 
 ## Quarantine and failed attempts
