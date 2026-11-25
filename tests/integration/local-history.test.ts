@@ -86,6 +86,50 @@ it('observes exact saved turn boundaries and keeps stable positions through live
   } finally { cleanupTestRoot(t.root, t.runId); }
 });
 
+it('opens a tool-heavy chat with its recent messages and pages back past records larger than one read', async () => {
+  const t = createTestRoot();
+  try {
+    const home = join(t.root,'claude');
+    const directory = join(home,'projects','folder');
+    mkdirSync(directory,{recursive:true});
+    const sessionId = '01234567-89ab-4def-8123-000000000002';
+    const cwd = join(t.root,'project');
+    const file = join(directory,'heavy.jsonl');
+    const timestamp = new Date().toISOString();
+    const text = (type: 'user' | 'assistant', value: string) => JSON.stringify({ type, sessionId, cwd, timestamp, message:{ content:[{ type:'text', text:value }] } }) + '\n';
+    const tool = (bytes: number) => JSON.stringify({ type:'user', sessionId, cwd, timestamp, message:{ content:[{ type:'tool_result', content:'x'.repeat(bytes) }] } }) + '\n';
+    const attachment = (bytes: number) => JSON.stringify({ type:'attachment', sessionId, cwd, timestamp, attachment:{ content:'y'.repeat(bytes) } }) + '\n';
+    const expected: string[] = [];
+    writeFileSync(file, text('user','Question 0') + text('assistant','Answer 0'));
+    expected.push('Question 0','Answer 0');
+    // A record larger than a whole read sits between this question and its answer.
+    appendFileSync(file, text('user','Before the huge record') + attachment(9 * 1024 * 1024) + text('assistant','After the huge record'));
+    expected.push('Before the huge record','After the huge record');
+    for (let turn = 1; turn <= 40; turn++) {
+      appendFileSync(file, text('user',`Question ${turn}`) + tool(60000) + (turn === 40 ? attachment(400000) : '') + text('assistant',`Answer ${turn}`));
+      expected.push(`Question ${turn}`,`Answer ${turn}`);
+    }
+    const history = new LocalHistory({ claudeHome:home }, t.root);
+    const id = (await history.list('',undefined,0)).conversations[0]!.id;
+
+    const opening = await history.read(id);
+    const shown = opening.messages.map(message => message.text);
+    expect(shown.length).toBeGreaterThanOrEqual(30);
+    expect(shown).toEqual(expected.slice(-shown.length));
+    expect(shown).toContain('Question 40');
+
+    const pages = [opening];
+    while (pages.at(-1)!.older !== null && pages.length < 20) {
+      const previous = pages.at(-1)!.older!;
+      const page = await history.read(id, previous);
+      expect(page.older === null || page.older < previous).toBe(true);
+      pages.push(page);
+    }
+    expect(pages.at(-1)!.older).toBeNull();
+    expect(pages.reverse().flatMap(page => page.messages.map(message => message.text))).toEqual(expected);
+  } finally { cleanupTestRoot(t.root,t.runId); }
+}, 60000);
+
 it('uses Claude turn evidence and ignores another session or a sidechain', async () => {
   const t = createTestRoot();
   try {

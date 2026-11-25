@@ -19,10 +19,13 @@ export type LiveStatus = 'working' | 'waiting' | 'idle';
 type ChatStatus = LiveStatus | 'likely_working' | 'unknown';
 export type ChatActivity = { status?: ChatStatus; startedAt?: string; endedAt?: string };
 type Entry = Conversation & Source & { file: string; nativeId: string; cwd: string; revision: string; modified: number; size: number; signalAt: number; indexedTitle?: string };
-export type HistoryTarget = Pick<Entry, 'provider' | 'home' | 'nativeId' | 'cwd'>;
+export type HistoryTarget = Pick<Entry, 'provider' | 'home' | 'nativeId' | 'cwd' | 'file'>;
 type Coverage = { provider: Provider; status: 'ready' | 'unavailable' | 'partial'; inspected: number; skipped: number };
 const budget = 4000;
 const chunkSize = 65536;
+// A chat opens with about this many visible messages, reading back at most historyScan bytes per page.
+const historyMessages = 30;
+const historyScan = 8 * 1024 * 1024;
 const likelyWorkingFor = 3 * 60000;
 const digest = (value: string) => createHash('sha256').update(value).digest('hex').slice(0, 32);
 export const savedConversationId = (provider: Provider, id: string) => digest(provider + ':' + id);
@@ -94,7 +97,7 @@ function replyText(record: Json, provider: Provider) {
   const role = provider === 'Codex' ? payload.role : record.type;
   if (role !== 'assistant' && role !== 'user') return [];
   if (provider === 'Codex' && (record.type !== 'response_item' || payload.type !== 'message')) return [];
-  const text = redactText(textContent(payload.content)).trim().slice(0, 12000);
+  const text = redactText(textContent(payload.content)).trim().slice(0, 32000);
   return text ? [{ role, text }] : [];
 }
 
@@ -165,6 +168,39 @@ async function readWindow(handle: FileHandle, end: number, limit: number) {
   const partialLine = Boolean(leading && buffer[0] !== 10);
   const skip = partialLine ? data.indexOf(10) + 1 : 0;
   return { lines:completeLines(data,start,partialLine), older:start ? start+skip : null };
+}
+
+// Start of the record that ends just before end, found by scanning back for the previous line break.
+async function recordStart(handle: FileHandle, end: number) {
+  const buffer = Buffer.alloc(chunkSize);
+  for (let cursor = end - 1; cursor > 0;) {
+    const from = Math.max(0, cursor - chunkSize);
+    const { bytesRead } = await handle.read(buffer, 0, cursor - from, from);
+    const index = buffer.subarray(0, bytesRead).lastIndexOf(10);
+    if (index >= 0) return from + index + 1;
+    cursor = from;
+  }
+  return 0;
+}
+
+// Reads back from end until enough visible messages are found or the scan limit is reached. A record larger than
+// one window is read whole when it fits within the limit and skipped otherwise, so paging always moves back.
+async function readMessages(handle: FileHandle, end: number, keep: (row: Json) => boolean) {
+  const lines: { row: Json; position: number }[] = [];
+  let found = 0;
+  let cursor: number | null = end;
+  while (cursor !== null && found < historyMessages && end - cursor < historyScan) {
+    let window = await readWindow(handle, cursor, 2 * chunkSize);
+    if (window.older !== null && window.older >= cursor) {
+      const start = await recordStart(handle, cursor);
+      window = cursor - start <= historyScan ? await readWindow(handle, cursor, cursor - start) : { lines: [], older: start || null };
+    }
+    const kept = window.lines.filter(({ row }) => keep(row));
+    found += kept.length;
+    lines.unshift(...kept);
+    cursor = window.older;
+  }
+  return { lines, older: cursor };
 }
 
 async function checkPath(root: string, file: string) {
@@ -302,9 +338,8 @@ export class LocalHistory {
         const stat = await handle.stat();
         if (current.revision !== digest(stat.dev + ':' + stat.ino)) throw new Error('different_conversation');
         const end = Math.min(stat.size, before ?? stat.size);
-        const {lines,older} = await readWindow(handle,end,2*chunkSize);
+        const {lines,older} = await readMessages(handle,end,row => primaryRecord(row,current.provider,current.nativeId) && replyText(row,current.provider).length > 0);
         const messages = lines
-          .filter(({row}) => primaryRecord(row,current.provider,current.nativeId))
           .flatMap(({row,position}) => replyText(row,current.provider).map(message => ({...message,position,
             recordedAt: Number.isFinite(Date.parse(String(row.timestamp))) ? new Date(String(row.timestamp)).toISOString() : null,
           })));
@@ -320,8 +355,8 @@ export class LocalHistory {
     try {
       const entry = await metadata(saved, saved.file);
       if (!entry || entry.id !== id || entry.folderId !== saved.folderId || !providerId.test(entry.nativeId)) throw new Error('different_conversation');
-      const { provider, home, nativeId, cwd } = entry;
-      return { provider, home, nativeId, cwd };
+      const { provider, home, nativeId, cwd, file } = entry;
+      return { provider, home, nativeId, cwd, file };
     } catch { throw new DomainError('conversation_not_available', 404); }
   }
 

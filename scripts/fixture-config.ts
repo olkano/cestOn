@@ -27,7 +27,7 @@ export function fixtureConfig(root: string) {
   const claudeId = '01234567-89ab-4def-8123-000000000002';
   const rows = (value: unknown[]) => value.map(row => JSON.stringify(row)).join('\n')+'\n';
   writeFileSync(join(config.history.codexHome,'session_index.jsonl'),rows([{id:codexId,thread_name:'Indexed Codex fixture title',updated_at:'2026-11-17T11:00:00Z'}]));
-  writeFileSync(join(config.history.codexHome,'sessions','reply.jsonl'),rows([
+  writeFileSync(join(config.history.codexHome,'sessions',`rollout-2026-11-16T11-00-00-${codexId}.jsonl`),rows([
     {type:'session_meta',payload:{id:codexId,cwd:join(root,'project')}},
     {type:'response_item',timestamp:'2026-11-16T11:00:00Z',payload:{type:'message',role:'user',content:'Saved Codex question.'}},
   ]));

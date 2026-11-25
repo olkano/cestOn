@@ -24,7 +24,7 @@ This file is self-contained for public contributors. The portable engineering co
 ## Product-specific invariants
 
 - Keep coordinator, execution broker, and update supervisor separate. Provider credentials and privileged update operations never reach browser code or an ordinary task worker.
-- Reject stale decisions, duplicate effects, unmanaged-session writes, and unsupported adapter capabilities deterministically. Prompt instructions alone are not enforcement.
+- Reject stale decisions, duplicate effects, unmanaged-session writes, and unsupported adapter capabilities deterministically. Prompt instructions alone are not enforcement. A saved-chat reply is the owner continuing their own chat and runs with that chat's model and permissions; see the saved-history contract in `zz_Specifications/04-provider-adapters.md`.
 - Test crashes before and after dispatch, commit, activation, and read-back. An uncertain action requires reconciliation, never blind replay.
 - Verify UI behavior at desktop and phone sizes in both themes, with keyboard navigation, offline state, and reconnect. Include install and real-device checks in the evidence ledger.
 - Use synthetic workspaces and fixture providers by default. Test scripts must fail closed if pointed at a non-test data root.

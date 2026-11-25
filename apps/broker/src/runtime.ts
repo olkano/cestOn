@@ -143,7 +143,9 @@ export class Broker {
         const target = await this.savedHistory.target(id);
         const send = await this.historyProvider.prepare(target);
         const ref = { runId: randomUUID(), sessionId: target.nativeId, turnId: '' };
-        const receipt = await this.journal.dispatch(commandId, { id, text }, async () => ({ ref, historyId: id }), { historyId: id });
+        const ended = send.endedEditorProcess;
+        const receipt = await this.journal.dispatch(commandId, { id, text }, async () => ({ ref, historyId: id }),
+          { historyId: id, ...(ended ? { endedEditorProcess: `${ended.pid}:${ended.startedAt}` } : {}) });
         const recorded = receipt.result.ref as RunRef;
         if (recorded.runId !== ref.runId) { this.historyJobs.delete(id); return { ref: recorded }; }
         job.runId = ref.runId;
@@ -153,7 +155,9 @@ export class Broker {
             this.log.append(ref.runId,{key:ref.runId+':reply',sequence:1,type:'message.delta',data:{text:response}});
             this.journal.resolve(commandId,{...receipt.result,state:'succeeded'});
           } catch (error) {
-            if (error instanceof DomainError && error.code === 'history_session_open') {
+            // A refusal, a start stopped before the provider could answer, a provider that ended without an answer and a
+            // stopped reply are known outcomes, not uncertain ones, so the chat stays free for the next reply.
+            if (error instanceof DomainError && ['history_session_open','history_reply_stopped','history_reply_failed','history_reply_interrupted'].includes(error.code)) {
               this.journal.resolve(commandId,{...receipt.result,state:'failed',errorCode:error.code});
             } else this.journal.resolve(commandId,{...receipt.result,state:'reconciling'});
           } finally { this.historyJobs.delete(id); }
@@ -226,6 +230,8 @@ export class Broker {
   }
   async steer(runId: string, text: string, turnId: string) { const run = this.runs.get(runId); if (!run || run.ref.turnId !== turnId) throw new DomainError('stale_run'); return run.adapter.enqueue(run.ref, text); }
   async interrupt(runId: string) {
+    const reply = [...this.historyJobs.values()].find(job => job.runId === runId);
+    if (reply) { reply.cancel.abort(); await reply.work; return { acknowledged: true, state: 'interrupted' }; }
     const run = this.runs.get(runId); if (!run) throw new DomainError('unmanaged_run');
     await run.adapter.interrupt(run.ref);
     const deadline = Date.now() + 10000;

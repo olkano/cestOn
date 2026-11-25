@@ -37,7 +37,7 @@ footer { display:flex; justify-content:space-between; align-items:center; gap:12
 .chat-thread-heading h2 { margin:0; }
 .chat-thread-heading .chat-thread-meta { margin:2px 0 10px; }
 .chat-transcript-frame { position:relative; min-width:0; }
-.chat-transcript { overflow:auto; overscroll-behavior:contain; min-height:5rem; max-height:clamp(12rem,calc(100dvh - 38rem),50rem); border-top:1px solid var(--border); border-bottom:1px solid var(--border); padding:4px 10px; }
+.chat-transcript { overflow:auto; min-height:5rem; max-height:clamp(12rem,calc(100dvh - 38rem),50rem); border-top:1px solid var(--border); border-bottom:1px solid var(--border); padding:4px 10px; }
 .chat-latest { position:absolute; right:14px; bottom:10px; color:var(--focus); box-shadow:0 2px 8px #0002; }
 .chat-markdown { overflow-wrap:anywhere; min-width:0; }
 .chat-markdown > :first-child { margin-top:5px; }

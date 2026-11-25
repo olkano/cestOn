@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect, devices } from '@playwright/test';
 import { appendFileSync, readFileSync, unlinkSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { localStore, pair } from './helpers.js';
@@ -12,7 +12,7 @@ test('finds conversations by folder and keeps a Markdown transcript independentl
   const store = localStore();
   const root = store.dataRoot;
   store.close();
-  const file = join(root,'history-fixture','sessions','reply.jsonl');
+  const file = join(root,'history-fixture','sessions','rollout-2026-11-16T11-00-00-01234567-89ab-4def-8123-000000000001.jsonl');
   const old = readFileSync(file);
   const markdown = '## Verification summary\n\n**Done**\n\n- First check\n- Second check\n\n| Check | Result |\n| --- | --- |\n| Build | Passed |\n\n```text\nsynthetic output\n```\n\n[Report](https://example.com) [Invalid](invalid:ignored)\n\n![Private image](https://example.com/ignored.png)\n\n<aside>Raw HTML marker</aside>';
   const message = (text: string) => ({type:'response_item',timestamp:timestamp(0),payload:{type:'message',role:'assistant',content:text}});
@@ -54,12 +54,64 @@ test('finds conversations by folder and keeps a Markdown transcript independentl
   } finally {writeFileSync(file,old);}
 });
 
+test('reaches the reply box with thumb swipes on a portrait phone, even over the transcript', async ({browser},info) => {
+  const store = localStore();
+  const root = store.dataRoot;
+  store.close();
+  const file = join(root,'history-fixture','sessions','rollout-2026-11-16T11-00-00-01234567-89ab-4def-8123-000000000001.jsonl');
+  const old = readFileSync(file);
+  const message = (text: string) => ({type:'response_item',timestamp:timestamp(0),payload:{type:'message',role:'assistant',content:text}});
+  appendFileSync(file,rows(...Array.from({length:30},(_,index) => message('Long phone message ' + index + ' with enough words to wrap across several lines on a narrow screen.'))));
+  const context = await browser.newContext({...devices['Pixel 7']});
+  const page = await context.newPage();
+  try {
+    await pair(page);
+    await page.getByRole('link',{name:'Chats'}).click();
+    await page.getByRole('searchbox',{name:'Search chats'}).fill('Indexed Codex');
+    await page.getByRole('button',{name:/Indexed Codex fixture title/}).click();
+    const log = page.getByRole('log',{name:'Conversation messages'});
+    await expect(log.getByText('Long phone message 29')).toBeVisible();
+    await expect.poll(() => log.evaluate(element => element.scrollHeight - element.clientHeight - element.scrollTop)).toBeLessThan(24);
+    const touch = await context.newCDPSession(page);
+    const swipeUp = async (y: number) => {
+      const x = await page.evaluate(() => Math.round(innerWidth / 2));
+      await touch.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x,y}]});
+      for (let moved = 10; moved <= 120; moved += 10) await touch.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[{x,y:y - moved}]});
+      await touch.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});
+      await page.waitForTimeout(250);
+    };
+    // The thumb rests on the transcript, which already shows its newest message, while the page can still scroll.
+    await page.evaluate(() => scrollTo(0,0));
+    const before = await page.evaluate(() => scrollY);
+    expect(await page.evaluate(() => document.documentElement.scrollHeight - innerHeight)).toBeGreaterThan(before + 100);
+    const start = await log.evaluate(element => Math.round(Math.min(element.getBoundingClientRect().top + 60,document.querySelector('.workspace nav')!.getBoundingClientRect().top - 20)));
+    expect(await page.evaluate(([x,y]) => Boolean(document.elementFromPoint(x!,y!)?.closest('.chat-transcript')),[200,start])).toBe(true);
+    await swipeUp(start);
+    expect(await page.evaluate(() => scrollY)).toBeGreaterThan(before);
+    const reply = page.getByRole('textbox',{name:'Your reply'});
+    const reachable = () => page.evaluate(() => {
+      const box = document.querySelector('.chat-composer textarea')!.getBoundingClientRect();
+      return box.top >= 0 && box.bottom <= document.querySelector('.workspace nav')!.getBoundingClientRect().top;
+    });
+    for (let swipe = 0; swipe < 4 && !(await reachable()); swipe++) await swipeUp(start);
+    expect(await reachable()).toBe(true);
+    await page.screenshot({path:info.outputPath('chat-reply-reachable-phone.png')});
+    // Playwright checks that the box itself receives the press, not the transcript or the bottom bar.
+    await reply.click();
+    await page.keyboard.type('Typed after swiping');
+    await expect(reply).toHaveValue('Typed after swiping');
+  } finally {
+    await context.close();
+    writeFileSync(file,old);
+  }
+});
+
 test('shows a saved Codex turn live and retains earlier pages across changes and reconnect', async ({page,context},info) => {
   test.setTimeout(60000);
   const store = localStore();
   const root = store.dataRoot;
   store.close();
-  const file = join(root,'history-fixture','sessions','reply.jsonl');
+  const file = join(root,'history-fixture','sessions','rollout-2026-11-16T11-00-00-01234567-89ab-4def-8123-000000000001.jsonl');
   const old = readFileSync(file);
   const earlier = 'Earlier words in the selected thread.';
   const comment = (text: string, time: string, role = 'assistant') =>
@@ -70,6 +122,8 @@ test('shows a saved Codex turn live and retains earlier pages across changes and
     {type:'session_meta',payload:{id:codexId,cwd:join(root,'project')}},
     comment(earlier,timestamp(8),'user'),
     ...Array.from({length:4},()=>({type:'reasoning',text:'x'.repeat(50000)})),
+    // The chat opens with about 30 recent messages, so the earlier words are one page back.
+    ...Array.from({length:31},(_,index)=>comment(`Recent step ${index + 1}.`,timestamp(4))),
     event('task_started',timestamp(3)),
     comment('First saved progress.',timestamp(2)),
   ));

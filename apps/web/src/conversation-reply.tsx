@@ -3,10 +3,10 @@ import type { ConversationReplies } from '../../server/src/projects/conversation
 import { api } from './api.js';
 import { loadDraft, saveDraft } from './drafts.js';
 import { ChatMessage, ChatTranscript } from './chat-transcript.js';
+import { savedParts, type SavedMessage } from './saved-reply.js';
 
 type Thread = Awaited<ReturnType<ConversationReplies['view']>>;
 type Draft = { key: string; text: string };
-type SavedMessage = { role: string; text: string; recordedAt: string | null };
 const emptyDraft: Draft = { key: '', text: '' };
 const statusText: Record<Thread['state'], string> = {
   ready: '',
@@ -17,18 +17,6 @@ const statusText: Record<Thread['state'], string> = {
   offline: 'cestOn can’t reach the provider on your PC.',
   uncertain: 'cestOn is checking whether your last message reached the provider.',
 };
-
-function present(turn: Thread['turns'][number], messages: SavedMessage[]) {
-  const started = Date.parse(turn.createdAt) - 1000;
-  const prompt = messages.findIndex(message => message.role === 'user' && message.text === turn.prompt.trim() &&
-    message.recordedAt !== null && Date.parse(message.recordedAt) >= started);
-  if (prompt === -1) return {prompt:false,answer:false};
-  for (const message of messages.slice(prompt+1)) {
-    if (message.role === 'user') break;
-    if (message.text === turn.answer?.trim()) return {prompt:true,answer:true};
-  }
-  return {prompt:true,answer:false};
-}
 
 export function ConversationReply({ id, provider, online, owner, savedMessages = [], children }: { id: string; provider: string; online: boolean; owner: string; savedMessages?: SavedMessage[] | undefined; children?: ReactNode }) {
   const [thread, setThread] = useState<Thread | null>(null);
@@ -79,10 +67,17 @@ export function ConversationReply({ id, provider, online, owner, savedMessages =
 
   const canSend = online && !readError && thread?.state === 'ready';
   const queued = thread?.turns.find(turn => turn.state === 'queued' && turn.error === 'history_session_open');
+  const running = thread?.turns.find(turn => turn.state === 'accepted');
   const cancel = async (command: string) => {
     setSending(true); setSendError('');
     try { await api(path + '/replies/' + command + '/cancel', { method:'POST' }); }
     catch { setSendError('Couldn’t cancel the reply. It may already be sending.'); }
+    finally { setSending(false); setRefresh(value => value + 1); }
+  };
+  const stop = async (command: string) => {
+    setSending(true); setSendError('');
+    try { await api(path + '/replies/' + command + '/stop', { method:'POST' }); }
+    catch { setSendError(`Couldn’t stop the reply. ${provider} may already have finished.`); }
     finally { setSending(false); setRefresh(value => value + 1); }
   };
   const send = async () => {
@@ -99,7 +94,7 @@ export function ConversationReply({ id, provider, online, owner, savedMessages =
     <ChatTranscript>{children}
     {thread?.opening && <article className="phase"><strong>You</strong><ChatMessage text={thread.opening}/></article>}
     {thread?.turns.map(turn => {
-      const stored = present(turn,savedMessages);
+      const stored = savedParts(turn,savedMessages);
       const answer = stored.answer ? null : turn.answer ?? turn.preview;
       if (stored.prompt && !answer && turn.state !== 'failed') return null;
       return <article className="phase" key={turn.id}>
@@ -110,20 +105,28 @@ export function ConversationReply({ id, provider, online, owner, savedMessages =
         ? 'This earlier reply was blocked while the conversation was open. You can send it again.'
         : turn.error === 'history_provider_unavailable'
           ? 'Check that the provider is installed and signed in on your PC.'
-          : 'cestOn couldn’t get a reply for this message.'}</p>}
+          : turn.error === 'history_reply_stopped'
+            ? `cestOn stopped this reply before ${provider} answered, because ${provider} on your PC did not continue this chat.`
+            : turn.error === 'history_reply_interrupted'
+              ? `This reply was stopped before ${provider} finished. ${provider} may have done part of the work; the chat on your PC shows what it did.`
+              : turn.error === 'history_reply_failed'
+                ? `${provider} ended without a reply cestOn could read. The chat on your PC shows what it did.`
+                : 'cestOn couldn’t get a reply for this message.'}</p>}
     </article>;})}</ChatTranscript>
     <div className="chat-reply-status">
-      <p role="status">{!online ? 'You’re offline. Your draft stays here.' : readError ? 'Couldn’t check this conversation. Trying again…' : thread?.state === 'waiting' ? `Reply saved. Waiting for ${provider} to release this conversation. Close the chat there when you’re done and cestOn will send it automatically.` : thread ? statusText[thread.state] : 'Checking this conversation…'}</p>
+      <p role="status">{!online ? 'You’re offline. Your draft stays here.' : readError ? 'Couldn’t check this conversation. Trying again…' : thread?.state === 'waiting'
+        ? `Reply saved. Waiting for ${provider} on your PC to finish what it is doing. cestOn will send it automatically. If this chat is open in a terminal or the ${provider} app instead of VS Code, close it there.`
+        : thread ? statusText[thread.state] : 'Checking this conversation…'}</p>
       {queued && <button type="button" disabled={!online || sending} onClick={() => void cancel(queued.id)}>Cancel queued reply</button>}
+      {running && <button type="button" disabled={!online || sending} onClick={() => void stop(running.id)}>Stop reply</button>}
     </div>
     <form className="composer chat-composer" onSubmit={event => { event.preventDefault(); void send(); }}>
-      <label>Your reply<textarea value={draft.text} disabled={!loaded || sending} maxLength={8000} rows={2} onChange={event => {
+      <label>Your reply<textarea value={draft.text} disabled={!loaded || sending} maxLength={32000} rows={2} onChange={event => {
         const next = { key: crypto.randomUUID(), text: event.target.value };
         setDraft(next);
         void saveDraft(owner, draftPath, next.text.trim() ? JSON.stringify(next) : '').catch(() => setSendError('Couldn’t save your draft. Keep this page open.'));
       }}/></label>
       <button className="primary" disabled={!canSend || sending || !draft.text.trim()}>{sending ? 'Sending…' : 'Send'}</button>
-      <small>Use Work to request file changes.</small>
       {sendError && <p role="alert">{sendError}</p>}
     </form>
   </>;

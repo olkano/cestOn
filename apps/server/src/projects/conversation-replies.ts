@@ -3,7 +3,6 @@ import type { BrokerClient } from '../../../broker/src/client.js';
 import type { RunRef } from '../../../../packages/adapters/src/types.js';
 import { DomainError } from '../../../../packages/contracts/src/commands.js';
 import type { Config } from '../../../../packages/contracts/src/config.js';
-import { redactText } from '../../../../packages/contracts/src/logging.js';
 import type { CommandRow, Store } from '../db/store.js';
 import { conversationFolderId, type ChatActivity, type Conversation } from './history.js';
 
@@ -20,6 +19,9 @@ const refusedBeforeSend = new Set(['conversation_busy', 'conversation_unavailabl
   'resume_unavailable', 'resource_busy', 'concurrency_limit', 'scope_denied', 'budget_denied', 'broker_closing',
   'history_session_open', 'history_provider_unavailable', 'history_target_invalid', 'conversation_not_available']);
 const savedHistory = (id: string) => /^[a-f0-9]{32}$/.test(id);
+// Known ways a sent reply can end without an answer; each has its own message in the chat.
+const replyOutcomes = new Set(['history_reply_stopped', 'history_reply_failed', 'history_reply_interrupted']);
+const answerLimit = 32000;
 
 export class ConversationReplies {
   private polling = false;
@@ -144,9 +146,20 @@ export class ConversationReplies {
       return this.store.command(row.id);
     }).immediate();
   }
+  // Stops a reply the provider is working on. The provider and the commands it started end; the reply is shown as stopped.
+  async stop(id: string, commandId: string) {
+    const row = this.store.db.prepare(`SELECT * FROM commands WHERE id=? AND type=? AND state='accepted'
+      AND json_extract(payload_json,'$.sessionId')=?`).get(commandId,commandType,id) as CommandRow | undefined;
+    const reply = row && JSON.parse(row.payload_json) as Reply;
+    const run = row && reply && await this.acceptedRun(reply.attemptId ?? row.id, id);
+    if (!row || !run) throw new DomainError('conversation_busy',409);
+    await this.broker.interrupt(run.ref.runId);
+    return this.store.command(row.id);
+  }
   async send(id: string, deviceId: string, key: string, text: string) {
     const thread = savedHistory(id) ? null : this.thread(id);
-    const prompt = redactText(text);
+    // The provider receives exactly what the owner typed, including paths and identifiers.
+    const prompt = text;
     const fingerprint = this.store.payloadHash({ id, text });
     const existing = () => this.store.db.prepare('SELECT id,payload_hash FROM commands WHERE device_id=? AND idempotency_key=?').get(deviceId, key) as { id: string; payload_hash: string } | undefined;
     const receipt = (prior: { id: string; payload_hash: string }) => {
@@ -239,7 +252,8 @@ export class ConversationReplies {
       // The broker recorded a provider refusal before any turn. Preserve this receipt and use a new attempt.
       this.waitForSession(row,{ ...reply, attemptId:randomUUID() });
     } else if (['interrupted', 'failed'].includes(state)) {
-      this.finish(row, reply, 'failed');
+      const reason = receipt.result.errorCode;
+      this.finish(row, reply, 'failed', undefined, typeof reason === 'string' && replyOutcomes.has(reason) ? reason : undefined);
     }
     else this.store.db.prepare('UPDATE commands SET state=?,error_code=NULL,accepted_at=COALESCE(accepted_at,?) WHERE id=?').run(
       ['starting', 'running'].includes(state) ? 'accepted' : 'reconciling', this.store.now(), row.id);
@@ -263,7 +277,7 @@ export class ConversationReplies {
   private async answer(runId: string) {
     let text = '';
     let after = 0;
-    for (let batch = 0; batch < 32 && text.length < 12000; batch++) {
+    for (let batch = 0; batch < 32 && text.length < answerLimit; batch++) {
       const events = await this.broker.events(runId,after);
       for (const {event} of events) if (event.type === 'message.delta') {
         if (typeof event.data.text === 'string') text += event.data.text;
@@ -275,7 +289,7 @@ export class ConversationReplies {
       if (events.length < 100) break;
       after = events.at(-1)!.sequence;
     }
-    return text.slice(0,12000);
+    return text.slice(0,answerLimit);
   }
   private finish(row: CommandRow, reply: Reply, state: 'succeeded' | 'failed' | 'cancelled', text?: string, error?: string) {
     this.store.db.transaction(() => {
