@@ -17,6 +17,7 @@ import { readOwner } from '../../broker/src/registry.js';
 import { ipcRequest } from '../../broker/src/ipc.js';
 import { childEnvironment } from '../../broker/src/policy/index.js';
 import { verifyRelease } from './releases.js';
+import { awaitReady } from './ready.js';
 import { Supervisor, type Pointer } from './activation.js';
 import { createServer } from 'node:net';
 import { coordinatorControl } from './control.js';
@@ -53,8 +54,7 @@ export async function startInstallation(root: string, testMode = false) {
   const recoveryDb = new Database(join(root, 'state/ceston.sqlite'), { readonly: true }); try { const recovery = recoveryDb.prepare("SELECT state_json FROM service_checkpoints WHERE name='recovery'").get() as { state_json: string } | undefined; if (recovery && (JSON.parse(recovery.state_json) as { reconciliationRequired: boolean }).reconciliationRequired) throw new DomainError('restore_reconciliation_required'); } finally { recoveryDb.close(); }
   const stable = join(root, 'supervisor/runtime'); verifyRelease(stable); const credentials = [current.config.voice.credentialEnv, current.config.push.privateKeyEnv, ...(current.config.providers.some(provider => provider.kind === 'claude' && provider.billingMode === 'metered') ? ['ANTHROPIC_API_KEY'] : [])].filter((value): value is string => Boolean(value));
   const child = fork(join(stable, 'dist/apps/supervisor/src/main.js'), [root, ...(testMode ? ['--test'] : [])], { cwd: stable, execArgv: [], detached: true, windowsHide: true, env: childEnvironment(process.env, credentials), stdio: ['ignore', 'ignore', 'ignore', 'ipc'] });
-  await new Promise<void>((done, reject) => { const timer = setTimeout(() => reject(new DomainError('supervisor_start_pending', 503)), 60000); child.once('error', () => { clearTimeout(timer); reject(new DomainError('supervisor_start_failed', 503)); }); child.once('exit', () => { clearTimeout(timer); reject(new DomainError('supervisor_start_failed', 503)); }); child.once('message', message => { clearTimeout(timer); if ((message as { ready?: boolean }).ready) done(); else reject(new DomainError('supervisor_start_failed', 503)); }); });
-  child.disconnect(); child.unref(); return supervisorRequest(root, 'status', {}, testMode);
+  await awaitReady(child); return supervisorRequest(root, 'status', {}, testMode);
 }
 export async function localStatus(root: string, testMode = false, integrity = true) {
   const current = installation(root, testMode); const pointer = JSON.parse(readFileSync(join(root, 'supervisor/active.json'), 'utf8')) as Pointer; const release = integrity ? verifyRelease(join(root, 'releases', pointer.current)).manifest : releaseSchema.parse(JSON.parse(readFileSync(join(root, 'releases', pointer.current, 'release-manifest.json'), 'utf8'))); const owner = await readOwner(root, 'supervisor', current.id, current.key);

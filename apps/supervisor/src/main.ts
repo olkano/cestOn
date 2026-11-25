@@ -18,6 +18,7 @@ import { FixtureImprovementWorker } from '../../../packages/test-support/src/imp
 import { readdirSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { recoveryInterface, type RecoveryView } from './recovery-ui.js';
+import { reportReady } from './ready.js';
 import { verifyRelease } from './releases.js';
 import { BackupService } from './backups.js';
 import { OsProtector } from '../../server/src/security/protection.js';
@@ -43,7 +44,7 @@ const server = await startIpcServer({ root, name: 'supervisor', installationId: 
   throw new DomainError('unsupported_operation', 422);
 });
 await writeOwner(root, 'supervisor', current.id, server.endpoint, current.key);
-try { const pointer = supervisor.pointer(); await host.connectBroker(); if (pointer.phase !== 'recovery' && !await host.healthy(pointer.current)) await host.startCoordinator(pointer.current); const recovered = await supervisor.recover(); if (['stable', 'applied', 'rolled_back'].includes(recovered.state)) await host.freeze(false); await prune(); ready = ['stable', 'applied', 'rolled_back'].includes(recovered.state); await syncRecovery(); log.write({ operation: 'supervisor.start', result: 'ready' }); process.send?.({ ready: true }); }
-catch { await host.freeze(true).catch(() => {}); supervisor.markRecovery(); await syncRecovery(); process.send?.({ ready: true, recovery: true }); }
+try { const pointer = supervisor.pointer(); await host.connectBroker(); if (pointer.phase !== 'recovery' && !await host.healthy(pointer.current)) await host.startCoordinator(pointer.current); const recovered = await supervisor.recover(); if (['stable', 'applied', 'rolled_back'].includes(recovered.state)) await host.freeze(false); await prune(); ready = ['stable', 'applied', 'rolled_back'].includes(recovered.state); await syncRecovery(); log.write({ operation: 'supervisor.start', result: 'ready' }); reportReady({ ready: true }); }
+catch { await host.freeze(true).catch(() => {}); supervisor.markRecovery(); await syncRecovery(); reportReady({ ready: true, recovery: true }); }
 async function close() { if (stopping) return; stopping = true; clearInterval(timer); clearInterval(updateTimer); clearInterval(recoveryTimer); await recoveryPage?.close(); recoveryPage = null; await engine.idle(); await server.close(); updateStore.close(); await instance.release(); if (process.connected) process.disconnect(); }
 process.on('SIGTERM', () => { clearInterval(updateTimer); void engine.idle().then(() => host.freeze(true)).then(() => host.stopCoordinator()).then(close); });
