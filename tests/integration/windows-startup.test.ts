@@ -10,9 +10,9 @@ const powershell = (args: string[]) => run('powershell.exe', ['-NoProfile', '-No
 
 // Registers a real current-user sign-in task under a random installation id, against a synthetic data root, and
 // always removes it. A local account is read back without its computer name, which must still count as the owner.
-// Runs on the owner's Windows PC. The hosted runner's disposable owner account has no interactive sign-in session, and
-// registering a sign-in task there does not complete.
-it.skipIf(process.platform !== 'win32' || process.env.GITHUB_ACTIONS === 'true')('installs, reinstalls and removes the sign-in task of the current user', async () => {
+// Runs on the owner's Windows PC. Hosted CI runs tests under a restricted token in a private window station with no
+// sign-in session, where registering a sign-in task does not complete.
+it.skipIf(process.platform !== 'win32' || Boolean(process.env.CI))('installs, reinstalls and removes the sign-in task of the current user', async () => {
   const t = createTestRoot();
   const id = randomUUID();
   const taskName = `cestOn-${id}`;
